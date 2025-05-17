@@ -1,43 +1,16 @@
 import Collapse from 'react-bootstrap/Collapse';
 import React, { useState, useEffect } from 'react';
 import { useSidebarState } from '../hooks/useSidebarState';
-import { FaSearch, FaChevronDown, FaChevronUp } from 'react-icons/fa';
-
-interface MenuItem {
-  id: string;
-  label: string;
-  icon: React.ElementType;
-  children?: { id: string; label: string }[];
-}
-
-const menuItems: MenuItem[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: FaSearch },
-  { id: 'leads', label: 'Lead Management', icon: FaSearch },
-  { id: 'text', label: 'Text Messaging', icon: FaSearch },
-  {
-    id: 'config',
-    label: 'Configuration',
-    icon: FaSearch,
-    children: [
-      { id: 'general', label: 'General' },
-      { id: 'apikeys', label: 'API Keys' },
-    ],
-  },
-  {
-    id: 'reports',
-    label: 'Reports',
-    icon: FaSearch,
-    children: [
-      { id: 'callhistory', label: 'Call History' },
-      { id: 'queue', label: 'Call Queue' },
-      { id: 'performance', label: 'Agent Performance' },
-    ],
-  },
-];
+import { FaSearch, FaChevronDown, FaChevronUp, FaCircle } from 'react-icons/fa';
+import * as FaIcons from 'react-icons/fa';
+import { useMenuData } from '../hooks/useMenuData';
+import type { SideNavigationMenuDTO, SideNavigationSubMenuDTO } from '../../../types/menuTypes';
+import type { IconType } from 'react-icons';
 
 const Sidebar: React.FC = () => {
   const { collapsed, toggleSidebar, isSubmenuOpen, toggleSubmenu } = useSidebarState();
   const [searchQuery, setSearchQuery] = useState('');
+  const { menus, loading } = useMenuData();
 
   useEffect(() => {
     const sidebarToggleButton = document.getElementById('sidebarToggle');
@@ -46,14 +19,47 @@ const Sidebar: React.FC = () => {
     return () => sidebarToggleButton?.removeEventListener('click', handleToggle);
   }, [toggleSidebar]);
 
-  const filteredMenu = menuItems.filter((item) =>
-    item.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.children?.some((child) => child.label.toLowerCase().includes(searchQuery.toLowerCase()))
+  const iconOverrideMap: Record<string, string> = {
+    'building-columns': 'FaUniversity',
+  };
+
+  const getIconComponent = (iconClass: string): IconType => {
+    if (!iconClass) return FaCircle;
+
+    const classParts = iconClass.split(' ');
+    const iconNameClass = classParts.find(cls =>
+      cls.startsWith('fa-') &&
+      !['fa-solid', 'fa-regular', 'fa-light', 'fa-duotone', 'fa-thin', 'fa-sharp', 'fas', 'far', 'fab'].includes(cls)
+    ) ?? 'fa-circle';
+
+    const iconKey = iconNameClass.replace('fa-', '');
+
+    const override = iconOverrideMap[iconKey];
+    if (override && (FaIcons as Record<string, IconType>)[override]) {
+      return (FaIcons as Record<string, IconType>)[override];
+    }
+
+    const componentName = 'Fa' + iconKey
+      .split('-')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join('');
+
+    const IconComponent = (FaIcons as Record<string, IconType>)[componentName];
+    if (!IconComponent) {
+      console.warn(`❌ Icon not found for: ${componentName}, raw: ${iconClass}`);
+      return FaCircle;
+    }
+
+    return IconComponent;
+  };
+
+  const filteredMenu = menus.filter((item) =>
+    item.menuName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.subMenus?.some((child) => child.subMenuName.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
     <nav className={`dashboard-ebm-sidebar ${collapsed ? 'dashboard-ebm-collapsed' : ''}`} id="sidebar">
-
       {/* Search Box */}
       <div className="dashboard-ebm-sidebar-search px-3 mt-1">
         {collapsed ? (
@@ -62,7 +68,7 @@ const Sidebar: React.FC = () => {
             className="dashboard-ebm-nav-link dashboard-ebm-search-only-icon d-flex justify-content-center"
             onClick={(e) => {
               e.preventDefault();
-              toggleSidebar(); // Expand sidebar on search icon click
+              toggleSidebar();
             }}
           >
             <i className="fas fa-search"></i>
@@ -98,53 +104,65 @@ const Sidebar: React.FC = () => {
 
       {/* Sidebar Menu */}
       <ul className="nav flex-column mt-2" id="sidebarMenu">
-        {filteredMenu.map((item) => (
-          <li
-            key={item.id}
-            className={`dashboard-ebm-nav-item ${item.children ? 'dashboard-ebm-has-submenu' : ''} ${
-              item.children && isSubmenuOpen(item.id) ? 'expanded' : ''
-            }`}
-          >
-            <a
-              href="#"
-              className="dashboard-ebm-nav-link d-flex align-items-center dashboard-ebm-nav-link-animated"
-              onClick={(e) => {
-                e.preventDefault();
-                if (collapsed) {
-                  toggleSidebar();
-                  return;
-                }
-                if (item.children) toggleSubmenu(item.id);
-              }}
-            >
-              <item.icon className="me-2" />
-              <span>{item.label}</span>
-              {item.children && !collapsed && (
-                isSubmenuOpen(item.id) ? (
-                  <FaChevronUp className="dashboard-ebm-toggle-chevron ms-auto" />
-                ) : (
-                  <FaChevronDown className="dashboard-ebm-toggle-chevron ms-auto" />
-                )
-              )}
-            </a>
+        {loading && <li className="text-white text-center small">Loading...</li>}
+        {!loading && filteredMenu.map((item: SideNavigationMenuDTO) => {
+          const Icon = getIconComponent(item.iconClass);
+          const menuId = item.menuName || `Menu-${item.sideNavigationMenuId ?? Math.random().toString(36).substring(2)}`;
+          const subMenus = menus
+          .flatMap(menu => menu.subMenus ?? [])
+          .filter(
+            (sub: SideNavigationSubMenuDTO) =>
+              sub.sideNavigationMenuId === item.sideNavigationMenuId && sub.isActive
+          );
+          const hasSubmenus = subMenus.length > 0;
+          const keyId = item.sideNavigationMenuId ?? `missing-${menuId}`;
 
-            {item.children && (
-              <Collapse in={isSubmenuOpen(item.id)}>
-                <div>
-                  <ul className="dashboard-ebm-submenu list-unstyled" id={`${item.id}-submenu`}>
-                    {item.children.map((child) => (
-                      <li key={child.id}>
-                        <a href="#" className="dashboard-ebm-nav-link small px-4 py-2 d-block">
-                          {child.label}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </Collapse>
-            )}
-          </li>
-        ))}
+          return (
+            <li
+              key={`menu-${keyId}`}
+              className={`dashboard-ebm-nav-item ${hasSubmenus ? 'dashboard-ebm-has-submenu' : ''} ${
+                hasSubmenus && isSubmenuOpen(menuId) ? 'expanded' : ''
+              }`}
+            >
+              <a
+                href="#"
+                className="dashboard-ebm-nav-link d-flex align-items-center dashboard-ebm-nav-link-animated"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (collapsed) {
+                    toggleSidebar();
+                    return;
+                  }
+                  if (hasSubmenus) toggleSubmenu(menuId);
+                }}
+              >
+                <Icon className="me-2" />
+                <span>{item.menuName}</span>
+                {hasSubmenus && !collapsed && (
+                  isSubmenuOpen(menuId)
+                    ? <FaChevronUp className="dashboard-ebm-toggle-chevron ms-auto" />
+                    : <FaChevronDown className="dashboard-ebm-toggle-chevron ms-auto" />
+                )}
+              </a>
+
+              {hasSubmenus && (
+                <Collapse in={isSubmenuOpen(menuId)}>
+                  <div>
+                    <ul className="dashboard-ebm-submenu list-unstyled" id={`${menuId}-submenu`}>
+                      {subMenus?.map((child) => (
+                        <li key={`submenu-${child.sideNavigationSubMenuId}`}>
+                          <a href="#" className="dashboard-ebm-nav-link small px-4 py-2 d-block">
+                            {child.subMenuName}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </Collapse>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </nav>
   );
