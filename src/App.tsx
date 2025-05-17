@@ -1,5 +1,3 @@
-// src/App.tsx
-
 import { Outlet } from 'react-router-dom';
 
 const App = () => {
