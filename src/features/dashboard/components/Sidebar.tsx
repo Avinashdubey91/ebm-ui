@@ -33,8 +33,8 @@ const Sidebar: React.FC = () => {
     ) ?? 'fa-circle';
 
     const iconKey = iconNameClass.replace('fa-', '');
-
     const override = iconOverrideMap[iconKey];
+
     if (override && (FaIcons as Record<string, IconType>)[override]) {
       return (FaIcons as Record<string, IconType>)[override];
     }
@@ -55,7 +55,9 @@ const Sidebar: React.FC = () => {
 
   const filteredMenu = menus.filter((item) =>
     item.menuName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.subMenus?.some((child) => child.subMenuName.toLowerCase().includes(searchQuery.toLowerCase()))
+    (item.subMenus ?? []).some((child) =>
+      child.subMenuName.toLowerCase().includes(searchQuery.toLowerCase())
+    )
   );
 
   return (
@@ -105,64 +107,69 @@ const Sidebar: React.FC = () => {
       {/* Sidebar Menu */}
       <ul className="nav flex-column mt-2" id="sidebarMenu">
         {loading && <li className="text-white text-center small">Loading...</li>}
-        {!loading && filteredMenu.map((item: SideNavigationMenuDTO) => {
-          const Icon = getIconComponent(item.iconClass);
-          const menuId = item.menuName || `Menu-${item.sideNavigationMenuId ?? Math.random().toString(36).substring(2)}`;
-          const subMenus = menus
-          .flatMap(menu => menu.subMenus ?? [])
-          .filter(
-            (sub: SideNavigationSubMenuDTO) =>
-              sub.sideNavigationMenuId === item.sideNavigationMenuId && sub.isActive
-          );
-          const hasSubmenus = subMenus.length > 0;
-          const keyId = item.sideNavigationMenuId ?? `missing-${menuId}`;
+        {!loading &&
+          filteredMenu.map((item: SideNavigationMenuDTO) => {
+            const Icon = getIconComponent(item.iconClass);
+            const menuId = item.menuName || `menu-${item.sideNavigationMenuId ?? Math.random().toString(36).substring(2)}`;
+            const keyId = item.sideNavigationMenuId ?? `missing-${menuId}`;
 
-          return (
-            <li
-              key={`menu-${keyId}`}
-              className={`dashboard-ebm-nav-item ${hasSubmenus ? 'dashboard-ebm-has-submenu' : ''} ${
-                hasSubmenus && isSubmenuOpen(menuId) ? 'expanded' : ''
-              }`}
-            >
-              <a
-                href="#"
-                className="dashboard-ebm-nav-link d-flex align-items-center dashboard-ebm-nav-link-animated"
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (collapsed) {
-                    toggleSidebar();
-                    return;
-                  }
-                  if (hasSubmenus) toggleSubmenu(menuId);
-                }}
+            // Flatten all submenus and filter by menu ID
+            const subMenus = menus
+              .flatMap(menu => menu.subMenus ?? [])
+              .filter(
+                (sub: SideNavigationSubMenuDTO) =>
+                  sub.sideNavigationMenuId === item.sideNavigationMenuId && sub.isActive
+              )
+              .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+            const hasSubmenus = subMenus.length > 0;
+
+            return (
+              <li
+                key={`menu-${keyId}`}
+                className={`dashboard-ebm-nav-item ${hasSubmenus ? 'dashboard-ebm-has-submenu' : ''} ${
+                  hasSubmenus && isSubmenuOpen(menuId) ? 'expanded' : ''
+                }`}
               >
-                <Icon className="me-2" />
-                <span>{item.menuName}</span>
-                {hasSubmenus && !collapsed && (
-                  isSubmenuOpen(menuId)
-                    ? <FaChevronUp className="dashboard-ebm-toggle-chevron ms-auto" />
-                    : <FaChevronDown className="dashboard-ebm-toggle-chevron ms-auto" />
-                )}
-              </a>
+                <a
+                  href="#"
+                  className="dashboard-ebm-nav-link d-flex align-items-center dashboard-ebm-nav-link-animated"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (collapsed) {
+                      toggleSidebar();
+                      return;
+                    }
+                    if (hasSubmenus) toggleSubmenu(menuId);
+                  }}
+                >
+                  <Icon className="me-2" />
+                  <span>{item.menuName}</span>
+                  {hasSubmenus && !collapsed && (
+                    isSubmenuOpen(menuId)
+                      ? <FaChevronUp className="dashboard-ebm-toggle-chevron ms-auto" />
+                      : <FaChevronDown className="dashboard-ebm-toggle-chevron ms-auto" />
+                  )}
+                </a>
 
-              {hasSubmenus && (
-                <Collapse in={isSubmenuOpen(menuId)}>
-                  <div>
-                    <ul className="dashboard-ebm-submenu list-unstyled" id={`${menuId}-submenu`}>
-                      {subMenus?.map((child) => (
-                        <li key={`submenu-${child.sideNavigationSubMenuId}`}>
-                          <a href="#" className="dashboard-ebm-nav-link small px-4 py-2 d-block">
-                            {child.subMenuName}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </Collapse>
-              )}
-            </li>
-          );
-        })}
+                {hasSubmenus && (
+                  <Collapse in={isSubmenuOpen(menuId)}>
+                    <div>
+                      <ul className="dashboard-ebm-submenu list-unstyled" id={`${menuId}-submenu`}>
+                        {subMenus.map((child) => (
+                          <li key={`submenu-${child.sideNavigationSubMenuId}`}>
+                            <a href="#" className="dashboard-ebm-nav-link small px-4 py-2 d-block">
+                              {child.subMenuName}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </Collapse>
+                )}
+              </li>
+            );
+          })}
       </ul>
     </nav>
   );

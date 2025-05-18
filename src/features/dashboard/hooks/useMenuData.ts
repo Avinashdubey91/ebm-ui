@@ -9,21 +9,30 @@ export const useMenuData = () => {
   useEffect(() => {
     const loadMenus = async () => {
       try {
-        const [mainMenus, subMenus] = await Promise.all([fetchSideMenus(), fetchSubMenus()]);
+        const [mainMenus, subMenus] = await Promise.all([
+          fetchSideMenus(),
+          fetchSubMenus()
+        ]);
 
-        const merged = mainMenus.map((menu) => ({
+        console.log('✅ Fetched Menus:', mainMenus);
+        console.log('✅ Fetched SubMenus:', subMenus);
+
+        const merged = mainMenus.map(menu => ({
           ...menu,
-          subMenus: subMenus.filter((sub) => sub.sideNavigationMenuId === menu.sideNavigationMenuId),
+          subMenus: subMenus.filter(
+            sub =>
+              sub.sideNavigationMenuId === menu.sideNavigationMenuId &&
+              sub.isActive === true // ✅ optional: only active submenus
+          )
         }));
 
         setMenus(merged);
       } catch (error) {
-        console.error('Menu Load Error:', error);
+        console.error('❌ Menu Load Error:', error);
       } finally {
         setLoading(false);
       }
     };
-
     loadMenus();
   }, []);
 
