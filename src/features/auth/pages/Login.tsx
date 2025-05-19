@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import './login.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import { getGreeting } from '../../../utils/dateUtils';
 import { loginUser } from '../authService';
 import Modal from '../../../components/Modal';
+import { useNavigate } from 'react-router-dom';
 
 type ErrorResponse = {
   response?: {
@@ -15,12 +16,22 @@ type ErrorResponse = {
 };
 
 const Login: React.FC = () => {
+  const navigate = useNavigate();
+
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
   const [modalType, setModalType] = useState<'success' | 'error' | null>(null);
   const [modalMessage, setModalMessage] = useState('');
+
+  // Optional: Redirect to dashboard if already logged in
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      navigate('/dashboard');
+    }
+  }, [navigate]);
 
   const togglePassword = () => {
     setShowPassword(prev => !prev);
@@ -29,15 +40,23 @@ const Login: React.FC = () => {
   const handleLogin = async () => {
     try {
       const response = await loginUser({ userName: username, password });
+
+      // ✅ Store token and username for later use (like profile fetch)
       localStorage.setItem('token', response.token);
+      localStorage.setItem('username', username);
+
       setModalType('success');
       setModalMessage('Login Successful.');
-    } 
-    catch (error: unknown) {
-        const err = error as ErrorResponse;
-        const errorMessage = err.response?.data?.message || 'An unexpected error occurred.';
-        setModalType('error');
-        setModalMessage(errorMessage);
+
+      // ✅ Optional: redirect after a brief delay
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1000);
+    } catch (error: unknown) {
+      const err = error as ErrorResponse;
+      const errorMessage = err.response?.data?.message || 'An unexpected error occurred.';
+      setModalType('error');
+      setModalMessage(errorMessage);
     }
   };
 
@@ -69,8 +88,14 @@ const Login: React.FC = () => {
           <div className="mb-3">
             <div className="input-group self-solutions-login-input-group">
               <span className="input-group-text"><i className="fa fa-user fa-lg"></i></span>
-              <input type="text" id="txtUserName" className="form-control" placeholder="Enter User Name"
-                value={username} onChange={(e) => setUsername(e.target.value)} />
+              <input
+                type="text"
+                id="txtUserName"
+                className="form-control"
+                placeholder="Enter User Name"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
             </div>
           </div>
 
@@ -82,7 +107,8 @@ const Login: React.FC = () => {
                 id="txtPassword"
                 className="form-control"
                 placeholder="Enter Password"
-                value={password} onChange={(e) => setPassword(e.target.value)}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
               <span className="input-group-text" style={{ cursor: 'pointer' }} onClick={togglePassword}>
                 <i className={`fa ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>

@@ -1,36 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useDashboardContext } from '../context/DashboardContext';
 import { FaUser, FaToggleOn, FaSignOutAlt, FaCalendarAlt } from 'react-icons/fa';
+import { useNotificationContext } from '../../../hooks/useNotificationContext';
+import { useNavigate } from 'react-router-dom';
+import { getUserProfile } from '../../../api/userService';
+import type { UserProfile } from '../../../types/UserProfile';
 
 interface NotificationItem {
-  title: string;
-  time: string;
-  read?: boolean;
+  message: string;
+  type: string;
 }
 
 const Topbar: React.FC = () => {
   const user = useDashboardContext();
+  const navigate = useNavigate();
+  const { notifications } = useNotificationContext();
+
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isDropdownOpen, setDropdownOpen] = useState(false);
   const [isProfileOpen, setProfileOpen] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    { title: 'Bill Generated', time: '2 mins ago', read: false },
-    { title: 'Payment Received', time: '10 mins ago', read: false },
-    { title: 'Maintenance Updated', time: '1 hour ago', read: true },
-  ]);
+  const [readStates, setReadStates] = useState<boolean[]>([]);
 
   const monthRef = useRef<HTMLInputElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
-
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
-  const markNotificationAsRead = (index: number) => {
-    setNotifications((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], read: true };
-      return updated;
-    });
-  };
 
   useEffect(() => {
     const now = new Date();
@@ -66,6 +59,30 @@ const Topbar: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    // Fetch user profile using stored username
+    const username = localStorage.getItem('username');
+    if (username) {
+      getUserProfile(username)
+        .then(setProfile)
+        .catch(console.error);
+    }
+  }, []);
+
+  useEffect(() => {
+    setReadStates(notifications.map(() => false));
+  }, [notifications]);
+
+  const unreadCount = readStates.filter((read) => !read).length;
+
+  const markNotificationAsRead = (index: number) => {
+    setReadStates((prev) => {
+      const updated = [...prev];
+      updated[index] = true;
+      return updated;
+    });
+  };
+
   const toggleStatus = () => {
     const newStatus = user.status === 'Online' ? 'Offline' : 'Online';
     user.setStatus(newStatus);
@@ -79,6 +96,13 @@ const Topbar: React.FC = () => {
   const handleProfileClick = () => {
     if (!isProfileOpen) setDropdownOpen(false);
     setProfileOpen((prev) => !prev);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    user.setStatus('Offline');
+    navigate('/login');
   };
 
   return (
@@ -99,15 +123,11 @@ const Topbar: React.FC = () => {
         </button>
 
         <div className="dashboard-ebm-month-picker-wrapper position-relative dashboard-ebm-custom-month-wrapper ms-3">
-          <input
-            type="month"
-            ref={monthRef}
-            className="form-control form-control-md month-selector"
-          />
+          <input type="month" ref={monthRef} className="form-control form-control-md month-selector" />
           <FaCalendarAlt className="dashboard-ebm-custom-calendar-icon" />
         </div>
 
-        {/* Notification Bell */}
+        {/* Notifications */}
         <div className="dropdown position-relative ms-3" ref={notifRef}>
           <button className="btn text-white position-relative" onClick={handleNotificationClick}>
             <i className="far fa-bell fa-lg"></i>
@@ -121,16 +141,16 @@ const Topbar: React.FC = () => {
             <div className="dropdown-menu dropdown-menu-right p-2 show dashboard-ebm-notification-dropdown">
               <h6 className="dropdown-header">Notifications</h6>
               <div className="dropdown-divider"></div>
-              {notifications.map((note, index) => (
+              {notifications.map((note: NotificationItem, index: number) => (
                 <a
                   key={index}
                   className="dropdown-item small"
                   href="#"
                   onClick={() => markNotificationAsRead(index)}
                 >
-                  <strong>{note.title}</strong>
+                  <strong>{note.type?.toUpperCase() || 'Info'}</strong>
                   <br />
-                  <small className="text-muted">{note.time}</small>
+                  <small className="text-muted">{note.message}</small>
                 </a>
               ))}
               <div className="dropdown-divider"></div>
@@ -141,14 +161,11 @@ const Topbar: React.FC = () => {
           )}
         </div>
 
-        {/* Profile Dropdown */}
+        {/* Profile */}
         <div className="dropdown dashboard-ebm-profile-dropdown ms-3" ref={profileRef}>
-          <button
-            className="btn btn-outline-light btn-sm dropdown-toggle d-flex align-items-center"
-            onClick={handleProfileClick}
-          >
+          <button className="btn btn-outline-light btn-sm dropdown-toggle d-flex align-items-center" onClick={handleProfileClick}>
             <img
-              src={user.image}
+              src={profile?.profilePicture || '/default-avatar.png'}
               className="rounded-circle mr-2"
               width="32"
               height="32"
@@ -162,25 +179,21 @@ const Topbar: React.FC = () => {
             <div className="dropdown-menu dropdown-menu-right show dashboard-ebm-profile-dropdown-menu">
               <div className="dropdown-item-text text-center">
                 <img
-                  src={user.image}
+                  src={profile?.profilePicture || '/default-avatar.png'}
                   className="rounded-circle mb-2"
                   width="64"
                   height="64"
                   alt="Profile"
                 />
-                <div>
-                  <strong className="dashboard-ebm-user-name">{user.name}</strong>
-                </div>
-                <small className="text-muted dashboard-ebm-user-role">{user.role}</small>
+                <div><strong className="dashboard-ebm-user-name">{profile?.firstName} {profile?.lastName}</strong></div>
+                <small className="text-muted dashboard-ebm-user-role">{profile?.role}</small>
               </div>
               <div className="dropdown-divider"></div>
               <a className="dropdown-item toggle-status" href="#" onClick={toggleStatus}>
                 <FaToggleOn className="mr-2" /> Set {user.status === 'Online' ? 'Offline' : 'Online'}
               </a>
-              <a className="dropdown-item" href="#">
-                <FaUser className="mr-2" /> Profile
-              </a>
-              <a className="dropdown-item text-danger" href="#">
+              <a className="dropdown-item" href="#"><FaUser className="mr-2" /> Profile</a>
+              <a className="dropdown-item text-danger" href="#" onClick={handleLogout}>
                 <FaSignOutAlt className="mr-2" /> Logout
               </a>
             </div>

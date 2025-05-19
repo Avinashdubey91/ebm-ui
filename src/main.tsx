@@ -4,9 +4,12 @@ import './index.css';
 
 import { RouterProvider } from 'react-router-dom';
 import { router } from './app/router';
+import { NotificationProvider } from './context/NotificationProvider';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <NotificationProvider>
+      <RouterProvider router={router} />
+    </NotificationProvider>
   </StrictMode>
 );

@@ -6,6 +6,7 @@ export interface SideNavigationSubMenuDTO {
   componentName?: string;
   sortOrder: number;
   isActive: boolean;
+  isDeleted: boolean;
 }
 
 export interface SideNavigationMenuDTO {
@@ -15,5 +16,6 @@ export interface SideNavigationMenuDTO {
   routePath?: string;
   sortOrder: number;
   isActive: boolean;
+  isDeleted: boolean;
   subMenus?: SideNavigationSubMenuDTO[];
 }

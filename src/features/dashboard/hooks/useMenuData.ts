@@ -13,7 +13,6 @@ export const useMenuData = () => {
           fetchSideMenus(),
           fetchSubMenus()
         ]);
-
         console.log('✅ Fetched Menus:', mainMenus);
         console.log('✅ Fetched SubMenus:', subMenus);
 
@@ -22,7 +21,7 @@ export const useMenuData = () => {
           subMenus: subMenus.filter(
             sub =>
               sub.sideNavigationMenuId === menu.sideNavigationMenuId &&
-              sub.isActive === true // ✅ optional: only active submenus
+              sub.isActive === true
           )
         }));
 
