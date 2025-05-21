@@ -1,8 +1,11 @@
 @import "@fontsource/ibm-plex-sans/index.css";
+@import "@fontsource/ibm-plex-sans/400.css"; /* regular */
+@import "@fontsource/ibm-plex-sans/500.css"; /* medium */
+@import "@fontsource/ibm-plex-sans/700.css"; /* bold */
 @import "@fortawesome/fontawesome-free/css/all.min.css";
 
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'IBM Plex Sans', sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
@@ -55,6 +58,11 @@ button:hover {
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
+}
+
+.notification-item.unread {
+  font-weight: bold;
+  /* background-color: #fffbe6; */
 }
 
 @media (prefers-color-scheme: light) {

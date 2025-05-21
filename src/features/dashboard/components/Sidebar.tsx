@@ -156,8 +156,8 @@ const Sidebar: React.FC = () => {
                   <Collapse in={isSubmenuOpen(menuId)}>
                     <div>
                       <ul className="dashboard-ebm-submenu list-unstyled" id={`${menuId}-submenu`}>
-                        {subMenus.map((child) => (
-                          <li key={`submenu-${child.sideNavigationSubMenuId}`}>
+                        {subMenus.map((child, index) => (
+                          <li key={`submenu-${child.sideNavigationSubMenuId ?? `${child.subMenuName}-${index}`}`}>
                             <a href="#" className="dashboard-ebm-nav-link small px-4 py-2 d-block">
                               {child.subMenuName}
                             </a>

@@ -1,25 +1,22 @@
+// src/features/dashboard/components/Topbar.tsx
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useDashboardContext } from '../context/DashboardContext';
 import { FaUser, FaToggleOn, FaSignOutAlt, FaCalendarAlt } from 'react-icons/fa';
 import { useNotificationContext } from '../../../hooks/useNotificationContext';
 import { useNavigate } from 'react-router-dom';
 import { getUserProfile } from '../../../api/userService';
+import { markNotificationAsRead } from '../../../api/notificationApi';
 import type { UserProfile } from '../../../types/UserProfile';
-
-interface NotificationItem {
-  message: string;
-  type: string;
-}
 
 const Topbar: React.FC = () => {
   const user = useDashboardContext();
   const navigate = useNavigate();
-  const { notifications } = useNotificationContext();
+  const { notifications, setNotifications } = useNotificationContext();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isDropdownOpen, setDropdownOpen] = useState(false);
   const [isProfileOpen, setProfileOpen] = useState(false);
-  const [readStates, setReadStates] = useState<boolean[]>([]);
 
   const monthRef = useRef<HTMLInputElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -60,7 +57,6 @@ const Topbar: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Fetch user profile using stored username
     const username = localStorage.getItem('username');
     if (username) {
       getUserProfile(username)
@@ -69,24 +65,7 @@ const Topbar: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => {
-    setReadStates(notifications.map(() => false));
-  }, [notifications]);
-
-  const unreadCount = readStates.filter((read) => !read).length;
-
-  const markNotificationAsRead = (index: number) => {
-    setReadStates((prev) => {
-      const updated = [...prev];
-      updated[index] = true;
-      return updated;
-    });
-  };
-
-  const toggleStatus = () => {
-    const newStatus = user.status === 'Online' ? 'Offline' : 'Online';
-    user.setStatus(newStatus);
-  };
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const handleNotificationClick = () => {
     if (!isDropdownOpen) setProfileOpen(false);
@@ -104,6 +83,28 @@ const Topbar: React.FC = () => {
     user.setStatus('Offline');
     navigate('/login');
   };
+
+  const markNotificationAsReadHandler = async (id: number) => {
+    try {
+      await markNotificationAsRead(id);
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.notificationId === id ? { ...n, isRead: true } : n
+        )
+      );
+    } catch (err) {
+      console.error("Failed to mark notification as read", err);
+    }
+  };
+
+  const toggleStatus = () => {
+    const newStatus = user.status === 'Online' ? 'Offline' : 'Online';
+    user.setStatus(newStatus);
+  };
+
+  useEffect(() => {
+    console.log('🔔 Current notifications state in Topbar:', notifications);
+  }, [notifications]);
 
   return (
     <div className="dashboard-ebm-topbar d-flex justify-content-between align-items-center text-white px-3 py-2">
@@ -141,16 +142,21 @@ const Topbar: React.FC = () => {
             <div className="dropdown-menu dropdown-menu-right p-2 show dashboard-ebm-notification-dropdown">
               <h6 className="dropdown-header">Notifications</h6>
               <div className="dropdown-divider"></div>
-              {notifications.map((note: NotificationItem, index: number) => (
+              {notifications.map((note) => (
                 <a
-                  key={index}
+                  key={note.notificationId}
                   className="dropdown-item small"
                   href="#"
-                  onClick={() => markNotificationAsRead(index)}
+                  onClick={() => markNotificationAsReadHandler(note.notificationId)}
+                  style={{ backgroundColor: !note.isRead ? 'fw-bold' : undefined }} // ✅ light yellow for unread
                 >
-                  <strong>{note.type?.toUpperCase() || 'Info'}</strong>
+                  <strong className={note.isRead ? 'fw-normal' : 'fw-bold'}>
+                    {note.type?.toUpperCase() || 'Info'}
+                  </strong>
                   <br />
-                  <small className="text-muted">{note.message}</small>
+                  <small className={`text-muted ${note.isRead ? '' : 'fw-bold'}`}>
+                    {note.message}
+                  </small>
                 </a>
               ))}
               <div className="dropdown-divider"></div>

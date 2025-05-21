@@ -1,25 +1,23 @@
 import * as signalR from '@microsoft/signalr';
+import type { NotificationItem } from '../types/notification';
 
 let connection: signalR.HubConnection;
 
-export const startNotificationConnection = (
-  onReceive: (message: string, type: string) => void
-) => {
+export const startNotificationConnection = (onReceive: (notification: NotificationItem) => void) => {
+  const token = localStorage.getItem('token');
+
   connection = new signalR.HubConnectionBuilder()
-    .withUrl('https://localhost:5001/notificationHub') // ⬅ adjust if hosted differently
+    .withUrl('https://localhost:5001/notificationHub', {
+      accessTokenFactory: () => token || ''
+    })
     .withAutomaticReconnect()
     .build();
 
-  connection.on('ReceiveNotification', onReceive);
+  connection.start()
+    .then(() => console.log('✅ Connected to SignalR'))
+    .catch(err => console.error('❌ Connection failed:', err));
 
-  connection
-    .start()
-    .then(() => console.log('✅ SignalR Connected'))
-    .catch((err) => console.error('❌ SignalR Error:', err));
-};
-
-export const stopNotificationConnection = () => {
-  if (connection) {
-    connection.stop();
-  }
+  connection.on('ReceiveNotification', (notification: NotificationItem) => {
+    onReceive(notification); // ✅ full DTO with ID, IsRead, etc.
+  });
 };

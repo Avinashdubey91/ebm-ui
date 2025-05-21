@@ -24,7 +24,7 @@ const Dashboard: React.FC = () => {
           <div className="dashboard-ebm-main-area d-flex flex-column">
             <div id="" className="dashboard-ebm-main-area-inner flex-grow-1 px-4 py-4">
               {/* Dynamic content can go here */}
-              <h4 className="text-white">Welcome to EBM Dashboard</h4>
+              <h4 className="text-blacktext-black pt-5 text-center">Welcome to EBM Dashboard</h4>
             </div>
             <footer className="footer">
               <div className="container-fluid px-4">

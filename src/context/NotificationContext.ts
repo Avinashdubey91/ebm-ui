@@ -1,14 +1,12 @@
 import { createContext } from 'react';
-
-export type NotificationItem = {
-  message: string;
-  type: string;
-};
+import type { NotificationItem } from '../types/notification';
 
 export interface NotificationContextProps {
   notifications: NotificationItem[];
+  setNotifications: React.Dispatch<React.SetStateAction<NotificationItem[]>>;
 }
 
 export const NotificationContext = createContext<NotificationContextProps>({
   notifications: [],
+  setNotifications: () => {}, // default no-op
 });

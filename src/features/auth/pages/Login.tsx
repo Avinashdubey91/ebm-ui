@@ -44,6 +44,7 @@ const Login: React.FC = () => {
       // ✅ Store token and username for later use (like profile fetch)
       localStorage.setItem('token', response.token);
       localStorage.setItem('username', username);
+      localStorage.setItem('userId', response.userId.toString());
 
       setModalType('success');
       setModalMessage('Login Successful.');
