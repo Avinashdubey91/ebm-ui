@@ -60,11 +60,6 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
-.notification-item.unread {
-  font-weight: bold;
-  /* background-color: #fffbe6; */
-}
-
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;

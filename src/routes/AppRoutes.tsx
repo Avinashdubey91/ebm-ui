@@ -1,19 +1,16 @@
-// Example with react-router-dom v6+
 import { createBrowserRouter } from 'react-router-dom';
-import PrivateRoute from '../routes/PrivateRoute'; // ✅ Adjust path as needed
+import PrivateRoute from './PrivateRoute';
 import Dashboard from '../features/dashboard/pages/Dashboard';
 import Login from '../features/auth/pages/Login';
+import DynamicRoutesWrapper from './DynamicRoutesWrapper';
 
 export const router = createBrowserRouter([
   {
     path: '/',
     element: <PrivateRoute />,
     children: [
-      {
-        path: 'dashboard',
-        element: <Dashboard />,
-      },
-      // add more protected routes here
+      { path: 'dashboard', element: <Dashboard /> },
+      { path: '*', element: <DynamicRoutesWrapper /> }, // ✅ Catch all dynamic subpaths
     ],
   },
   {

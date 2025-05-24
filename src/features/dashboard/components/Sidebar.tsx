@@ -1,11 +1,12 @@
 import Collapse from 'react-bootstrap/Collapse';
 import React, { useState, useEffect } from 'react';
 import { useSidebarState } from '../hooks/useSidebarState';
-import { FaSearch, FaChevronDown, FaChevronUp, FaCircle } from 'react-icons/fa';
+import { FaSearch, FaChevronDown, FaCircle } from 'react-icons/fa';
 import * as FaIcons from 'react-icons/fa';
 import { useMenuData } from '../hooks/useMenuData';
 import type { SideNavigationMenuDTO, SideNavigationSubMenuDTO } from '../../../types/menuTypes';
 import type { IconType } from 'react-icons';
+import { Link } from 'react-router-dom';
 
 const Sidebar: React.FC = () => {
   const { collapsed, toggleSidebar, isSubmenuOpen, toggleSubmenu } = useSidebarState();
@@ -133,7 +134,7 @@ const Sidebar: React.FC = () => {
               >
                 <a
                   href="#"
-                  className="dashboard-ebm-nav-link d-flex align-items-center dashboard-ebm-nav-link-animated"
+                  className="dashboard-ebm-nav-link d-flex align-items-center dashboard-ebm-nav-link-animated position-relative"
                   onClick={(e) => {
                     e.preventDefault();
                     if (collapsed) {
@@ -146,21 +147,19 @@ const Sidebar: React.FC = () => {
                   <Icon className="me-2" />
                   <span>{item.menuName}</span>
                   {hasSubmenus && !collapsed && (
-                    isSubmenuOpen(menuId)
-                      ? <FaChevronUp className="dashboard-ebm-toggle-chevron ms-auto" />
-                      : <FaChevronDown className="dashboard-ebm-toggle-chevron ms-auto" />
+                    <FaChevronDown className="dashboard-ebm-toggle-chevron ms-auto" />
                   )}
                 </a>
-
                 {hasSubmenus && (
                   <Collapse in={isSubmenuOpen(menuId)}>
                     <div>
                       <ul className="dashboard-ebm-submenu list-unstyled" id={`${menuId}-submenu`}>
                         {subMenus.map((child, index) => (
-                          <li key={`submenu-${child.sideNavigationSubMenuId ?? `${child.subMenuName}-${index}`}`}>
-                            <a href="#" className="dashboard-ebm-nav-link small px-4 py-2 d-block">
+                          <li key={`submenu-${child.sideNavigationSubMenuId ?? `${child.subMenuName}-${index}`}`} className="px-4">
+                            <Link to={child.routePath ?? '#'}
+                              className="dashboard-ebm-nav-link small px-4 py-2 d-block">
                               {child.subMenuName}
-                            </a>
+                            </Link>
                           </li>
                         ))}
                       </ul>

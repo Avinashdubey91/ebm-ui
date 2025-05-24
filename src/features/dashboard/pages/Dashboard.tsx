@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import { DashboardContext } from '../context/DashboardContext';
+import { Outlet } from 'react-router-dom';
 import '../dashboard.css';
 
 const Dashboard: React.FC = () => {
@@ -22,19 +23,16 @@ const Dashboard: React.FC = () => {
         <div className="d-flex flex-grow-1">
           <Sidebar />
           <div className="dashboard-ebm-main-area d-flex flex-column">
-            <div id="" className="dashboard-ebm-main-area-inner flex-grow-1 px-4 py-4">
-              {/* Dynamic content can go here */}
-              <h4 className="text-blacktext-black pt-5 text-center">Welcome to EBM Dashboard</h4>
+            <div className="dashboard-ebm-main-area-inner px-4 py-4">
+              <Outlet />
             </div>
             <footer className="footer">
-              <div className="container-fluid px-4">
-                <small>
-                  &copy; 2025 EBM Technologies Pvt. Ltd. &nbsp;|&nbsp;
-                  <a href="#">Privacy Policy</a> &nbsp;|&nbsp;
-                  <a href="#">Terms</a> &nbsp;|&nbsp;
-                  <a href="#">Contact</a>
-                </small>
-              </div>
+              <small>
+                &copy; 2025 EBM Technologies Pvt. Ltd. &nbsp;|&nbsp;
+                <a href="#">Privacy Policy</a> &nbsp;|&nbsp;
+                <a href="#">Terms</a> &nbsp;|&nbsp;
+                <a href="#">Contact</a>
+              </small>
             </footer>
           </div>
         </div>
