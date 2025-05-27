@@ -30,6 +30,7 @@ body {
   z-index: 1000;
   display: flex;
   align-items: center;
+  font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
 }
 .dashboard-ebm-topbar-left {
   height: 56px;

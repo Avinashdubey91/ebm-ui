@@ -5,7 +5,7 @@ import { Navigate, Outlet } from 'react-router-dom';
 const PrivateRoute: React.FC = () => {
   const token = localStorage.getItem('token');
 
-  // ✅ If token exists, allow access
+  // ✅ Show the nested routes if authenticated
   return token ? <Outlet /> : <Navigate to="/login" replace />;
 };
 

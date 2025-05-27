@@ -1,15 +1,13 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
-
-import { RouterProvider } from 'react-router-dom';
-import { router } from './routes/AppRoutes';
 import { NotificationProvider } from './context/NotificationProvider';
+import AppEntry from './AppEntry'; // ✅ imported properly
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <NotificationProvider>
-      <RouterProvider router={router} />
+      <AppEntry />
     </NotificationProvider>
   </StrictMode>
 );

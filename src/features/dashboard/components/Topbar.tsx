@@ -4,10 +4,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useDashboardContext } from '../context/DashboardContext';
 import { FaUser, FaToggleOn, FaSignOutAlt, FaCalendarAlt } from 'react-icons/fa';
 import { useNotificationContext } from '../../../hooks/useNotificationContext';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getUserProfile } from '../../../api/userService';
 import { markNotificationAsRead } from '../../../api/notificationApi';
 import type { UserProfile } from '../../../types/UserProfile';
+import ChangePasswordModal from '../../auth/pages/ChangePasswordModal';
 
 const Topbar: React.FC = () => {
   const user = useDashboardContext();
@@ -21,6 +22,7 @@ const Topbar: React.FC = () => {
   const monthRef = useRef<HTMLInputElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  const [showChangePwdModal, setShowChangePwdModal] = useState(false);
 
   useEffect(() => {
     const now = new Date();
@@ -112,7 +114,7 @@ const Topbar: React.FC = () => {
         <button className="btn text-white dashboard-ebm-toggle-btn" id="sidebarToggle">
           <i className="fas fa-bars fa-lg"></i>
         </button>
-        <span className="dashboard-ebm-brand-title">EBM</span>
+        <Link to="/dashboard" className="dashboard-ebm-brand-title text-white text-decoration-none">EBM</Link>
       </div>
 
       <div className="d-flex align-items-center">
@@ -199,6 +201,9 @@ const Topbar: React.FC = () => {
                 <FaToggleOn className="mr-2" /> Set {user.status === 'Online' ? 'Offline' : 'Online'}
               </a>
               <a className="dropdown-item" href="#"><FaUser className="mr-2" /> Profile</a>
+              <a className="dropdown-item" href="#" onClick={() => setShowChangePwdModal(true)}>
+                <FaUser className="mr-2" /> Change Password
+              </a>
               <a className="dropdown-item text-danger" href="#" onClick={handleLogout}>
                 <FaSignOutAlt className="mr-2" /> Logout
               </a>
@@ -206,6 +211,13 @@ const Topbar: React.FC = () => {
           )}
         </div>
       </div>
+      {showChangePwdModal && (
+        <ChangePasswordModal
+          isOpen={showChangePwdModal}
+          onClose={() => setShowChangePwdModal(false)}
+          showUsername={false}
+        />
+      )}
     </div>
   );
 };

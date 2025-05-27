@@ -1,9 +1,9 @@
 import React from 'react';
-import CreateUserForm from '../components/CreateUserForm';
+import CreateUserForm from '../forms/CreateUserForm';
 
 const CreateUserPage: React.FC = () => {
   return (
-    <div className="container mt-4">
+    <div className="">
       <CreateUserForm />
     </div>
   );

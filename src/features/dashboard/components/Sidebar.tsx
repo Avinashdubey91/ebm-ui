@@ -1,3 +1,4 @@
+import { useNavigate, Link } from 'react-router-dom';
 import Collapse from 'react-bootstrap/Collapse';
 import React, { useState, useEffect } from 'react';
 import { useSidebarState } from '../hooks/useSidebarState';
@@ -6,12 +7,12 @@ import * as FaIcons from 'react-icons/fa';
 import { useMenuData } from '../hooks/useMenuData';
 import type { SideNavigationMenuDTO, SideNavigationSubMenuDTO } from '../../../types/menuTypes';
 import type { IconType } from 'react-icons';
-import { Link } from 'react-router-dom';
 
 const Sidebar: React.FC = () => {
   const { collapsed, toggleSidebar, isSubmenuOpen, toggleSubmenu } = useSidebarState();
   const [searchQuery, setSearchQuery] = useState('');
   const { menus, loading } = useMenuData();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const sidebarToggleButton = document.getElementById('sidebarToggle');
@@ -141,7 +142,21 @@ const Sidebar: React.FC = () => {
                       toggleSidebar();
                       return;
                     }
-                    if (hasSubmenus) toggleSubmenu(menuId);
+                    if (hasSubmenus) {
+                      toggleSubmenu(menuId);
+                    } else if (item.routePath) {
+                      const targetPath = item.routePath.startsWith('/')
+                        ? item.routePath
+                        : `/${item.routePath}`;
+                        
+                      if (window.location.pathname === targetPath) {
+                        // Soft "re-render" by triggering state or context
+                        navigate('/reload-dashboard', { replace: true });
+                        setTimeout(() => navigate('/dashboard'), 0); // simulate refresh via redirect
+                      } else {
+                        navigate(targetPath);
+                      }
+                    }
                   }}
                 >
                   <Icon className="me-2" />
@@ -156,8 +171,10 @@ const Sidebar: React.FC = () => {
                       <ul className="dashboard-ebm-submenu list-unstyled" id={`${menuId}-submenu`}>
                         {subMenus.map((child, index) => (
                           <li key={`submenu-${child.sideNavigationSubMenuId ?? `${child.subMenuName}-${index}`}`} className="px-4">
-                            <Link to={child.routePath ?? '#'}
-                              className="dashboard-ebm-nav-link small px-4 py-2 d-block">
+                            <Link
+                              to={`${(item.routePath ?? '').replace(/^\//, '')}/${child.routePath}`}
+                              className="dashboard-ebm-nav-link small px-4 py-2 d-block"
+                            >
                               {child.subMenuName}
                             </Link>
                           </li>

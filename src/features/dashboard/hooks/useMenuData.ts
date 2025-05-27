@@ -13,6 +13,7 @@ export const useMenuData = () => {
           fetchSideMenus(),
           fetchSubMenus()
         ]);
+
         console.log('✅ Fetched Menus:', mainMenus);
         console.log('✅ Fetched SubMenus:', subMenus);
 
@@ -30,8 +31,10 @@ export const useMenuData = () => {
         console.error('❌ Menu Load Error:', error);
       } finally {
         setLoading(false);
+        console.log('✅ Menu loading complete');
       }
     };
+
     loadMenus();
   }, []);
 

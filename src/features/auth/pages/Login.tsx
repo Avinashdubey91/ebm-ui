@@ -6,6 +6,8 @@ import { getGreeting } from '../../../utils/dateUtils';
 import { loginUser } from '../authService';
 import Modal from '../../../components/Modal';
 import { useNavigate } from 'react-router-dom';
+import ChangePasswordModal from './ChangePasswordModal';
+import UnlockAccountModal from './UnlockAccountModal';
 
 type ErrorResponse = {
   response?: {
@@ -24,6 +26,8 @@ const Login: React.FC = () => {
 
   const [modalType, setModalType] = useState<'success' | 'error' | null>(null);
   const [modalMessage, setModalMessage] = useState('');
+  const [showChangePwdModal, setShowChangePwdModal] = useState(false);
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
 
   // Optional: Redirect to dashboard if already logged in
   useEffect(() => {
@@ -45,11 +49,13 @@ const Login: React.FC = () => {
       localStorage.setItem('token', response.token);
       localStorage.setItem('username', username);
       localStorage.setItem('userId', response.userId.toString());
+      
       console.log("✅ Token stored before redirect:", response.token);
 
       setModalType('success');
       setModalMessage('Login Successful.');
 
+      // ✅ Optional: redirect after a brief delay
       // ✅ Optional: redirect after a brief delay
       setTimeout(() => {
         navigate('/dashboard');
@@ -137,12 +143,20 @@ const Login: React.FC = () => {
 
               <div className="row">
                 <div className="col-6 d-grid">
-                  <button type="button" className="btn btn-outline-warning">
+                  <button
+                    type="button"
+                    className="btn btn-outline-warning"
+                    onClick={() => setShowChangePwdModal(true)}
+                  >
                     <i className="fa fa-key"></i>&nbsp;&nbsp;ResetPassword
                   </button>
                 </div>
                 <div className="col-6 d-grid">
-                  <button type="button" className="btn btn-outline-info">
+                  <button
+                    type="button"
+                    className="btn btn-outline-info"
+                    onClick={() => setShowUnlockModal(true)}
+                  >
                     <i className="fa fa-unlock"></i>&nbsp;&nbsp;UnlockAccount
                   </button>
                 </div>
@@ -152,9 +166,23 @@ const Login: React.FC = () => {
         </div>
        </div>
       
-
       {modalType && (
         <Modal type={modalType} message={modalMessage} onClose={closeModal} />
+      )}
+
+      {showChangePwdModal && (
+      <ChangePasswordModal
+          isOpen={showChangePwdModal}
+          onClose={() => setShowChangePwdModal(false)}
+          showUsername={true}
+        />
+      )}
+
+      {showUnlockModal && (
+        <UnlockAccountModal
+          isOpen={showUnlockModal}
+          onClose={() => setShowUnlockModal(false)}
+        />
       )}
     </div>
   );

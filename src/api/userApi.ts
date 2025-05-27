@@ -1,5 +1,5 @@
 import httpClient from './httpClient';
-import type { UserDTO } from '../types/user';
+import type { UserDTO } from '../types/UserDTO';
 
 export const createUser = async (data: UserDTO, createdBy: string) => {
   return await httpClient.post('/user/Create-New-User', data, {

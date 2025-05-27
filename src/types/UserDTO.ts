@@ -7,6 +7,6 @@ export interface UserDTO {
   pinCode?: string;
   mobile?: string;
   email?: string;
-  userRole?: number;
+  roleId?: number;
   profilePicture?: string;
 }

@@ -9,12 +9,24 @@ export const router = createBrowserRouter([
     path: '/',
     element: <PrivateRoute />,
     children: [
-      { path: 'dashboard', element: <Dashboard /> },
-      { path: '*', element: <DynamicRoutesWrapper /> }, // ✅ Catch all dynamic subpaths
-    ],
+      {
+        path: 'dashboard',
+        element: <Dashboard key={Date.now()} />,
+        children: [
+          {
+            path: '',
+            element: <div>Welcome to Dashboard</div>,
+          },
+          {
+            path: '*',
+            element: <DynamicRoutesWrapper />,
+          }
+        ]
+      }
+    ]
   },
   {
     path: '/login',
     element: <Login />,
-  },
+  }
 ]);
