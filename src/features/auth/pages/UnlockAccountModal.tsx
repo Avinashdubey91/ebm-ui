@@ -48,18 +48,18 @@ const UnlockAccountModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
         // ⏳ Wait 2.5 seconds before closing to allow user to read success
         setTimeout(() => {
-        setMessage("");
-        setOtp("");
-        setUsername("");
-        setEmail("");
-        setMobile("");
-        setStep("form");
-        onClose();
-    }, 2500);
+            setMessage("");
+            setOtp("");
+            setUsername("");
+            setEmail("");
+            setMobile("");
+            setStep("form");
+            onClose();
+        }, 5000);
     } catch (err: unknown) {
-            const e = err as { response?: { data?: { message?: string } } };
-            setError(e?.response?.data?.message || "OTP verification or unlock failed.");
-        }
+        const e = err as { response?: { data?: { message?: string } } };
+        setError(e?.response?.data?.message || "OTP verification or unlock failed.");
+    }
     };
 
   if (!isOpen) return null;
@@ -91,7 +91,7 @@ const UnlockAccountModal: React.FC<Props> = ({ isOpen, onClose }) => {
         )}
 
         {step === "success" && message && (
-        <div className="alert alert-success text-center">{message}</div>
+            <div className="alert alert-success text-center">{message}</div>
         )}
     </Modal>
     );
