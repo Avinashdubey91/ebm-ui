@@ -31,7 +31,6 @@ export const useMenuData = () => {
         console.error('❌ Menu Load Error:', error);
       } finally {
         setLoading(false);
-        console.log('✅ Menu loading complete');
       }
     };
 

@@ -1,6 +1,7 @@
 export interface UserProfile {
   firstName: string;
   lastName: string;
-  profilePicture?: string; // optional in case backend sends null
+  profilePicture?: string;
   role: string;
+  email: string;
 }

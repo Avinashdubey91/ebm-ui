@@ -1,6 +1,6 @@
 import httpClient from './httpClient';
 
-export const sendOtp = async (data: { username: string; email: string }) => {
+export const sendOtp = async (data: { username: string; email?: string }) => {
   return httpClient.post('/OTP/send-otp', data);
 };
 

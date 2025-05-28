@@ -1,6 +1,9 @@
-// src/features/auth/pages/ChangePasswordModal.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from '../../../components/Modal';
+import { sendOtp, verifyOtp } from '../../../api/otpService';
+import { changePasswordWithOtp } from '../../../api/passwordService';
+import { getUserProfile } from '../../../api/userService';
+import PasswordSuccessModal from './PasswordSuccessModal';
 
 interface Props {
   isOpen: boolean;
@@ -16,95 +19,178 @@ const ChangePasswordModal: React.FC<Props> = ({
   defaultUsername = ''
 }) => {
   const [username, setUsername] = useState(defaultUsername);
-  const [oldPassword, setOldPassword] = useState('');
+  const [email, setEmail] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [OTP, setOtp] = useState('');
+  const [step, setStep] = useState<'form' | 'otp'>('form');
+  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
 
-  const handleChange = async () => {
+  // ✅ For logged-in users: load profile to get email
+  useEffect(() => {
+    if (!showUsername) {
+      const storedUsername = localStorage.getItem('username');
+      setUsername(storedUsername || '');
+
+      if (storedUsername) {
+        getUserProfile(storedUsername)
+          .then((profile) => {
+            setEmail(profile.email);
+          })
+          .catch(() => {
+            setError('Failed to fetch user email for OTP.');
+          });
+      }
+    }
+  }, [showUsername]);
+
+  const handleSendOtp = async () => {
     if (newPassword !== confirmPassword) {
       setError('New and confirm password do not match.');
       return;
     }
 
+    if (showUsername && (!username || !email || !mobile || !currentPassword)) {
+      setError('Please fill in all required fields.');
+      return;
+    }
+
     try {
-      const loginId = localStorage.getItem('userId');
+      const otpPayload = showUsername
+      ? { username, email } // For unauthenticated
+      : { username };       // For logged-in: don’t send empty email
 
-      const payload = {
-        loginId: parseInt(loginId || '0'),
-        oldPassword,
-        newPassword
-      };
+      await sendOtp(otpPayload);
+      setMessage('OTP sent successfully.');
+      setError('');
+      setStep('otp');
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      setError(e?.response?.data?.message || 'Failed to send OTP.');
+    }
+  };
 
-      const res = await fetch('/api/Login/change-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+  const handleVerifyOtpAndChangePassword = async () => {
+    try {
+      await verifyOtp({ username, email, OTP });
 
-      if (res.ok) {
-        alert('Password changed successfully');
-        onClose();
-      } else {
-        const result = await res.json();
-        setError(result.message || 'Failed to change password.');
-      }
-    } catch {
-      setError('Something went wrong. Try again.');
+      const payload = showUsername
+        ? {
+            username,
+            email,
+            mobile,
+            currentPassword,
+            newPassword,
+            OTP
+          }
+        : {
+            username,
+            newPassword,
+            OTP
+          };
+
+      await changePasswordWithOtp(payload);
+
+      setMessage('✅ Password changed successfully.');
+      setError('');
+      setShowSuccess(true); // Show the PasswordSuccessModal
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      setError(e?.response?.data?.message || 'OTP verification or password change failed.');
     }
   };
 
   if (!isOpen) return null;
 
   return (
-    <Modal type="success" message="" onClose={onClose}>
+    <Modal type="success" message={message} onClose={onClose}>
+      {!showSuccess && (
       <div>
-        <h5 className="mb-3">🔒 Change Password</h5>
-        {showUsername && (
-          <div className="mb-3">
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Username"
-              value={username}
-              onChange={e => setUsername(e.target.value)}
-            />
-          </div>
-        )}
-        <div className="mb-3">
-          <input
-            type="password"
-            className="form-control"
-            placeholder="Old Password"
-            value={oldPassword}
-            onChange={e => setOldPassword(e.target.value)}
-          />
+        <div className="text-black">
+          <h5 className="mb-3">🔐 Change Password</h5>
+          {showUsername && (
+            <>
+              <input
+                className="form-control mb-2"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+              <input
+                className="form-control mb-2"
+                placeholder="Current Password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+              />
+              <input
+                className="form-control mb-2"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <input
+                className="form-control mb-2"
+                placeholder="Mobile"
+                value={mobile}
+                onChange={(e) => setMobile(e.target.value)}
+              />
+            </>
+          )}
+
+          {step === 'form' ? (
+            <>
+              <input
+                className="form-control mb-2"
+                placeholder="New Password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+              <input
+                className="form-control mb-2"
+                placeholder="Confirm Password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+              {error && <p className="text-danger small">{error}</p>}
+              <div className="d-grid">
+                <button className="btn btn-primary" onClick={handleSendOtp}>
+                  Generate OTP
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <input
+                className="form-control mb-2"
+                placeholder="Enter OTP"
+                value={OTP}
+                onChange={(e) => setOtp(e.target.value)}
+              />
+              {error && <p className="text-danger small">{error}</p>}
+              <div className="d-grid">
+                <button className="btn btn-success" onClick={handleVerifyOtpAndChangePassword}>
+                  Verify OTP & Change Password
+                </button>
+              </div>
+            </>
+          )}
         </div>
-        <div className="mb-3">
-          <input
-            type="password"
-            className="form-control"
-            placeholder="New Password"
-            value={newPassword}
-            onChange={e => setNewPassword(e.target.value)}
-          />
-        </div>
-        <div className="mb-3">
-          <input
-            type="password"
-            className="form-control"
-            placeholder="Confirm Password"
-            value={confirmPassword}
-            onChange={e => setConfirmPassword(e.target.value)}
-          />
-        </div>
-        {error && <p className="text-danger small">{error}</p>}
-        <div className="d-grid">
-          <button className="btn btn-primary" onClick={handleChange}>
-            Change Password
-          </button>
-        </div>
+        <PasswordSuccessModal
+          isOpen={showSuccess}
+          onClose={() => {
+            setShowSuccess(false);
+            onClose(); // Close the main modal too
+          }}
+        />
       </div>
+      )}
     </Modal>
   );
 };

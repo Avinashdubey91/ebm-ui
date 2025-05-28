@@ -194,7 +194,9 @@ const Topbar: React.FC = () => {
                   alt="Profile"
                 />
                 <div><strong className="dashboard-ebm-user-name">{profile?.firstName} {profile?.lastName}</strong></div>
-                <small className="text-muted dashboard-ebm-user-role">{profile?.role}</small>
+                <small className="text-muted dashboard-ebm-user-role">
+                  {profile?.role ? `🛡️ ${profile.role}` : 'User'}
+                </small>
               </div>
               <div className="dropdown-divider"></div>
               <a className="dropdown-item toggle-status" href="#" onClick={toggleStatus}>
