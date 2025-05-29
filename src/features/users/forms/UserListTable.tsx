@@ -67,14 +67,14 @@ const UserListTable: React.FC = () => {
           <thead className="table-primary">
             <tr>
               {[
-                { key: "username", label: "User Name", width: "140px" },
+                { key: "username", label: "User Name", width: "120px" },
                 { key: "firstName", label: "Name", width: "180px" },
                 { key: "email", label: "Email", width: "220px" },
                 { key: "mobile", label: "Mobile", width: "130px" },
                 { key: "address", label: "Address", width: "200px" },
                 { key: "pinCode", label: "Pin Code", width: "100px" },
                 { key: "profilePicture", label: "Photo", width: "100px" },
-                { key: "roleName", label: "Role", width: "110px" },
+                { key: "roleName", label: "Role", width: "100px" },
               ].map(({ key, label, width }) => (
                 <th
                   key={key}
