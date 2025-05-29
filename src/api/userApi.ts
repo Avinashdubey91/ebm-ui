@@ -1,11 +1,12 @@
 import httpClient from './httpClient';
 import type { UserDTO } from '../types/UserDTO';
 
-export const createUser = async (data: UserDTO, createdBy: string) => {
-  return await httpClient.post('/user/Create-New-User', data, {
+export const createUser = async (data: FormData, createdBy: string) => {
+  return httpClient.post('/User/Create-New-User', data, {
     headers: {
-      'createdBy': createdBy
-    }
+      'Content-Type': 'multipart/form-data',
+      'createdBy': createdBy,
+    },
   });
 };
 

@@ -49,13 +49,14 @@ const Login: React.FC = () => {
       localStorage.setItem('token', response.token);
       localStorage.setItem('username', username);
       localStorage.setItem('userId', response.userId.toString());
-      
+      localStorage.setItem('status', 'Online');
+      localStorage.setItem('status', 'Online'); // ✅ status saved
+      window.location.reload(); 
       console.log("✅ Token stored before redirect:", response.token);
 
       setModalType('success');
       setModalMessage('Login Successful.');
 
-      // ✅ Optional: redirect after a brief delay
       // ✅ Optional: redirect after a brief delay
       setTimeout(() => {
         navigate('/dashboard');

@@ -1,7 +1,7 @@
 // src/features/dashboard/components/Topbar.tsx
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useDashboardContext } from '../context/DashboardContext';
+import { useDashboardContext } from '../context/useDashboardContext';
 import { FaUser, FaToggleOn, FaSignOutAlt, FaCalendarAlt } from 'react-icons/fa';
 import { useNotificationContext } from '../../../hooks/useNotificationContext';
 import { Link, useNavigate } from 'react-router-dom';
@@ -18,11 +18,11 @@ const Topbar: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isDropdownOpen, setDropdownOpen] = useState(false);
   const [isProfileOpen, setProfileOpen] = useState(false);
+  const [showChangePwdModal, setShowChangePwdModal] = useState(false);
 
   const monthRef = useRef<HTMLInputElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
-  const [showChangePwdModal, setShowChangePwdModal] = useState(false);
 
   useEffect(() => {
     const now = new Date();
@@ -71,12 +71,12 @@ const Topbar: React.FC = () => {
 
   const handleNotificationClick = () => {
     if (!isDropdownOpen) setProfileOpen(false);
-    setDropdownOpen((prev) => !prev);
+    setDropdownOpen(prev => !prev);
   };
 
   const handleProfileClick = () => {
     if (!isProfileOpen) setDropdownOpen(false);
-    setProfileOpen((prev) => !prev);
+    setProfileOpen(prev => !prev);
   };
 
   const handleLogout = () => {
@@ -89,8 +89,8 @@ const Topbar: React.FC = () => {
   const markNotificationAsReadHandler = async (id: number) => {
     try {
       await markNotificationAsRead(id);
-      setNotifications((prev) =>
-        prev.map((n) =>
+      setNotifications(prev =>
+        prev.map(n =>
           n.notificationId === id ? { ...n, isRead: true } : n
         )
       );
@@ -104,9 +104,11 @@ const Topbar: React.FC = () => {
     user.setStatus(newStatus);
   };
 
-  useEffect(() => {
-    console.log('🔔 Current notifications state in Topbar:', notifications);
-  }, [notifications]);
+  const getInitials = (firstName: string = '', lastName: string = '') => {
+    const firstInitial = firstName.trim().charAt(0).toUpperCase();
+    const lastInitial = lastName.trim().charAt(0).toUpperCase();
+    return `${firstInitial}${lastInitial}`;
+  };
 
   return (
     <div className="dashboard-ebm-topbar d-flex justify-content-between align-items-center text-white px-3 py-2">
@@ -144,13 +146,12 @@ const Topbar: React.FC = () => {
             <div className="dropdown-menu dropdown-menu-right p-2 show dashboard-ebm-notification-dropdown">
               <h6 className="dropdown-header">Notifications</h6>
               <div className="dropdown-divider"></div>
-              {notifications.map((note) => (
+              {notifications.map(note => (
                 <a
                   key={note.notificationId}
                   className="dropdown-item small"
                   href="#"
                   onClick={() => markNotificationAsReadHandler(note.notificationId)}
-                  style={{ backgroundColor: !note.isRead ? 'fw-bold' : undefined }} // ✅ light yellow for unread
                 >
                   <strong className={note.isRead ? 'fw-normal' : 'fw-bold'}>
                     {note.type?.toUpperCase() || 'Info'}
@@ -162,41 +163,93 @@ const Topbar: React.FC = () => {
                 </a>
               ))}
               <div className="dropdown-divider"></div>
-              <a className="dropdown-item text-center text-primary small" href="#">
-                View All
-              </a>
+              <a className="dropdown-item text-center text-primary small" href="#">View All</a>
             </div>
           )}
         </div>
 
-        {/* Profile */}
+        {/* Profile Dropdown Trigger */}
         <div className="dropdown dashboard-ebm-profile-dropdown ms-3" ref={profileRef}>
-          <button className="btn btn-outline-light btn-sm dropdown-toggle d-flex align-items-center" onClick={handleProfileClick}>
-            <img
-              src={profile?.profilePicture || '/default-avatar.png'}
-              className="rounded-circle mr-2"
-              width="32"
-              height="32"
-              alt="Profile"
-              style={{ objectFit: 'cover' }}
-            />
-            <span className="dashboard-ebm-user-status-text">{user.status}</span>
-          </button>
-
+          <div
+            className="dashboard-ebm-avatar-trigger d-flex align-items-center justify-content-center ms-3"
+            onClick={handleProfileClick}
+            title={`${profile?.firstName} ${profile?.lastName}`}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              cursor: 'pointer',
+              backgroundColor: '#d40652',
+              color: '#fff',
+              fontWeight: 'bold',
+              fontSize: 14,
+              userSelect: 'none',
+              overflow: 'hidden'
+            }}
+          >
+            {profile?.profilePicture && profile.profilePicture.trim().toLowerCase() !== 'string' ? (
+              <img
+                src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '')}/${profile.profilePicture}`}
+                className="rounded-circle"
+                width="36"
+                height="36"
+                alt="Profile"
+                style={{ objectFit: 'cover' }}
+                onError={(e) => {
+                  console.warn('Image not found. Falling back to initials.');
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.parentElement!.innerHTML = getInitials(profile?.firstName, profile?.lastName);
+                }}
+              />
+            ) : (
+              getInitials(profile?.firstName, profile?.lastName)
+            )}
+          </div>
           {isProfileOpen && (
             <div className="dropdown-menu dropdown-menu-right show dashboard-ebm-profile-dropdown-menu">
               <div className="dropdown-item-text text-center">
+                {profile?.profilePicture && profile.profilePicture.trim().toLowerCase() !== 'string' ? (
                 <img
-                  src={profile?.profilePicture || '/default-avatar.png'}
+                  src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '')}/${profile.profilePicture}`}
                   className="rounded-circle mb-2"
                   width="64"
                   height="64"
                   alt="Profile"
+                  style={{ objectFit: 'cover' }}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
                 />
+              ) : (
+                <div
+                  className="mb-2"
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: '50%',
+                    backgroundColor: '#d40652',
+                    color: '#fff',
+                    fontWeight: 'bold',
+                    fontSize: 24,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto',
+                    userSelect: 'none',
+                  }}
+                >
+                  {getInitials(profile?.firstName, profile?.lastName)}
+                </div>
+              )}
                 <div><strong className="dashboard-ebm-user-name">{profile?.firstName} {profile?.lastName}</strong></div>
                 <small className="text-muted dashboard-ebm-user-role">
                   {profile?.role ? `🛡️ ${profile.role}` : 'User'}
                 </small>
+                <div className="mt-1">
+                  <span className={`badge ${user.status === 'Online' ? 'bg-success' : 'bg-secondary'}`}>
+                    {user.status}
+                  </span>
+                </div>
               </div>
               <div className="dropdown-divider"></div>
               <a className="dropdown-item toggle-status" href="#" onClick={toggleStatus}>
@@ -213,6 +266,7 @@ const Topbar: React.FC = () => {
           )}
         </div>
       </div>
+
       {showChangePwdModal && (
         <ChangePasswordModal
           isOpen={showChangePwdModal}

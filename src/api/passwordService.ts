@@ -4,7 +4,6 @@ interface ChangePasswordWithOtpRequest {
   username: string;
   newPassword: string;
   OTP: string;
-  // Optional for logged-in users
   email?: string;
   mobile?: string;
   currentPassword?: string;

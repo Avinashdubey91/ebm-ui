@@ -4,7 +4,7 @@ import './Modal.css';
 interface ModalProps {
   type: 'success' | 'error';
   message?: string;
-  title?: string; // ✅ NEW
+  title?: string;
   onClose: () => void;
   children?: React.ReactNode;
 }
