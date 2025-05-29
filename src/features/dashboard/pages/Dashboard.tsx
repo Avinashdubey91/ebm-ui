@@ -6,7 +6,7 @@ import { Outlet } from 'react-router-dom';
 import '../dashboard.css';
 
 const Dashboard: React.FC = () => {
-  const [status, setStatus] = useState<'Online' | 'Offline'>('Offline');
+  const [status, setStatus] = useState<'Online' | 'Offline'>('Online');
 
   const user = {
     name: 'A.K. Dubey',
@@ -23,7 +23,7 @@ const Dashboard: React.FC = () => {
         <div className="d-flex flex-grow-1">
           <Sidebar />
           <div className="dashboard-ebm-main-area d-flex flex-column">
-            <div className="dashboard-ebm-main-area-inner px-4 py-4">
+            <div className="dashboard-ebm-main-area-inner">
               <Outlet />
             </div>
             <footer className="footer">

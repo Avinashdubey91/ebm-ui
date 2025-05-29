@@ -2,9 +2,10 @@ import React, { lazy } from 'react';
 import type { SideNavigationMenuDTO } from '../types/menuTypes';
 import type { RouteObject } from 'react-router-dom';
 
-//const DashboardLayout = lazy(() => import('../features/dashboard/pages/Dashboard'));
+// ✅ Glob import to preload all .tsx pages
+const lazyModules = import.meta.glob('../features/**/pages/**/*.tsx');
 
-// ✅ Map DB ComponentName to real modular paths
+// ✅ Map DB ComponentName to actual relative paths
 const componentMap: Record<string, string> = {
   // 🔒 Users
   CreateUserForm: 'users/pages/CreateUserPage',
@@ -20,7 +21,6 @@ const componentMap: Record<string, string> = {
   AddMeterReadingForm: 'billing/pages/AddMeterReadingForm',
   GenerateBillForm: 'billing/pages/GenerateBillForm',
   UpdatePaymentForm: 'billing/pages/UpdatePaymentForm',
-
   ElectricMeterForm: 'electricity/pages/ElectricMeterForm',
   UnitChargeForm: 'electricity/pages/UnitChargeForm',
 
@@ -37,7 +37,6 @@ const componentMap: Record<string, string> = {
   SideNavigationMenuComponent: 'navigation/pages/SideNavigationMenuComponent',
   SideNavigationSubMenuComponent: 'navigation/pages/SideNavigationSubMenuComponent',
 };
-
 
 export const generateDynamicRoutes = (menus: SideNavigationMenuDTO[]): RouteObject[] => {
   console.log('🧭 generateDynamicRoutes → Received Menus:', menus);
@@ -59,12 +58,13 @@ export const generateDynamicRoutes = (menus: SideNavigationMenuDTO[]): RouteObje
         }
         continue;
       }
-      const LazyComponent = lazy(() =>
-        import(/* @vite-ignore */ `../features/${modulePath}`).catch((err) => {
-          console.error(`❌ Failed to load component: ${modulePath}`, err);
-          return import('../components/NotFoundPlaceholder');
-        })
-      );
+
+      const fullImportPath = `../features/${modulePath}.tsx`;
+      const loader = lazyModules[fullImportPath];
+
+      const LazyComponent = loader
+        ? lazy(loader as () => Promise<{ default: React.ComponentType<unknown> }>)
+        : lazy(() => import('../components/NotFoundPlaceholder'));
 
       children.push({
         path: submenu.routePath,

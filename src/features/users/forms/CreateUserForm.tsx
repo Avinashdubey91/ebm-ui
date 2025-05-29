@@ -7,7 +7,7 @@ import FormLabel from "../../../components/common/FormLabel";
 
 const CreateUserForm: React.FC = () => {
   const [formData, setFormData] = useState<UserDTO>({
-    username: "",
+    userName: "",
     firstName: "",
     lastName: "",
     email: "",
@@ -45,7 +45,7 @@ const CreateUserForm: React.FC = () => {
 
   const resetForm = () => {
     setFormData({
-      username: "",
+      userName: "",
       firstName: "",
       lastName: "",
       email: "",
@@ -61,7 +61,7 @@ const CreateUserForm: React.FC = () => {
   const buildFormData = (): FormData => {
     const form = new FormData();
 
-    form.append("Username", formData.username);
+    form.append("Username", formData.userName);
     form.append("FirstName", formData.firstName);
     form.append("LastName", formData.lastName);
     if (formData.email) form.append("Email", formData.email);
@@ -98,15 +98,10 @@ const CreateUserForm: React.FC = () => {
 
   return (
     <>
-      <div
-        className="bg-light border-bottom py-3 px-4 mb-4"
-        style={{ width: "100%" }}
-      >
-        <h4 className="m-0 text-primary d-flex align-items-center">
-          Add New User
-        </h4>
-      </div>
-
+    <div className="dashboard-ebm-subheader-container">
+      <h4 className="dashboard-ebm-subheader-title">Add New User</h4>
+    </div>
+    <div className="p-4">
       <form onSubmit={handleSubmit}>
         <div className="row align-items-end">
           <div className="col-md-6 mb-3">
@@ -115,7 +110,7 @@ const CreateUserForm: React.FC = () => {
               id="username"
               name="username"
               className="form-control"
-              value={formData.username}
+              value={formData.userName}
               onChange={handleChange}
               required
             />
@@ -146,7 +141,7 @@ const CreateUserForm: React.FC = () => {
           </div>
 
           <div className="col-md-6 mb-3">
-            <FormLabel label="Email" htmlFor="email" />
+            <FormLabel label="Email" htmlFor="email" required/>
             <input
               id="email"
               name="email"
@@ -247,6 +242,7 @@ const CreateUserForm: React.FC = () => {
           </div>
         </div>
       </form>
+    </div>
     </>
   );
 };

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useDashboardContext } from '../context/useDashboardContext';
-import { FaUser, FaToggleOn, FaSignOutAlt, FaCalendarAlt } from 'react-icons/fa';
+import { FaUser, FaToggleOn, FaToggleOff, FaSignOutAlt, FaCalendarAlt } from 'react-icons/fa';
 import { useNotificationContext } from '../../../hooks/useNotificationContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { getUserProfile } from '../../../api/userService';
@@ -252,8 +252,20 @@ const Topbar: React.FC = () => {
                 </div>
               </div>
               <div className="dropdown-divider"></div>
-              <a className="dropdown-item toggle-status" href="#" onClick={toggleStatus}>
-                <FaToggleOn className="mr-2" /> Set {user.status === 'Online' ? 'Offline' : 'Online'}
+              <a
+                className="dropdown-item toggle-status"
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault(); // ⛔ stop navigation attempt
+                  toggleStatus();     // ✅ run the actual handler
+                }}
+              >
+                {user.status === 'Online' ? (
+                  <FaToggleOn className="me-2 text-success" />
+                ) : (
+                  <FaToggleOff className="me-2 text-muted" />
+                )}
+                Set {user.status === 'Online' ? 'Offline' : 'Online'}
               </a>
               <a className="dropdown-item" href="#"><FaUser className="mr-2" /> Profile</a>
               <a className="dropdown-item" href="#" onClick={() => setShowChangePwdModal(true)}>

@@ -15,7 +15,7 @@ export const router = createBrowserRouter([
         children: [
           {
             path: '',
-            element: <div>Welcome to Dashboard</div>,
+            element: <div className="px-4 py-4 text-center fw-bold">Welcome to Dashboard</div>,
           },
           {
             path: '*',

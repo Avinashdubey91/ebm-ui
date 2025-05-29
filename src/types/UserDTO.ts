@@ -1,6 +1,6 @@
 export interface UserDTO {
   userId?: number;
-  username: string;
+  userName: string;
   firstName: string;
   lastName: string;
   address?: string;
@@ -8,5 +8,6 @@ export interface UserDTO {
   mobile?: string;
   email?: string;
   roleId?: number;
+  roleName?: string;
   profilePicture?: string;
 }
