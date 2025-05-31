@@ -1,11 +1,16 @@
-import React, { useEffect, useState } from "react";
-import { createUser } from "../../../api/userApi";
+import React, { useEffect, useState, useRef } from "react";
+import { createUser, fetchUserById, updateUser } from "../../../api/userApi";
 import { fetchUserRoles } from "../../../api/userRoleApi";
 import type { UserDTO } from "../../../types/UserDTO";
 import type { UserRole } from "../../../types/UserRole";
 import FormLabel from "../../../components/common/FormLabel";
+import StatusModal from "../../../components/common/StatusModal";
 
-const CreateUserForm: React.FC = () => {
+interface CreateUserFormProps {
+  userId?: number;
+}
+
+const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
   const [formData, setFormData] = useState<UserDTO>({
     userName: "",
     firstName: "",
@@ -20,12 +25,45 @@ const CreateUserForm: React.FC = () => {
 
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
+  const [isSuccess, setIsSuccess] = useState(false);
 
   useEffect(() => {
     fetchUserRoles()
       .then((roles) => setRoles(roles))
       .catch((err) => console.error("❌ Failed to load roles", err));
   }, []);
+
+  useEffect(() => {
+    // This is only for edit mode, no conflict with roles
+    if (userId) {
+      fetchUserById(userId)
+        .then((user) => {
+          setFormData({
+            userId: user.userId,
+            userName: user.userName,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            mobile: user.mobile,
+            address: user.address,
+            pinCode: user.pinCode,
+            roleId: user.roleId,
+            profilePicture: user.profilePicture,
+          });
+
+         if (user.profilePicture && user.profilePicture.trim().toLowerCase() !== "string") {
+            setPreviewUrl(`${import.meta.env.VITE_API_BASE_URL?.replace("/api", "")}/${user.profilePicture}`);
+          }
+        })
+        .catch((err) => {
+          console.error("❌ Failed to fetch user by ID", err);
+        });
+    }
+  }, [userId]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -39,7 +77,9 @@ const CreateUserForm: React.FC = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setSelectedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      setPreviewUrl(URL.createObjectURL(file)); // generate preview URL
     }
   };
 
@@ -56,6 +96,10 @@ const CreateUserForm: React.FC = () => {
       profilePicture: "",
     });
     setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""; // 👈 this clears the file input box
+    }
+    setPreviewUrl("");
   };
 
   const buildFormData = (): FormData => {
@@ -80,14 +124,28 @@ const CreateUserForm: React.FC = () => {
     e: React.FormEvent<HTMLFormElement> | { preventDefault: () => void }
   ) => {
     e.preventDefault();
-    const createdBy = localStorage.getItem("username") ?? "system";
+    const username = localStorage.getItem("username") ?? "system";
+
     try {
       const form = buildFormData();
-      await createUser(form, createdBy);
-      alert("✅ User created successfully!");
+
+      if (userId) {
+        await updateUser(userId, form, username); // 👈 call update if editing
+        setModalMessage("User updated successfully!");
+      } else {
+        await createUser(form, username); // 👈 call create if adding new
+        setModalMessage("User created successfully!");
+      }
+
+      setIsSuccess(true);
+      setModalOpen(true);
       resetForm();
     } catch (err) {
-      alert("❌ Failed to create user. Check console.");
+      setIsSuccess(false);
+      setModalMessage(
+        userId ? "Failed to update user." : "Failed to create user."
+      );
+      setModalOpen(true);
       console.error(err);
     }
   };
@@ -98,151 +156,176 @@ const CreateUserForm: React.FC = () => {
 
   return (
     <>
-    <div className="dashboard-ebm-subheader-container">
-      <h4 className="dashboard-ebm-subheader-title">Add New User</h4>
-    </div>
-    <div className="p-4">
-      <form onSubmit={handleSubmit}>
-        <div className="row align-items-end">
-          <div className="col-md-6 mb-3">
-            <FormLabel label="Username" htmlFor="username" required />
-            <input
-              id="username"
-              name="username"
-              className="form-control"
-              value={formData.userName}
-              onChange={handleChange}
-              required
-            />
-          </div>
+      <div className="p-4">
+        <form onSubmit={handleSubmit}>
+          <div className="row align-items-end">
+            <div className="col-md-6 mb-3">
+              <FormLabel label="UserName" htmlFor="userName" required />
+              <input
+                id="userName"
+                name="userName"
+                className="form-control"
+                value={formData.userName}
+                onChange={handleChange}
+                disabled={!!userId}
+                required
+              />
+            </div>
 
-          <div className="col-md-6 mb-3">
-            <FormLabel label="First Name" htmlFor="firstName" required />
-            <input
-              id="firstName"
-              name="firstName"
-              className="form-control"
-              value={formData.firstName}
-              onChange={handleChange}
-              required
-            />
-          </div>
+            <div className="col-md-6 mb-3">
+              <FormLabel label="First Name" htmlFor="firstName" required />
+              <input
+                id="firstName"
+                name="firstName"
+                className="form-control"
+                value={formData.firstName}
+                onChange={handleChange}
+                required
+              />
+            </div>
 
-          <div className="col-md-6 mb-3">
-            <FormLabel label="Last Name" htmlFor="lastName" required />
-            <input
-              id="lastName"
-              name="lastName"
-              className="form-control"
-              value={formData.lastName}
-              onChange={handleChange}
-              required
-            />
-          </div>
+            <div className="col-md-6 mb-3">
+              <FormLabel label="Last Name" htmlFor="lastName" required />
+              <input
+                id="lastName"
+                name="lastName"
+                className="form-control"
+                value={formData.lastName}
+                onChange={handleChange}
+                required
+              />
+            </div>
 
-          <div className="col-md-6 mb-3">
-            <FormLabel label="Email" htmlFor="email" required/>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              className="form-control"
-              value={formData.email}
-              onChange={handleChange}
-            />
-          </div>
+            <div className="col-md-6 mb-3">
+              <FormLabel label="Email" htmlFor="email" required />
+              <input
+                id="email"
+                name="email"
+                type="email"
+                className="form-control"
+                value={formData.email}
+                onChange={handleChange}
+              />
+            </div>
 
-          <div className="col-md-6 mb-3">
-            <FormLabel label="Mobile" htmlFor="mobile" />
-            <input
-              id="mobile"
-              name="mobile"
-              className="form-control"
-              value={formData.mobile}
-              onChange={handleChange}
-            />
-          </div>
+            <div className="col-md-6 mb-3">
+              <FormLabel label="Mobile" htmlFor="mobile" />
+              <input
+                id="mobile"
+                name="mobile"
+                className="form-control"
+                value={formData.mobile}
+                onChange={handleChange}
+              />
+            </div>
 
-          <div className="col-md-6 mb-3">
-            <FormLabel label="Address" htmlFor="address" />
-            <input
-              id="address"
-              name="address"
-              className="form-control"
-              value={formData.address}
-              onChange={handleChange}
-            />
-          </div>
+            <div className="col-md-6 mb-3">
+              <FormLabel label="Address" htmlFor="address" />
+              <input
+                id="address"
+                name="address"
+                className="form-control"
+                value={formData.address}
+                onChange={handleChange}
+              />
+            </div>
 
-          <div className="col-md-6 mb-3">
-            <FormLabel label="Pin Code" htmlFor="pinCode" />
-            <input
-              id="pinCode"
-              name="pinCode"
-              className="form-control"
-              value={formData.pinCode}
-              onChange={handleChange}
-            />
-          </div>
+            <div className="col-md-6 mb-3">
+              <FormLabel label="Pin Code" htmlFor="pinCode" />
+              <input
+                id="pinCode"
+                name="pinCode"
+                className="form-control"
+                value={formData.pinCode}
+                onChange={handleChange}
+              />
+            </div>
 
-          <div className="col-md-6 mb-3">
-            <FormLabel label="User Role" htmlFor="roleId" required />
-            <select
-              id="roleId"
-              name="roleId"
-              className="form-select"
-              value={
-                formData.roleId !== undefined ? String(formData.roleId) : ""
-              }
-              onChange={handleChange}
-              required
-            >
-              <option value="">-- Select Role --</option>
-              {roles.map((role) =>
-                role.userRoleId !== undefined ? (
-                  <option key={role.userRoleId} value={String(role.userRoleId)}>
-                    {role.roleName}
-                  </option>
-                ) : null
+            <div className="col-md-6 mb-3">
+              <FormLabel label="User Role" htmlFor="roleId" required />
+              <select
+                id="roleId"
+                name="roleId"
+                className="form-select"
+                value={
+                  formData.roleId !== undefined ? String(formData.roleId) : ""
+                }
+                onChange={handleChange}
+                required
+              >
+                <option value="">-- Select Role --</option>
+                {roles.map((role) =>
+                  role.userRoleId !== undefined ? (
+                    <option
+                      key={role.userRoleId}
+                      value={String(role.userRoleId)}
+                    >
+                      {role.roleName}
+                    </option>
+                  ) : null
+                )}
+              </select>
+            </div>
+            <div className="col-md-6 mb-3">
+              <FormLabel label="Profile Picture" htmlFor="profilePictureFile" />
+              <div className="d-flex align-items-center gap-3">
+                <input
+                  ref={fileInputRef}
+                  id="profilePictureFile"
+                  name="profilePictureFile"
+                  type="file"
+                  accept="image/*"
+                  className="form-control"
+                  onChange={handleFileChange}
+                  style={{ flex: "1" }}
+                />
+              </div>
+            </div>
+            <div className="col-md-6 mb-3">
+              <div className="d-flex flex-wrap w-100 gap-2">
+                <button type="submit" className="btn btn-success flex-fill">
+                  <i className="fa fa-save me-2"></i>Save
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline-danger flex-fill"
+                  onClick={resetForm}
+                >
+                  <i className="fa fa-undo me-2"></i>Reset Form
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary flex-fill"
+                  onClick={handleSaveAndNext}
+                >
+                  <i className="fa fa-plus me-2"></i>Save & Next
+                </button>
+              </div>
+            </div>
+            <div className="col-md-6 mb-3">
+              {previewUrl && (
+                <img
+                  src={previewUrl}
+                  alt="Preview"
+                  style={{
+                    width: "70px",
+                    height: "70px",
+                    objectFit: "cover",
+                    borderRadius: "6px",
+                    border: "1px solid #ccc",
+                  }}
+                />
               )}
-            </select>
-          </div>
-
-          <div className="col-md-6 mb-3">
-            <FormLabel label="Profile Picture" htmlFor="profilePictureFile" />
-            <input
-              id="profilePictureFile"
-              name="profilePictureFile"
-              type="file"
-              accept="image/*"
-              className="form-control"
-              onChange={handleFileChange}
-            />
-          </div>
-          <div className="col-md-6 mb-3">
-            <div className="d-flex flex-wrap w-100 gap-2">
-              <button type="submit" className="btn btn-success flex-fill">
-                <i className="fa fa-save me-2"></i>Save
-              </button>
-              <button
-                type="button"
-                className="btn btn-outline-danger flex-fill"
-                onClick={resetForm}
-              >
-                <i className="fa fa-undo me-2"></i>Reset Form
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary flex-fill"
-                onClick={handleSaveAndNext}
-              >
-                <i className="fa fa-plus me-2"></i>Save & Next
-              </button>
             </div>
           </div>
-        </div>
-      </form>
-    </div>
+        </form>
+      </div>
+      <StatusModal
+        show={modalOpen}
+        onClose={() => setModalOpen(false)}
+        message={modalMessage}
+        isSuccess={isSuccess}
+      />
     </>
   );
 };

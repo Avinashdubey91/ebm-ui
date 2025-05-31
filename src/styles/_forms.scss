@@ -1,0 +1,84 @@
+// ===================== Status Modal =====================
+// Success/Error Modal Styles
+.status-modal-content {
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+  border: none;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.status-modal-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+  animation: pulse 1.5s infinite;
+}
+
+.status-success-icon {
+  background-color: #e6f9ec;
+  color: #28a745;
+}
+
+.status-error-icon {
+  background-color: #ffe6e6;
+  color: #dc3545;
+}
+
+.status-modal-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.status-modal-message {
+  font-size: 0.95rem;
+  color: #666;
+  margin-bottom: 1.5rem;
+}
+
+.status-modal-button {
+  padding: 10px 24px;
+  font-size: 1rem;
+  font-weight: 500;
+  border-radius: 8px;
+  border: none;
+  width: 100%;
+  max-width: 250px;
+}
+
+.status-modal-button.success {
+  background-color: #28a745;
+  color: white;
+}
+
+.status-modal-button.error {
+  background-color: #dc3545;
+  color: white;
+}
+
+// already present
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 1.5s infinite;
+}
+
+

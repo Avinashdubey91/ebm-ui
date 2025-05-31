@@ -1,5 +1,6 @@
 // src/features/users/forms/UserListTable.tsx
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { fetchAllUsers } from "../../../api/userApi";
 import type { UserDTO } from "../../../types/UserDTO";
 import { FaEdit, FaTrash, FaSort, FaSortUp, FaSortDown } from "react-icons/fa";
@@ -9,6 +10,7 @@ const UserListTable: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [sortField, setSortField] = useState<keyof UserDTO>("userName");
   const [sortAsc, setSortAsc] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchAllUsers()
@@ -44,7 +46,9 @@ const UserListTable: React.FC = () => {
   });
 
   const handleEdit = (userId?: number) => {
-    alert(`🔧 Edit User ID: ${userId}`);
+    if (userId) {
+      navigate(`/dashboard/users/create/${userId}`);
+    }
   };
 
   const handleDelete = (userId?: number) => {
@@ -58,16 +62,12 @@ const UserListTable: React.FC = () => {
 
   return (
     <>
-      <div className="dashboard-ebm-subheader-container">
-        <h4 className="dashboard-ebm-subheader-title">User List</h4>
-      </div>
-
       <div className="table-responsive">
-        <table className="table table-bordered table-striped align-middle">
+        <table className="table table-bordered table-ebm-listing align-middle">
           <thead className="table-primary">
             <tr>
               {[
-                { key: "username", label: "User Name", width: "120px" },
+                { key: "userName", label: "User Name", width: "120px" },
                 { key: "firstName", label: "Name", width: "180px" },
                 { key: "email", label: "Email", width: "220px" },
                 { key: "mobile", label: "Mobile", width: "130px" },
@@ -121,11 +121,11 @@ const UserListTable: React.FC = () => {
                         <img
                         src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '')}/${u.profilePicture}`}
                         alt="Profile"
-                        width={42}
-                        height={42}
+                        width={70}
+                        height={70}
                         style={{
                             objectFit: "cover",
-                            borderRadius: "6px",           // ⬅️ smooth square border
+                            borderRadius: "6px",
                             border: "1px solid #ccc"
                         }}
                         onError={(e) => {

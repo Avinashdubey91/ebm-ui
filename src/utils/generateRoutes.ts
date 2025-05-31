@@ -39,7 +39,7 @@ const componentMap: Record<string, string> = {
 };
 
 export const generateDynamicRoutes = (menus: SideNavigationMenuDTO[]): RouteObject[] => {
-  console.log('🧭 generateDynamicRoutes → Received Menus:', menus);
+  //console.log("🧪 generateDynamicRoutes() CALLED with", menus.length, "menus");
 
   const dynamicRoutes: RouteObject[] = [];
 
@@ -52,12 +52,7 @@ export const generateDynamicRoutes = (menus: SideNavigationMenuDTO[]): RouteObje
       if (!submenu.routePath || !submenu.componentName || !submenu.isActive) continue;
 
       const modulePath = componentMap[submenu.componentName];
-      if (!modulePath) {
-        if (import.meta.env.DEV) {
-          console.warn(`⚠️ No path mapping found for component: ${submenu.componentName}`);
-        }
-        continue;
-      }
+      if (!modulePath) continue;
 
       const fullImportPath = `../features/${modulePath}.tsx`;
       const loader = lazyModules[fullImportPath];
@@ -66,26 +61,45 @@ export const generateDynamicRoutes = (menus: SideNavigationMenuDTO[]): RouteObje
         ? lazy(loader as () => Promise<{ default: React.ComponentType<unknown> }>)
         : lazy(() => import('../components/NotFoundPlaceholder'));
 
+      // Normal Route
       children.push({
         path: submenu.routePath,
         element: React.createElement(LazyComponent),
       });
 
-      console.log(`📍 Route Added: ${menu.routePath}/${submenu.routePath} → ${modulePath}`);
+      // Dynamically generate edit route if routePath matches known patterns
+      const editPatterns = ['create', 'add'];
+      const routeLower = submenu.routePath.toLowerCase();
+
+      if (editPatterns.some(p => routeLower === p || routeLower.startsWith(`${p}-`))) {
+        children.push({
+          path: `${submenu.routePath}/:userId`,
+          element: React.createElement(LazyComponent),
+        });
+      }
     }
 
     if (children.length > 0) {
+      // Add fallback 404 for unknown subroutes
       children.push({
         path: '*',
         element: React.createElement('div', { style: { padding: '2rem', color: 'red' } }, '404 - Subpage Not Found'),
       });
 
       dynamicRoutes.push({
-        path: menu.routePath.replace(/^\//, ''),
+        path: menu.routePath.replace(/^\//, ''), // remove leading slash
         children,
       });
     }
   }
+
+  // console.log(
+  //   '📌 Final Dynamic Routes:',
+  //   dynamicRoutes.map((r) => ({
+  //     path: r.path,
+  //     children: r.children?.map((c) => c.path),
+  //   }))
+  // );
 
   return dynamicRoutes;
 };

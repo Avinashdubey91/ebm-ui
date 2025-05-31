@@ -1,10 +1,15 @@
 import React from 'react';
+import { useParams } from 'react-router-dom';
 import CreateUserForm from '../forms/CreateUserForm';
 
 const CreateUserPage: React.FC = () => {
+  const { userId } = useParams<{ userId?: string }>();
   return (
     <div className="">
-      <CreateUserForm />
+      <div className="inner-area-header-container">
+        <h4 className="inner-area-header-title">{userId ? 'Edit User' : 'Add New User'}</h4>
+      </div>
+      <CreateUserForm userId={userId ? parseInt(userId, 10) : undefined} />
     </div>
   );
 };

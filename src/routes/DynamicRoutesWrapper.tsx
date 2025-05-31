@@ -34,7 +34,7 @@ const DynamicRoutesWrapper: React.FC = () => {
     return <div className="text-center p-4">Loading routes...</div>;
   }
 
-  return element ?? <div className="text-center text-danger">❌ No routes available</div>;
+  return element ?? <div className="alert alert-danger text-center m-5 fw-bold fs-3">🚫 No Routes Available</div>;
 };
 
 export default DynamicRoutesWrapper;

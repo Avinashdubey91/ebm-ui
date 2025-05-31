@@ -1,32 +1,30 @@
-// AppEntry.tsx
+// src/AppEntry.tsx
 import React from 'react';
-import { RouterProvider } from 'react-router-dom';
+import { RouterProvider, createBrowserRouter } from 'react-router-dom';
 import { useMenuData } from './features/dashboard/hooks/useMenuData';
 import { generateDynamicRoutes } from './utils/generateRoutes';
-import { router as baseRouter } from './routes/AppRoutes';
-import { createBrowserRouter } from 'react-router-dom';
+import { baseRoutes } from './routes/AppRoutes';
 
 const AppEntry: React.FC = () => {
   const { menus, loading } = useMenuData();
 
-  const dynamicRoutes = React.useMemo(() => {
-    if (!loading) return generateDynamicRoutes(menus);
-    return [];
+  const router = React.useMemo(() => {
+    if (loading) return null;
+
+    const routes = [...baseRoutes];
+
+    const rootRoute = routes.find((r) => r.path === '/');
+    const dashboardRoute = rootRoute?.children?.find((c) => c.path === 'dashboard');
+
+    if (dashboardRoute && Array.isArray(dashboardRoute.children)) {
+      const dynamicRoutes = generateDynamicRoutes(menus);
+      dashboardRoute.children.push(...dynamicRoutes); // ✅ Merge correctly
+    }
+
+    return createBrowserRouter(routes);
   }, [menus, loading]);
 
-  if (loading) return <div>Loading menu...</div>;
-
-  const router = createBrowserRouter([
-    ...baseRouter.routes.map(route => {
-      if (route.path === '/' && route.children) {
-        const dashboardRoute = route.children.find(child => child.path === 'dashboard');
-        if (dashboardRoute && dashboardRoute.children) {
-          dashboardRoute.children.push(...dynamicRoutes);
-        }
-      }
-      return route;
-    })
-  ]);
+  if (loading || !router) return <div>Loading menu...</div>;
 
   return <RouterProvider router={router} />;
 };

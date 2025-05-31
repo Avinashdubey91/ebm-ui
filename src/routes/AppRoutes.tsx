@@ -1,10 +1,10 @@
-import { createBrowserRouter } from 'react-router-dom';
+// src/routes/AppRoutes.tsx
+import type { RouteObject } from 'react-router-dom';
 import PrivateRoute from './PrivateRoute';
 import Dashboard from '../features/dashboard/pages/Dashboard';
 import Login from '../features/auth/pages/Login';
-import DynamicRoutesWrapper from './DynamicRoutesWrapper';
 
-export const router = createBrowserRouter([
+export const baseRoutes: RouteObject[] = [
   {
     path: '/',
     element: <PrivateRoute />,
@@ -16,11 +16,8 @@ export const router = createBrowserRouter([
           {
             path: '',
             element: <div className="px-4 py-4 text-center fw-bold">Welcome to Dashboard</div>,
-          },
-          {
-            path: '*',
-            element: <DynamicRoutesWrapper />,
           }
+          // 🧠 Don't hardcode * here — dynamicRoutes will include it
         ]
       }
     ]
@@ -29,4 +26,4 @@ export const router = createBrowserRouter([
     path: '/login',
     element: <Login />,
   }
-]);
+];
