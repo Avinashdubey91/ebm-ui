@@ -5,12 +5,14 @@ import type { UserDTO } from "../../../types/UserDTO";
 import type { UserRole } from "../../../types/UserRole";
 import FormLabel from "../../../components/common/FormLabel";
 import StatusModal from "../../../components/common/StatusModal";
+import { useNavigate } from 'react-router-dom';
 
 interface CreateUserFormProps {
   userId?: number;
 }
 
 const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
+  const navigate = useNavigate(); 
   const [formData, setFormData] = useState<UserDTO>({
     userName: "",
     firstName: "",
@@ -30,6 +32,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // ✅ ADDED
 
   useEffect(() => {
     fetchUserRoles()
@@ -125,28 +128,37 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
   ) => {
     e.preventDefault();
     const username = localStorage.getItem("username") ?? "system";
+    setIsSubmitting(true); // show loader
 
     try {
       const form = buildFormData();
 
       if (userId) {
-        await updateUser(userId, form, username); // 👈 call update if editing
+        await updateUser(userId, form, username);
         setModalMessage("User updated successfully!");
       } else {
-        await createUser(form, username); // 👈 call create if adding new
+        await createUser(form, username);
         setModalMessage("User created successfully!");
       }
 
       setIsSuccess(true);
-      setModalOpen(true);
-      resetForm();
+
+      // Simulate slight delay for better UX
+      setTimeout(() => {
+        setIsSubmitting(false); // hide loader
+        setModalOpen(true); // open modal
+      }, 500);
+
+      // Auto redirect after short pause
+      setTimeout(() => {
+        navigate("/dashboard/users/list"); // correct path
+      }, 1500);
     } catch (err) {
-      setIsSuccess(false);
-      setModalMessage(
-        userId ? "Failed to update user." : "Failed to create user."
-      );
-      setModalOpen(true);
       console.error(err);
+      setIsSuccess(false);
+      setIsSubmitting(false);
+      setModalMessage(userId ? "Failed to update user." : "Failed to create user.");
+      setModalOpen(true);
     }
   };
 
@@ -156,8 +168,14 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
 
   return (
     <>
-      <div className="p-4">
-        <form onSubmit={handleSubmit}>
+      <div className="p-4 position-relative">
+        {isSubmitting && (
+          <div className="form-overlay">
+            <div className="spinner-border big-red-spinner" role="status" />
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} style={{ pointerEvents: isSubmitting ? 'none' : 'auto', opacity: isSubmitting ? 0.6 : 1 }}>
           <div className="row align-items-end">
             <div className="col-md-6 mb-3">
               <FormLabel label="UserName" htmlFor="userName" required />
@@ -283,7 +301,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
             </div>
             <div className="col-md-6 mb-3">
               <div className="d-flex flex-wrap w-100 gap-2">
-                <button type="submit" className="btn btn-success flex-fill">
+                <button type="submit" className="btn btn-success flex-fill" disabled={isSubmitting}>
                   <i className="fa fa-save me-2"></i>Save
                 </button>
                 <button
