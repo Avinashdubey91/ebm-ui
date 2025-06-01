@@ -103,4 +103,105 @@
   animation: pulse 1.5s infinite;
 }
 
+.swal2-popup-container {
+  text-align: center;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  padding: 2.5rem 2rem;
+  box-shadow: 0 5px 30px rgba(0, 0, 0, 0.25);
+  width: 420px;
+  max-width: 90vw;
+}
+
+.swal2-popup-container.success .swal2-icon-success {
+  background-color: #28a745;
+  border-color: #28a745;
+}
+
+.swal2-icon-success {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 4px solid #ffffff;
+  background-color: #28a745;
+  margin: 0 auto;
+  position: relative;
+  animation: fadeIn 0.4s ease-in-out;
+  box-shadow: 0 0 0 4px #eafaf1;
+}
+
+.swal2-icon-success::before,
+.swal2-icon-success::after {
+  content: "";
+  position: absolute;
+  background-color: #fff;
+  height: 4px;
+  border-radius: 2px;
+  transform-origin: left;
+  animation: animateCheck 0.4s ease forwards;
+}
+
+.swal2-icon-success::before {
+  width: 25px;
+  left: 22px;
+  top: 40px;
+  transform: rotate(45deg) scaleX(0);
+}
+
+.swal2-icon-success::after {
+  width: 45px;
+  left: 35px;
+  top: 34px;
+  transform: rotate(-45deg) scaleX(0);
+  animation-delay: 0.2s;
+}
+
+@keyframes animateCheck {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.swal2-title {
+  font-size: 1.6rem;
+  font-weight: bold;
+  margin-top: 1rem;
+  color: #333;
+}
+
+.swal2-message {
+  font-size: 1rem;
+  margin: 0.5rem 0 1.5rem;
+  color: #555;
+}
+
+.swal2-confirm {
+  background-color: #28a745;
+  color: white;
+  font-weight: 600;
+  padding: 12px 40px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.page-form .inner-area-header-title {
+  text-align: center;
+}
+
+
+
 

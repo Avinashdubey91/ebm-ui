@@ -7,7 +7,7 @@ const CreateUserPage: React.FC = () => {
   return (
     <div className="">
       <div className="inner-area-header-container">
-        <h4 className="inner-area-header-title">{userId ? 'Edit User' : 'Add New User'}</h4>
+        <h4 className="inner-area-header-title">{userId ? 'EDIT USER' : 'ADD NEW USER'}</h4>
       </div>
       <CreateUserForm key={userId ?? 'new'} userId={userId ? parseInt(userId, 10) : undefined} />
     </div>

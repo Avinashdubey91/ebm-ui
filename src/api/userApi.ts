@@ -29,3 +29,12 @@ export const updateUser = async (id: number, data: FormData, modifiedBy: string)
   });
 };
 
+export const deleteUser = async (id: number, deletedBy: string) => {
+  return httpClient.delete(`/user/Delete-User/${id}`, {
+    headers: {
+      deletedBy: deletedBy,
+    },
+  });
+};
+
+

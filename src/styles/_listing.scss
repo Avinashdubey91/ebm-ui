@@ -1,21 +1,72 @@
+.inner-area-header-title {
+  text-align: unset !important;
+  text-align: left;
+}
+
 .table-ebm-listing {
   width: 100%;
-  border-collapse: collapse;
-  border: 2px solid #343a40;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: none;
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 0.95rem;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  table-layout: auto; /* Allow flexible column widths */
+  word-wrap: break-word;
 }
 
+/* ===== Table Header ===== */
 .table-ebm-listing thead th {
-  background-color: #e9f0f5;
-  font-weight: bold;
-  border: 1px solid #343a40;
+  background-color: #6f7dfb;
+  color: white;
+  font-weight: 600;
+  padding: 14px 16px;
+  text-align: left;
   vertical-align: middle;
+  border-bottom: 2px solid #d4d4d4;
+  white-space: normal; /* Allow wrapping in header */
 }
 
+/* ===== Table Body ===== */
 .table-ebm-listing tbody td {
-  border: 1px solid #0925b2;
+  padding: 12px 16px;
   vertical-align: middle;
+  border-bottom: 1px solid #e6e6e6;
+  white-space: normal;       /* Allow line wrap */
+  word-break: break-word;    /* Break long words */
 }
 
-.table-ebm-listing tbody tr:hover {
-  background-color: #f5f5f5;
+/* ===== Alternate Row Color ===== */
+.table-ebm-listing tbody tr:nth-child(even) {
+  background-color: #f8f9fc;
 }
+
+/* ===== Row Hover Effect ===== */
+.table-ebm-listing tbody tr:hover {
+  background-color: #eef2ff;
+  transition: background-color 0.3s ease;
+}
+
+.page-listing .inner-area-header-title {
+  text-align: left;
+}
+
+
+/* ===== Rounded Corners ===== */
+// .table-ebm-listing thead th:first-child {
+//   border-top-left-radius: 12px;
+// }
+
+// .table-ebm-listing thead th:last-child {
+//   border-top-right-radius: 12px;
+// }
+
+// .table-ebm-listing tbody tr:last-child td:first-child {
+//   border-bottom-left-radius: 12px;
+// }
+
+// .table-ebm-listing tbody tr:last-child td:last-child {
+//   border-bottom-right-radius: 12px;
+// }

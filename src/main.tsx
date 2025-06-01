@@ -7,6 +7,7 @@ import AppEntry from './AppEntry';
 import './styles/_forms.scss';
 import './styles/_listing.scss';
 import './styles/_common.scss';
+import 'animate.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

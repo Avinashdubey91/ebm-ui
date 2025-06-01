@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { fetchAllUsers } from "../../../api/userApi";
 import type { UserDTO } from "../../../types/UserDTO";
 import { FaEdit, FaTrash, FaSort, FaSortUp, FaSortDown } from "react-icons/fa";
+import { deleteUser } from "../../../api/userApi";
+import Swal from 'sweetalert2';
 
 const UserListTable: React.FC = () => {
   const [users, setUsers] = useState<UserDTO[]>([]);
@@ -51,9 +53,31 @@ const UserListTable: React.FC = () => {
     }
   };
 
-  const handleDelete = (userId?: number) => {
-    if (window.confirm("Are you sure you want to delete this user?")) {
-      alert(`🗑️ Delete User ID: ${userId}`);
+  const handleDelete = async (userId?: number) => {
+  if (!userId) return;
+
+  const result = await Swal.fire({
+    icon: 'warning',
+    title: 'Are you sure?',
+    text: 'Do you really want to delete this user? This process cannot be undone.',
+    showCancelButton: true,
+    confirmButtonColor: '#e74c3c',
+    cancelButtonColor: '#aaa',
+    confirmButtonText: 'Delete',
+    cancelButtonText: 'Cancel',
+    reverseButtons: true,
+  });
+
+  if (result.isConfirmed) {
+      const deletedBy = localStorage.getItem("username") ?? "system";
+      try {
+        await deleteUser(userId, deletedBy);
+        setUsers(prev => prev.filter(u => u.userId !== userId));
+        Swal.fire('Deleted!', 'User has been deleted.', 'success');
+      } catch (err) {
+        console.error("❌ Failed to delete user", err);
+        Swal.fire('Error!', 'Failed to delete user.', 'error');
+      }
     }
   };
 
@@ -62,16 +86,16 @@ const UserListTable: React.FC = () => {
 
   return (
     <>
-      <div className="table-responsive">
+      <div className="table-responsive p-2">
         <table className="table table-bordered table-ebm-listing align-middle">
           <thead className="table-primary">
             <tr>
               {[
                 { key: "userName", label: "User Name", width: "120px" },
-                { key: "firstName", label: "Name", width: "180px" },
+                { key: "firstName", label: "Name", width: "160px" },
                 { key: "email", label: "Email", width: "220px" },
-                { key: "mobile", label: "Mobile", width: "130px" },
-                { key: "address", label: "Address", width: "200px" },
+                { key: "mobile", label: "Mobile", width: "120px" },
+                { key: "address", label: "Address", width: "160px" },
                 { key: "pinCode", label: "Pin Code", width: "100px" },
                 { key: "profilePicture", label: "Photo", width: "100px" },
                 { key: "roleName", label: "Role", width: "100px" },
@@ -97,7 +121,7 @@ const UserListTable: React.FC = () => {
               <th
                 style={{
                   textAlign: "center",
-                  width: "110px",
+                  width: "100px",
                   whiteSpace: "nowrap",
                 }}
               >

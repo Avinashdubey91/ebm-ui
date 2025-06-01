@@ -1,7 +1,6 @@
 import React from "react";
 import { Modal } from "react-bootstrap";
-import { FaCheck, FaTimes } from "react-icons/fa";
-import "../../styles/_forms.scss"; // make sure it’s imported here or globally
+import "../../styles/_forms.scss";
 
 interface StatusModalProps {
   show: boolean;
@@ -17,25 +16,22 @@ const StatusModal: React.FC<StatusModalProps> = ({
   isSuccess,
 }) => {
   return (
-    <Modal show={show} onHide={onClose} centered backdrop="static">
-      <Modal.Body className="status-modal-content">
-        <div
-          className={`status-modal-icon ${
-            isSuccess ? "status-success-icon" : "status-error-icon"
-          }`}
-        >
-          {isSuccess ? <FaCheck size={36} /> : <FaTimes size={36} />}
+    <Modal show={show} onHide={onClose} centered backdrop="static" className="custom-swal-modal">
+      <Modal.Body className="p-0">
+        <div className={`swal2-popup-container ${isSuccess ? "success" : "error"}`}>
+          <div className="swal2-icon swal2-icon-success animate">
+            <div className="swal2-success-circular-line-left"></div>
+            <span className="swal2-success-line-tip"></span>
+            <span className="swal2-success-line-long"></span>
+            <div className="swal2-success-ring"></div>
+            <div className="swal2-success-fix"></div>
+            <div className="swal2-success-circular-line-right"></div>
+          </div>
+
+          <h2 className="swal2-title">{isSuccess ? "Success" : "Error"}</h2>
+          <div className="swal2-message">{message}</div>
+          <button className="swal2-confirm" onClick={onClose}>Okay</button>
         </div>
-        <div className="status-modal-title">
-          {isSuccess ? "SUCCESS" : "ERROR"}
-        </div>
-        <div className="status-modal-message">{message}</div>
-        <button
-          className={`status-modal-button ${isSuccess ? "success" : "error"}`}
-          onClick={onClose}
-        >
-          {isSuccess ? "Continue" : "Try Again Later"}
-        </button>
       </Modal.Body>
     </Modal>
   );

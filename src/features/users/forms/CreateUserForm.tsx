@@ -4,8 +4,8 @@ import { fetchUserRoles } from "../../../api/userRoleApi";
 import type { UserDTO } from "../../../types/UserDTO";
 import type { UserRole } from "../../../types/UserRole";
 import FormLabel from "../../../components/common/FormLabel";
-import StatusModal from "../../../components/common/StatusModal";
 import { useNavigate } from 'react-router-dom';
+import Swal from "sweetalert2";
 
 interface CreateUserFormProps {
   userId?: number;
@@ -29,9 +29,6 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalMessage, setModalMessage] = useState("");
-  const [isSuccess, setIsSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false); // ✅ ADDED
 
   useEffect(() => {
@@ -124,43 +121,52 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
   };
 
   const handleSubmit = async (
-    e: React.FormEvent<HTMLFormElement> | { preventDefault: () => void }
-  ) => {
-    e.preventDefault();
-    const username = localStorage.getItem("username") ?? "system";
-    setIsSubmitting(true); // show loader
+      e: React.FormEvent<HTMLFormElement> | { preventDefault: () => void }
+    ) => {
+      e.preventDefault();
+      const username = localStorage.getItem("username") ?? "system";
+      setIsSubmitting(true);
 
-    try {
-      const form = buildFormData();
+      try {
+        const form = buildFormData();
 
-      if (userId) {
-        await updateUser(userId, form, username);
-        setModalMessage("User updated successfully!");
-      } else {
-        await createUser(form, username);
-        setModalMessage("User created successfully!");
+        if (userId) {
+          await updateUser(userId, form, username);
+          await Swal.fire({
+            icon: 'success',
+            title: 'Success',
+            text: 'User updated successfully!',
+            confirmButtonColor: '#28a745',
+            timer: 1500,
+            showConfirmButton: false,
+          });
+        } else {
+          await createUser(form, username);
+          await Swal.fire({
+            icon: 'success',
+            title: 'Success',
+            text: 'User created successfully!',
+            confirmButtonColor: '#28a745',
+            timer: 1500,
+            showConfirmButton: false,
+          });
+        }
+
+        setTimeout(() => {
+          setIsSubmitting(false);
+          navigate("/dashboard/users/list");
+        }, 300);
+      } catch (err) {
+        console.error(err);
+        setIsSubmitting(false);
+        Swal.fire({
+          icon: 'error',
+          title: 'Oops!',
+          text: userId ? 'Failed to update user.' : 'Failed to create user.',
+          confirmButtonColor: '#dc3545',
+        });
       }
-
-      setIsSuccess(true);
-
-      // Simulate slight delay for better UX
-      setTimeout(() => {
-        setIsSubmitting(false); // hide loader
-        setModalOpen(true); // open modal
-      }, 500);
-
-      // Auto redirect after short pause
-      setTimeout(() => {
-        navigate("/dashboard/users/list"); // correct path
-      }, 1500);
-    } catch (err) {
-      console.error(err);
-      setIsSuccess(false);
-      setIsSubmitting(false);
-      setModalMessage(userId ? "Failed to update user." : "Failed to create user.");
-      setModalOpen(true);
-    }
-  };
+    }; // ✅ FIXED this closing brace
 
   const handleSaveAndNext = () => {
     handleSubmit({ preventDefault: () => {} });
@@ -177,7 +183,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
 
         <form onSubmit={handleSubmit} style={{ pointerEvents: isSubmitting ? 'none' : 'auto', opacity: isSubmitting ? 0.6 : 1 }}>
           <div className="row align-items-end">
-            <div className="col-md-6 mb-3">
+            <div className="col-md-6 mb-2">
               <FormLabel label="UserName" htmlFor="userName" required />
               <input
                 id="userName"
@@ -190,7 +196,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
               />
             </div>
 
-            <div className="col-md-6 mb-3">
+            <div className="col-md-6 mb-2">
               <FormLabel label="First Name" htmlFor="firstName" required />
               <input
                 id="firstName"
@@ -202,7 +208,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
               />
             </div>
 
-            <div className="col-md-6 mb-3">
+            <div className="col-md-6 mb-2">
               <FormLabel label="Last Name" htmlFor="lastName" required />
               <input
                 id="lastName"
@@ -214,7 +220,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
               />
             </div>
 
-            <div className="col-md-6 mb-3">
+            <div className="col-md-6 mb-2">
               <FormLabel label="Email" htmlFor="email" required />
               <input
                 id="email"
@@ -226,7 +232,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
               />
             </div>
 
-            <div className="col-md-6 mb-3">
+            <div className="col-md-6 mb-2">
               <FormLabel label="Mobile" htmlFor="mobile" />
               <input
                 id="mobile"
@@ -237,7 +243,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
               />
             </div>
 
-            <div className="col-md-6 mb-3">
+            <div className="col-md-6 mb-2">
               <FormLabel label="Address" htmlFor="address" />
               <input
                 id="address"
@@ -248,7 +254,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
               />
             </div>
 
-            <div className="col-md-6 mb-3">
+            <div className="col-md-6 mb-2">
               <FormLabel label="Pin Code" htmlFor="pinCode" />
               <input
                 id="pinCode"
@@ -259,7 +265,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
               />
             </div>
 
-            <div className="col-md-6 mb-3">
+            <div className="col-md-6 mb-2">
               <FormLabel label="User Role" htmlFor="roleId" required />
               <select
                 id="roleId"
@@ -284,7 +290,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 )}
               </select>
             </div>
-            <div className="col-md-6 mb-3">
+            <div className="col-md-6 mb-2">
               <FormLabel label="Profile Picture" htmlFor="profilePictureFile" />
               <div className="d-flex align-items-center gap-3">
                 <input
@@ -299,7 +305,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 />
               </div>
             </div>
-            <div className="col-md-6 mb-3">
+            <div className="col-md-6 mb-2">
               <div className="d-flex flex-wrap w-100 gap-2">
                 <button type="submit" className="btn btn-success flex-fill" disabled={isSubmitting}>
                   <i className="fa fa-save me-2"></i>Save
@@ -320,7 +326,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 </button>
               </div>
             </div>
-            <div className="col-md-6 mb-3">
+            <div className="col-md-6 mb-2">
               {previewUrl && (
                 <img
                   src={previewUrl}
@@ -338,12 +344,6 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
           </div>
         </form>
       </div>
-      <StatusModal
-        show={modalOpen}
-        onClose={() => setModalOpen(false)}
-        message={modalMessage}
-        isSuccess={isSuccess}
-      />
     </>
   );
 };
