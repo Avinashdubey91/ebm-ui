@@ -1,17 +1,16 @@
-// src/features/users/forms/UserListTable.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchAllUsers } from "../../../api/userApi";
+import { fetchAllUsers, deleteUser } from "../../../api/userApi";
 import type { UserDTO } from "../../../types/UserDTO";
 import { FaEdit, FaTrash, FaSort, FaSortUp, FaSortDown } from "react-icons/fa";
-import { deleteUser } from "../../../api/userApi";
-import Swal from 'sweetalert2';
+import Swal from "sweetalert2";
 
 const UserListTable: React.FC = () => {
   const [users, setUsers] = useState<UserDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortField, setSortField] = useState<keyof UserDTO>("userName");
   const [sortAsc, setSortAsc] = useState(true);
+  const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,9 +21,8 @@ const UserListTable: React.FC = () => {
   }, []);
 
   const handleSort = (field: keyof UserDTO) => {
-    if (sortField === field) {
-      setSortAsc(!sortAsc);
-    } else {
+    if (sortField === field) setSortAsc(!sortAsc);
+    else {
       setSortField(field);
       setSortAsc(true);
     }
@@ -48,35 +46,33 @@ const UserListTable: React.FC = () => {
   });
 
   const handleEdit = (userId?: number) => {
-    if (userId) {
-      navigate(`/dashboard/users/create/${userId}`);
-    }
+    if (userId) navigate(`/dashboard/users/create/${userId}`);
   };
 
   const handleDelete = async (userId?: number) => {
-  if (!userId) return;
+    if (!userId) return;
 
-  const result = await Swal.fire({
-    icon: 'warning',
-    title: 'Are you sure?',
-    text: 'Do you really want to delete this user? This process cannot be undone.',
-    showCancelButton: true,
-    confirmButtonColor: '#e74c3c',
-    cancelButtonColor: '#aaa',
-    confirmButtonText: 'Delete',
-    cancelButtonText: 'Cancel',
-    reverseButtons: true,
-  });
+    const result = await Swal.fire({
+      icon: "warning",
+      title: "Are you sure?",
+      text: "Do you really want to delete this user? This process cannot be undone.",
+      showCancelButton: true,
+      confirmButtonColor: "#e74c3c",
+      cancelButtonColor: "#aaa",
+      confirmButtonText: "Delete",
+      cancelButtonText: "Cancel",
+      reverseButtons: true,
+    });
 
-  if (result.isConfirmed) {
+    if (result.isConfirmed) {
       const deletedBy = localStorage.getItem("username") ?? "system";
       try {
         await deleteUser(userId, deletedBy);
-        setUsers(prev => prev.filter(u => u.userId !== userId));
-        Swal.fire('Deleted!', 'User has been deleted.', 'success');
+        setUsers((prev) => prev.filter((u) => u.userId !== userId));
+        Swal.fire("Deleted!", "User has been deleted.", "success");
       } catch (err) {
         console.error("❌ Failed to delete user", err);
-        Swal.fire('Error!', 'Failed to delete user.', 'error');
+        Swal.fire("Error!", "Failed to delete user.", "error");
       }
     }
   };
@@ -85,83 +81,85 @@ const UserListTable: React.FC = () => {
   if (users.length === 0) return <p>No users found.</p>;
 
   return (
-    <>
-      <div className="table-responsive p-2">
-        <table className="table table-bordered table-ebm-listing align-middle">
-          <thead className="table-primary">
-            <tr>
-              {[
-                { key: "userName", label: "User Name", width: "120px" },
-                { key: "firstName", label: "Name", width: "160px" },
-                { key: "email", label: "Email", width: "220px" },
-                { key: "mobile", label: "Mobile", width: "120px" },
-                { key: "address", label: "Address", width: "160px" },
-                { key: "pinCode", label: "Pin Code", width: "100px" },
-                { key: "profilePicture", label: "Photo", width: "100px" },
-                { key: "roleName", label: "Role", width: "100px" },
-              ].map(({ key, label, width }) => (
-                <th
-                  key={key}
-                  onClick={() => handleSort(key as keyof UserDTO)}
-                  style={{
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                    width,
-                    verticalAlign: "middle",
-                  }}
-                >
-                  <div className="d-flex justify-content-between align-items-center">
-                    <span>{label}</span>
-                    <span className="ms-1">
-                      {getSortIcon(key as keyof UserDTO)}
-                    </span>
-                  </div>
-                </th>
-              ))}
+    <div className="table-responsive p-2">
+      <table className="table table-ebm-listing align-middle">
+        <thead className="table-primary">
+          <tr>
+            {[
+              { key: "userName", label: "User Name", width: "120px" },
+              { key: "firstName", label: "Name", width: "160px" },
+              { key: "email", label: "Email", width: "200px" },
+              { key: "mobile", label: "Mobile", width: "120px" },
+              { key: "addressLine1", label: "Address", width: "160px" },
+              { key: "pinCode", label: "Pin Code", width: "100px" },
+              { key: "profilePicture", label: "Photo", width: "100px" },
+              { key: "roleName", label: "Role", width: "100px" },
+            ].map(({ key, label, width }) => (
               <th
-                style={{
-                  textAlign: "center",
-                  width: "100px",
-                  whiteSpace: "nowrap",
-                }}
+                key={key}
+                onClick={() => handleSort(key as keyof UserDTO)}
+                style={{ cursor: "pointer", whiteSpace: "nowrap", width }}
               >
-                Actions
+                <div className="d-flex justify-content-between align-items-center">
+                  <span>{label}</span>
+                  <span className="ms-1">
+                    {getSortIcon(key as keyof UserDTO)}
+                  </span>
+                </div>
               </th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedUsers.map((u) => (
-              <tr key={u.userId}>
+            ))}
+            <th
+              style={{
+                textAlign: "center",
+                width: "110px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {sortedUsers.map((u) => (
+            <React.Fragment key={u.userId}>
+              <tr
+                onClick={() =>
+                  setExpandedRowId((prev: number | null): number | null =>
+                    prev === u.userId ? null : u.userId ?? null
+                  )
+                }
+                style={{ cursor: "pointer" }}
+              >
                 <td>{u.userName}</td>
                 <td>
                   {u.firstName} {u.lastName}
                 </td>
                 <td>{u.email || "-"}</td>
                 <td>{u.mobile || "-"}</td>
-                <td>{u.address || "-"}</td>
+                <td>{u.addressLine1 || "-"}</td>
                 <td>{u.pinCode || "-"}</td>
-                <td className="text-center align-middle">
-                    {u.profilePicture && u.profilePicture.trim().toLowerCase() !== 'string' ? (
-                        <img
-                        src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '')}/${u.profilePicture}`}
-                        alt="Profile"
-                        width={70}
-                        height={70}
-                        style={{
-                            objectFit: "cover",
-                            borderRadius: "6px",
-                            border: "1px solid #ccc"
-                        }}
-                        onError={(e) => {
-                            e.currentTarget.style.display = "none";
-                            e.currentTarget.parentElement!.innerHTML = `<span class="fw-bold" style='color:#2028c7;'>No Photo</span>`;
-                        }}
-                        />
-                    ) : (
-                        <span style={{ color: "#888" }}>No Photo</span>
-                    )}
+                <td className="text-center">
+                  {u.profilePicture &&
+                  u.profilePicture.trim().toLowerCase() !== "string" ? (
+                    <img
+                      src={`${import.meta.env.VITE_API_BASE_URL?.replace(
+                        "/api",
+                        ""
+                      )}/${u.profilePicture}`}
+                      alt="Profile"
+                      width={70}
+                      height={70}
+                      style={{
+                        objectFit: "cover",
+                        borderRadius: "6px",
+                        border: "1px solid #ccc",
+                      }}
+                    />
+                  ) : (
+                    <span style={{ color: "#888" }}>No Photo</span>
+                  )}
                 </td>
-                <td>{u.roleName|| "-"}</td>
+                <td>{u.roleName || "-"}</td>
                 <td className="text-center">
                   <div className="d-flex justify-content-center gap-3 fs-2">
                     <button
@@ -169,23 +167,34 @@ const UserListTable: React.FC = () => {
                       title="Edit"
                       onClick={() => handleEdit(u.userId)}
                     >
-                    <FaEdit size={22} />
+                      <FaEdit size={22} />
                     </button>
                     <button
                       className="btn btn-link p-0 text-danger"
                       title="Delete"
                       onClick={() => handleDelete(u.userId)}
                     >
-                    <FaTrash size={22} />
+                      <FaTrash size={22} />
                     </button>
                   </div>
                 </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </>
+              {expandedRowId === u.userId && (
+                <tr>
+                  <td colSpan={9} className="bg-light text-muted">
+                    <strong>Street:</strong> {u.street || "-"} |{" "}
+                    <strong>City:</strong> {u.city || "-"} |{" "}
+                    <strong>Country:</strong> {u.country || "-"}
+                    <br />
+                    <strong>Remarks:</strong> {u.remarks || "-"}
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 };
 

@@ -4,22 +4,29 @@ import { fetchUserRoles } from "../../../api/userRoleApi";
 import type { UserDTO } from "../../../types/UserDTO";
 import type { UserRole } from "../../../types/UserRole";
 import FormLabel from "../../../components/common/FormLabel";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+import DateInput from "../../../components/common/DateInput";
 
 interface CreateUserFormProps {
   userId?: number;
 }
 
 const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<UserDTO>({
     userName: "",
     firstName: "",
     lastName: "",
     email: "",
     mobile: "",
-    address: "",
+    addressLine1: "",
+    street: "",
+    city: "",
+    country: "",
+    gender: "",
+    dob: "",
+    remarks: "",
     pinCode: "",
     roleId: undefined,
     profilePicture: "",
@@ -38,7 +45,6 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
   }, []);
 
   useEffect(() => {
-    // This is only for edit mode, no conflict with roles
     if (userId) {
       fetchUserById(userId)
         .then((user) => {
@@ -49,14 +55,27 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
             lastName: user.lastName,
             email: user.email,
             mobile: user.mobile,
-            address: user.address,
+            addressLine1: user.addressLine1,
+            street: user.street,
+            city: user.city,
+            country: user.country,
+            gender: user.gender,
+            dob: user.dob ? new Date(user.dob).toISOString().split("T")[0] : "",
+            remarks: user.remarks,
             pinCode: user.pinCode,
             roleId: user.roleId,
             profilePicture: user.profilePicture,
           });
 
-         if (user.profilePicture && user.profilePicture.trim().toLowerCase() !== "string") {
-            setPreviewUrl(`${import.meta.env.VITE_API_BASE_URL?.replace("/api", "")}/${user.profilePicture}`);
+          if (
+            user.profilePicture &&
+            user.profilePicture.trim().toLowerCase() !== "string"
+          ) {
+            setPreviewUrl(
+              `${import.meta.env.VITE_API_BASE_URL?.replace("/api", "")}/${
+                user.profilePicture
+              }`
+            );
           }
         })
         .catch((err) => {
@@ -90,11 +109,18 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
       lastName: "",
       email: "",
       mobile: "",
-      address: "",
+      addressLine1: "",
+      street: "",
+      city: "",
+      country: "",
+      gender: "",
+      dob: "",
+      remarks: "",
       pinCode: "",
       roleId: undefined,
       profilePicture: "",
     });
+
     setSelectedFile(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = ""; // 👈 this clears the file input box
@@ -108,65 +134,77 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
     form.append("Username", formData.userName);
     form.append("FirstName", formData.firstName);
     form.append("LastName", formData.lastName);
+
     if (formData.email) form.append("Email", formData.email);
     if (formData.mobile) form.append("Mobile", formData.mobile);
-    if (formData.address) form.append("Address", formData.address);
+    if (formData.addressLine1) form.append("AddressLine1", formData.addressLine1);
+    if (formData.street) form.append("Street", formData.street);
+    if (formData.city) form.append("City", formData.city);
+    if (formData.country) form.append("Country", formData.country);
+    if (formData.gender) form.append("Gender", formData.gender);
+    if (formData.dob) form.append("DOB", formData.dob);
+    if (formData.remarks) form.append("Remarks", formData.remarks);
     if (formData.pinCode) form.append("PinCode", formData.pinCode);
-    if (formData.roleId !== undefined)
-      form.append("RoleId", formData.roleId.toString());
-    form.append("IsActive", "true"); // or use a state variable if you allow toggling
-    if (selectedFile) form.append("profilePicture", selectedFile); // must match controller param
+    if (formData.roleId !== undefined) form.append("RoleId", formData.roleId.toString());
 
+    form.append("IsActive", "true"); // Default: Active on create
+
+    if (selectedFile) {
+      form.append("ProfilePicture", selectedFile);
+    } else if (formData.profilePicture) {
+      // Send the existing file path to indicate "keep it"
+      form.append("ProfilePicture", formData.profilePicture); // ✅ Matches DTO
+    }
     return form;
   };
 
   const handleSubmit = async (
-      e: React.FormEvent<HTMLFormElement> | { preventDefault: () => void }
-    ) => {
-      e.preventDefault();
-      const username = localStorage.getItem("username") ?? "system";
-      setIsSubmitting(true);
+    e: React.FormEvent<HTMLFormElement> | { preventDefault: () => void }
+  ) => {
+    e.preventDefault();
+    const username = localStorage.getItem("username") ?? "system";
+    setIsSubmitting(true);
 
-      try {
-        const form = buildFormData();
+    try {
+      const form = buildFormData();
 
-        if (userId) {
-          await updateUser(userId, form, username);
-          await Swal.fire({
-            icon: 'success',
-            title: 'Success',
-            text: 'User updated successfully!',
-            confirmButtonColor: '#28a745',
-            timer: 1500,
-            showConfirmButton: false,
-          });
-        } else {
-          await createUser(form, username);
-          await Swal.fire({
-            icon: 'success',
-            title: 'Success',
-            text: 'User created successfully!',
-            confirmButtonColor: '#28a745',
-            timer: 1500,
-            showConfirmButton: false,
-          });
-        }
-
-        setTimeout(() => {
-          setIsSubmitting(false);
-          navigate("/dashboard/users/list");
-        }, 300);
-      } catch (err) {
-        console.error(err);
-        setIsSubmitting(false);
-        Swal.fire({
-          icon: 'error',
-          title: 'Oops!',
-          text: userId ? 'Failed to update user.' : 'Failed to create user.',
-          confirmButtonColor: '#dc3545',
+      if (userId) {
+        await updateUser(userId, form, username);
+        await Swal.fire({
+          icon: "success",
+          title: "Success",
+          text: "User updated successfully!",
+          confirmButtonColor: "#28a745",
+          timer: 1500,
+          showConfirmButton: true,
+        });
+      } else {
+        await createUser(form, username);
+        await Swal.fire({
+          icon: "success",
+          title: "Success",
+          text: "User created successfully!",
+          confirmButtonColor: "#28a745",
+          timer: 1500,
+          showConfirmButton: false,
         });
       }
-    }; // ✅ FIXED this closing brace
+
+      setTimeout(() => {
+        setIsSubmitting(false);
+        navigate("/dashboard/users/list");
+      }, 300);
+    } catch (err) {
+      console.error(err);
+      setIsSubmitting(false);
+      Swal.fire({
+        icon: "error",
+        title: "Oops!",
+        text: userId ? "Failed to update user." : "Failed to create user.",
+        confirmButtonColor: "#dc3545",
+      });
+    }
+  }; // ✅ FIXED this closing brace
 
   const handleSaveAndNext = () => {
     handleSubmit({ preventDefault: () => {} });
@@ -181,9 +219,16 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ pointerEvents: isSubmitting ? 'none' : 'auto', opacity: isSubmitting ? 0.6 : 1 }}>
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            pointerEvents: isSubmitting ? "none" : "auto",
+            opacity: isSubmitting ? 0.6 : 1,
+          }}
+        >
           <div className="row align-items-end">
-            <div className="col-md-6 mb-2">
+            {/* === Basic Info === */}
+            <div className="col-md-4 mb-2">
               <FormLabel label="UserName" htmlFor="userName" required />
               <input
                 id="userName"
@@ -195,8 +240,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 required
               />
             </div>
-
-            <div className="col-md-6 mb-2">
+            <div className="col-md-4 mb-2">
               <FormLabel label="First Name" htmlFor="firstName" required />
               <input
                 id="firstName"
@@ -207,8 +251,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 required
               />
             </div>
-
-            <div className="col-md-6 mb-2">
+            <div className="col-md-4 mb-2">
               <FormLabel label="Last Name" htmlFor="lastName" required />
               <input
                 id="lastName"
@@ -220,7 +263,8 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
               />
             </div>
 
-            <div className="col-md-6 mb-2">
+            {/* === Contact Info === */}
+            <div className="col-md-4 mb-2">
               <FormLabel label="Email" htmlFor="email" required />
               <input
                 id="email"
@@ -229,10 +273,16 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 className="form-control"
                 value={formData.email}
                 onChange={handleChange}
+                onInvalid={(e) =>
+                  e.currentTarget.setCustomValidity(
+                    "Please enter valid Email Address"
+                  )
+                }
+                onInput={(e) => e.currentTarget.setCustomValidity("")}
+                required
               />
             </div>
-
-            <div className="col-md-6 mb-2">
+            <div className="col-md-4 mb-2">
               <FormLabel label="Mobile" htmlFor="mobile" />
               <input
                 id="mobile"
@@ -240,21 +290,18 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 className="form-control"
                 value={formData.mobile}
                 onChange={handleChange}
+                pattern="^\d{10}$"
+                maxLength={10}
+                title="Mobile number must be 10 digits"
+                inputMode="numeric"
+                onInput={(e: React.FormEvent<HTMLInputElement>) => {
+                  const input = e.currentTarget;
+                  input.value = input.value.replace(/[^0-9]/g, "").slice(0, 10);
+                }}
+                required
               />
             </div>
-
-            <div className="col-md-6 mb-2">
-              <FormLabel label="Address" htmlFor="address" />
-              <input
-                id="address"
-                name="address"
-                className="form-control"
-                value={formData.address}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="col-md-6 mb-2">
+            <div className="col-md-4 mb-2">
               <FormLabel label="Pin Code" htmlFor="pinCode" />
               <input
                 id="pinCode"
@@ -262,10 +309,102 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 className="form-control"
                 value={formData.pinCode}
                 onChange={handleChange}
+                pattern="^\d{6}$"
+                maxLength={6}
+                title="Pin code must be 6 digits"
+                inputMode="numeric"
+                onInput={(e: React.FormEvent<HTMLInputElement>) => {
+                  const input = e.currentTarget;
+                  input.value = input.value.replace(/[^0-9]/g, "").slice(0, 6);
+                }}
+                required
               />
             </div>
 
-            <div className="col-md-6 mb-2">
+            {/* === Address Info === */}
+            <div className="col-md-4 mb-2">
+              <FormLabel label="Address Line 1" htmlFor="addressLine1" />
+              <input
+                id="addressLine1"
+                name="addressLine1"
+                className="form-control"
+                value={formData.addressLine1}
+                onChange={handleChange}
+              />
+            </div>
+            <div className="col-md-4 mb-2">
+              <FormLabel
+                label="Street / Mohalla / Apartment"
+                htmlFor="street"
+              />
+              <input
+                id="street"
+                name="street"
+                className="form-control"
+                value={formData.street}
+                onChange={handleChange}
+              />
+            </div>
+            <div className="col-md-4 mb-2">
+              <FormLabel label="City / District" htmlFor="city" />
+              <input
+                id="city"
+                name="city"
+                className="form-control"
+                value={formData.city}
+                onChange={handleChange}
+              />
+            </div>
+            <div className="col-md-4 mb-2">
+              <FormLabel label="Country" htmlFor="country" />
+              <input
+                id="country"
+                name="country"
+                className="form-control"
+                value={formData.country}
+                onChange={handleChange}
+              />
+            </div>
+
+            {/* === Other Info === */}
+            <div className="col-md-4 mb-2">
+              <FormLabel label="Gender" htmlFor="gender" />
+              <select
+                id="gender"
+                name="gender"
+                className="form-select"
+                value={formData.gender}
+                onChange={handleChange}
+              >
+                <option value="" selected>
+                  -- Select Gender --
+                </option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
+            </div>
+            <div className="col-md-4 mb-2">
+              <DateInput
+                id="dob"
+                label="Date of Birth"
+                value={formData.dob ?? ""}
+                onChange={(newDate) =>
+                  setFormData((prev) => ({ ...prev, dob: newDate }))
+                }
+              />
+            </div>
+            <div className="col-md-8 mb-2">
+              <FormLabel label="Remarks" htmlFor="remarks" />
+              <input
+                id="remarks"
+                name="remarks"
+                className="form-control"
+                value={formData.remarks}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="col-md-4 mb-2">
               <FormLabel label="User Role" htmlFor="roleId" required />
               <select
                 id="roleId"
@@ -290,6 +429,8 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 )}
               </select>
             </div>
+
+            {/* === Profile Picture & Buttons === */}
             <div className="col-md-6 mb-2">
               <FormLabel label="Profile Picture" htmlFor="profilePictureFile" />
               <div className="d-flex align-items-center gap-3">
@@ -305,9 +446,14 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 />
               </div>
             </div>
-            <div className="col-md-6 mb-2">
+
+            <div className="col-md-6 mb-2 d-flex align-items-end">
               <div className="d-flex flex-wrap w-100 gap-2">
-                <button type="submit" className="btn btn-success flex-fill" disabled={isSubmitting}>
+                <button
+                  type="submit"
+                  className="btn btn-success flex-fill"
+                  disabled={isSubmitting}
+                >
                   <i className="fa fa-save me-2"></i>Save
                 </button>
                 <button
@@ -326,7 +472,9 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 </button>
               </div>
             </div>
-            <div className="col-md-6 mb-2">
+
+            {/* === Preview Image === */}
+            <div className="col-md-4 mb-2">
               {previewUrl && (
                 <img
                   src={previewUrl}

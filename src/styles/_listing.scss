@@ -15,6 +15,7 @@
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
   table-layout: auto; /* Allow flexible column widths */
   word-wrap: break-word;
+  border: 1px solid #6f7dfb;
 }
 
 /* ===== Table Header ===== */
@@ -49,24 +50,23 @@
   transition: background-color 0.3s ease;
 }
 
+/* ===== Rounded Corners ===== */
+.table-ebm-listing thead th:first-child {
+  border-top-left-radius: 6px;
+}
+
+.table-ebm-listing thead th:last-child {
+  border-top-right-radius: 6px;
+}
+
+.table-ebm-listing tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 6px;
+}
+
+.table-ebm-listing tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 6px;
+}
+
 .page-listing .inner-area-header-title {
   text-align: left;
 }
-
-
-/* ===== Rounded Corners ===== */
-// .table-ebm-listing thead th:first-child {
-//   border-top-left-radius: 12px;
-// }
-
-// .table-ebm-listing thead th:last-child {
-//   border-top-right-radius: 12px;
-// }
-
-// .table-ebm-listing tbody tr:last-child td:first-child {
-//   border-bottom-left-radius: 12px;
-// }
-
-// .table-ebm-listing tbody tr:last-child td:last-child {
-//   border-bottom-right-radius: 12px;
-// }
