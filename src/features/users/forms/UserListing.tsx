@@ -4,6 +4,7 @@ import { fetchAllUsers, deleteUser } from "../../../api/userApi";
 import type { UserDTO } from "../../../types/UserDTO";
 import { FaEdit, FaTrash, FaSort, FaSortUp, FaSortDown } from "react-icons/fa";
 import Swal from "sweetalert2";
+import { abbreviateRole } from "../../../utils/abbreviate";
 
 const UserListTable: React.FC = () => {
   const [users, setUsers] = useState<UserDTO[]>([]);
@@ -156,10 +157,10 @@ const UserListTable: React.FC = () => {
                       }}
                     />
                   ) : (
-                    <span style={{ color: "#888" }}>No Photo</span>
+                    <strong><span style={{ color: "#e0552b" }}>#NA</span></strong>
                   )}
                 </td>
-                <td>{u.roleName || "-"}</td>
+                <td title={u.roleName}>{abbreviateRole(u.roleName)}</td>
                 <td className="text-center">
                   <div className="d-flex justify-content-center gap-3 fs-2">
                     <button
@@ -182,6 +183,7 @@ const UserListTable: React.FC = () => {
               {expandedRowId === u.userId && (
                 <tr>
                   <td colSpan={9} className="bg-light text-muted">
+                    <strong>DOB:</strong> {u.dob ? new Date(u.dob).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : '-'} |{" "}
                     <strong>Street:</strong> {u.street || "-"} |{" "}
                     <strong>City:</strong> {u.city || "-"} |{" "}
                     <strong>Country:</strong> {u.country || "-"}
