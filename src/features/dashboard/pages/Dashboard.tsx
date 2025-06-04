@@ -21,7 +21,8 @@ const Dashboard: React.FC = () => {
       <div className="dashboard-ebm-layout-wrapper d-flex flex-column min-vh-100">
         <Topbar />
         <div className="d-flex flex-grow-1">
-          <Sidebar />
+          {/* ❌ Remove the hook here – it doesn't belong in layout */}
+          <Sidebar hasUnsavedChanges={true} />
           <div className="dashboard-ebm-main-area d-flex flex-column">
             <div className="dashboard-ebm-main-area-inner">
               <Outlet />

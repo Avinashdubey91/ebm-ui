@@ -36,8 +36,16 @@ const DateInput: React.FC<DateInputProps> = ({
         format="DD-MMMM-YYYY"
         allowClear={false}
         style={{ width: "100%", height: "38px", fontSize: "14px" }} // match Bootstrap field height
-        popupStyle={{ zIndex: 9999 }}
-        dropdownClassName="custom-ant-datepicker-dropdown"
+        styles={{
+          popup: {
+            root: { zIndex: 9999 }, // ✅ replaces popupStyle
+          },
+        }}
+        classNames={{
+          popup: {
+            root: "custom-ant-datepicker-dropdown", // ✅ replaces dropdownClassName
+          },
+        }}
         placement="bottomLeft"
       />
     </div>

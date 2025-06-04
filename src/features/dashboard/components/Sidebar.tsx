@@ -1,4 +1,5 @@
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { DYNAMIC_MENU_BASE_PATH } from '../../../constants/routes'; // ✅ make sure this is imported
 import Collapse from 'react-bootstrap/Collapse';
 import React, { useState, useEffect } from 'react';
 import { useSidebarState } from '../hooks/useSidebarState';
@@ -7,8 +8,9 @@ import * as FaIcons from 'react-icons/fa';
 import { useMenuData } from '../hooks/useMenuData';
 import type { SideNavigationMenuDTO, SideNavigationSubMenuDTO } from '../../../types/menuTypes';
 import type { IconType } from 'react-icons';
+import Swal from 'sweetalert2';
 
-const Sidebar: React.FC = () => {
+const Sidebar: React.FC<{ hasUnsavedChanges: boolean }> = ({ hasUnsavedChanges }) => {
   const { collapsed, toggleSidebar, isSubmenuOpen, toggleSubmenu } = useSidebarState();
   const [searchQuery, setSearchQuery] = useState('');
   const { menus, loading } = useMenuData();
@@ -27,32 +29,15 @@ const Sidebar: React.FC = () => {
 
   const getIconComponent = (iconClass: string): IconType => {
     if (!iconClass) return FaCircle;
-
     const classParts = iconClass.split(' ');
     const iconNameClass = classParts.find(cls =>
       cls.startsWith('fa-') &&
       !['fa-solid', 'fa-regular', 'fa-light', 'fa-duotone', 'fa-thin', 'fa-sharp', 'fas', 'far', 'fab'].includes(cls)
     ) ?? 'fa-circle';
-
     const iconKey = iconNameClass.replace('fa-', '');
     const override = iconOverrideMap[iconKey];
-
-    if (override && (FaIcons as Record<string, IconType>)[override]) {
-      return (FaIcons as Record<string, IconType>)[override];
-    }
-
-    const componentName = 'Fa' + iconKey
-      .split('-')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join('');
-
-    const IconComponent = (FaIcons as Record<string, IconType>)[componentName];
-    if (!IconComponent) {
-      console.warn(`❌ Icon not found for: ${componentName}, raw: ${iconClass}`);
-      return FaCircle;
-    }
-
-    return IconComponent;
+    const componentName = override ?? ('Fa' + iconKey.split('-').map(word => word[0].toUpperCase() + word.slice(1)).join(''));
+    return (FaIcons as Record<string, IconType>)[componentName] || FaCircle;
   };
 
   const filteredMenu = menus.filter((item) =>
@@ -62,19 +47,26 @@ const Sidebar: React.FC = () => {
     )
   );
 
+  const handleLinkClick = (path: string) => {
+    if (hasUnsavedChanges) {
+      const confirmLeave = window.confirm("You have unsaved changes. Leave this page?");
+      if (!confirmLeave) return;
+    }
+
+    if (window.location.pathname === path) {
+      navigate('/reload-dashboard', { replace: true });
+      setTimeout(() => navigate('/dashboard'), 0);
+    } else {
+      navigate(path);
+    }
+  };
+
   return (
     <nav className={`dashboard-ebm-sidebar ${collapsed ? 'dashboard-ebm-collapsed' : ''}`} id="sidebar">
-      {/* Search Box */}
       <div className="dashboard-ebm-sidebar-search px-3 mt-1">
         {collapsed ? (
-          <a
-            href="#"
-            className="dashboard-ebm-nav-link dashboard-ebm-search-only-icon d-flex justify-content-center"
-            onClick={(e) => {
-              e.preventDefault();
-              toggleSidebar();
-            }}
-          >
+          <a href="#" className="dashboard-ebm-nav-link dashboard-ebm-search-only-icon d-flex justify-content-center"
+             onClick={(e) => { e.preventDefault(); toggleSidebar(); }}>
             <i className="fas fa-search"></i>
           </a>
         ) : (
@@ -87,105 +79,87 @@ const Sidebar: React.FC = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
             {searchQuery && (
-              <span
-                className="dashboard-ebm-clear-icon"
-                title="Clear Search"
-                onClick={() => setSearchQuery('')}
-              >
-                &times;
-              </span>
+              <span className="dashboard-ebm-clear-icon" title="Clear Search" onClick={() => setSearchQuery('')}>&times;</span>
             )}
             <div className="dashboard-ebm-search-separator" />
-            <span className="dashboard-ebm-search-icon-box">
-              <FaSearch />
-            </span>
+            <span className="dashboard-ebm-search-icon-box"><FaSearch /></span>
           </div>
         )}
-        <div className="dashboard-ebm-search-no-results text-white small mt-2 d-none">
-          No results found
-        </div>
       </div>
 
-      {/* Sidebar Menu */}
       <ul className="nav flex-column mt-2" id="sidebarMenu">
         {loading && <li className="text-white text-center small">Loading...</li>}
-        {!loading &&
-          filteredMenu.map((item: SideNavigationMenuDTO) => {
-            const Icon = getIconComponent(item.iconClass);
-            const menuId = item.menuName || `menu-${item.sideNavigationMenuId ?? Math.random().toString(36).substring(2)}`;
-            const keyId = item.sideNavigationMenuId ?? `missing-${menuId}`;
+        {!loading && filteredMenu.map((item: SideNavigationMenuDTO) => {
+          const Icon = getIconComponent(item.iconClass);
+          const menuId = item.menuName || `menu-${item.sideNavigationMenuId ?? Math.random().toString(36).substring(2)}`;
+          const keyId = item.sideNavigationMenuId ?? `missing-${menuId}`;
+          const subMenus = menus.flatMap(menu => menu.subMenus ?? [])
+            .filter((sub: SideNavigationSubMenuDTO) =>
+              sub.sideNavigationMenuId === item.sideNavigationMenuId && sub.isActive)
+            .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+          const hasSubmenus = subMenus.length > 0;
 
-            // Flatten all submenus and filter by menu ID
-            const subMenus = menus
-              .flatMap(menu => menu.subMenus ?? [])
-              .filter(
-                (sub: SideNavigationSubMenuDTO) =>
-                  sub.sideNavigationMenuId === item.sideNavigationMenuId && sub.isActive
-              )
-              .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+          return (
+            <li key={`menu-${keyId}`} className={`dashboard-ebm-nav-item ${hasSubmenus ? 'dashboard-ebm-has-submenu' : ''} ${hasSubmenus && isSubmenuOpen(menuId) ? 'expanded' : ''}`}>
+              <a href="#" className="dashboard-ebm-nav-link d-flex align-items-center dashboard-ebm-nav-link-animated position-relative"
+                 onClick={(e) => {
+                   e.preventDefault();
+                   if (collapsed) return toggleSidebar();
+                   if (hasSubmenus) return toggleSubmenu(menuId);
+                   if (item.routePath) {
+                     const path = item.routePath.startsWith('/') ? item.routePath : `/${item.routePath}`;
+                     handleLinkClick(path);
+                   }
+                 }}>
+                <Icon className="me-2" />
+                <span>{item.menuName}</span>
+                {hasSubmenus && !collapsed && <FaChevronDown className="dashboard-ebm-toggle-chevron ms-auto" />}
+              </a>
+              {hasSubmenus && (
+                <Collapse in={isSubmenuOpen(menuId)}>
+                  <div>
+                    <ul className="dashboard-ebm-submenu list-unstyled" id={`${menuId}-submenu`}>
+                      {subMenus.map((child, index) => (
+                        <li key={`submenu-${child.sideNavigationSubMenuId ?? `${child.subMenuName}-${index}`}`} className="px-4">
+                          <a
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              const base = `/${DYNAMIC_MENU_BASE_PATH}`;
+                              const menuPath = (item.routePath ?? '').replace(/^\/|\/$/g, '');
+                              const subPath = (child.routePath ?? '').replace(/^\/|\/$/g, '');
+                              const path = `${base}/${menuPath}/${subPath}`;
 
-            const hasSubmenus = subMenus.length > 0;
-
-            return (
-              <li
-                key={`menu-${keyId}`}
-                className={`dashboard-ebm-nav-item ${hasSubmenus ? 'dashboard-ebm-has-submenu' : ''} ${
-                  hasSubmenus && isSubmenuOpen(menuId) ? 'expanded' : ''
-                }`}
-              >
-                <a
-                  href="#"
-                  className="dashboard-ebm-nav-link d-flex align-items-center dashboard-ebm-nav-link-animated position-relative"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (collapsed) {
-                      toggleSidebar();
-                      return;
-                    }
-                    if (hasSubmenus) {
-                      toggleSubmenu(menuId);
-                    } else if (item.routePath) {
-                      const targetPath = item.routePath.startsWith('/')
-                        ? item.routePath
-                        : `/${item.routePath}`;
-                        
-                      if (window.location.pathname === targetPath) {
-                        // Soft "re-render" by triggering state or context
-                        navigate('/reload-dashboard', { replace: true });
-                        setTimeout(() => navigate('/dashboard'), 0); // simulate refresh via redirect
-                      } else {
-                        navigate(targetPath);
-                      }
-                    }
-                  }}
-                >
-                  <Icon className="me-2" />
-                  <span>{item.menuName}</span>
-                  {hasSubmenus && !collapsed && (
-                    <FaChevronDown className="dashboard-ebm-toggle-chevron ms-auto" />
-                  )}
-                </a>
-                {hasSubmenus && (
-                  <Collapse in={isSubmenuOpen(menuId)}>
-                    <div>
-                      <ul className="dashboard-ebm-submenu list-unstyled" id={`${menuId}-submenu`}>
-                        {subMenus.map((child, index) => (
-                          <li key={`submenu-${child.sideNavigationSubMenuId ?? `${child.subMenuName}-${index}`}`} className="px-4">
-                            <Link
-                              to={`${(item.routePath ?? '').replace(/^\//, '')}/${child.routePath}`}
-                              className="dashboard-ebm-nav-link small px-4 py-2 d-block"
-                            >
-                              {child.subMenuName}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </Collapse>
-                )}
-              </li>
-            );
-          })}
+                              if (hasUnsavedChanges) {
+                                Swal.fire({
+                                  title: "Unsaved Changes",
+                                  text: "You have unsaved changes. Are you sure you want to leave this page?",
+                                  icon: "warning",
+                                  showCancelButton: true,
+                                  confirmButtonText: "Yes, leave",
+                                  cancelButtonText: "No, stay",
+                                }).then((result) => {
+                                  if (result.isConfirmed) {
+                                    navigate(path);
+                                  }
+                                });
+                              } else {
+                                navigate(path);
+                              }
+                            }}
+                            className="dashboard-ebm-nav-link small px-4 py-2 d-block"
+                          >
+                            {child.subMenuName}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </Collapse>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </nav>
   );

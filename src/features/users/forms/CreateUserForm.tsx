@@ -1,19 +1,19 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { createUser, fetchUserById, updateUser } from "../../../api/userApi";
 import { fetchUserRoles } from "../../../api/userRoleApi";
 import type { UserDTO } from "../../../types/UserDTO";
 import type { UserRole } from "../../../types/UserRole";
 import FormLabel from "../../../components/common/FormLabel";
-import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import DateInput from "../../../components/common/DateInput";
+import { useNavigate } from "react-router-dom";
+import { useFormNavigationGuard } from "../../../hooks/useFormNavigationGuard";
 
 interface CreateUserFormProps {
   userId?: number;
 }
 
 const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
-  const navigate = useNavigate();
   const [formData, setFormData] = useState<UserDTO>({
     userName: "",
     firstName: "",
@@ -32,11 +32,20 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
     profilePicture: "",
   });
 
+  const navigate = useNavigate();
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false); // ✅ ADDED
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const initialFormRef = useRef<UserDTO | null>(null);
+
+  useEffect(() => {
+    if (!userId) {
+      initialFormRef.current = { ...formData };
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]); // ✅ add userId (you don't need formData here)
 
   useEffect(() => {
     fetchUserRoles()
@@ -48,7 +57,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
     if (userId) {
       fetchUserById(userId)
         .then((user) => {
-          setFormData({
+          const formattedUser: UserDTO = {
             userId: user.userId,
             userName: user.userName,
             firstName: user.firstName,
@@ -65,7 +74,10 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
             pinCode: user.pinCode,
             roleId: user.roleId,
             profilePicture: user.profilePicture,
-          });
+          };
+
+          setFormData(formattedUser);
+          initialFormRef.current = { ...formattedUser };
 
           if (
             user.profilePicture &&
@@ -84,6 +96,26 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
     }
   }, [userId]);
 
+  const hasUnsavedChanges = useMemo(() => {
+    if (!initialFormRef.current) return false;
+
+    const trim = (str: string | undefined | null) => (str ?? "").trim();
+
+    const keys = Object.keys(formData) as (keyof UserDTO)[];
+    return keys.some((key) => {
+      const currentVal = formData[key];
+      const initialVal = initialFormRef.current![key];
+
+      if (typeof currentVal === "string" && typeof initialVal === "string") {
+        return trim(currentVal) !== trim(initialVal);
+      }
+
+      return currentVal !== initialVal;
+    });
+  }, [formData]);
+
+  useFormNavigationGuard(hasUnsavedChanges && !isSubmitting);
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -98,12 +130,12 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file)); // generate preview URL
+      setPreviewUrl(URL.createObjectURL(file));
     }
   };
 
   const resetForm = () => {
-    setFormData({
+    const empty: UserDTO = {
       userName: "",
       firstName: "",
       lastName: "",
@@ -119,25 +151,23 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
       pinCode: "",
       roleId: undefined,
       profilePicture: "",
-    });
+    };
 
+    setFormData(empty);
     setSelectedFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""; // 👈 this clears the file input box
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
     setPreviewUrl("");
   };
 
   const buildFormData = (): FormData => {
     const form = new FormData();
-
     form.append("Username", formData.userName);
     form.append("FirstName", formData.firstName);
     form.append("LastName", formData.lastName);
-
     if (formData.email) form.append("Email", formData.email);
     if (formData.mobile) form.append("Mobile", formData.mobile);
-    if (formData.addressLine1) form.append("AddressLine1", formData.addressLine1);
+    if (formData.addressLine1)
+      form.append("AddressLine1", formData.addressLine1);
     if (formData.street) form.append("Street", formData.street);
     if (formData.city) form.append("City", formData.city);
     if (formData.country) form.append("Country", formData.country);
@@ -145,15 +175,14 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
     if (formData.dob) form.append("DOB", formData.dob);
     if (formData.remarks) form.append("Remarks", formData.remarks);
     if (formData.pinCode) form.append("PinCode", formData.pinCode);
-    if (formData.roleId !== undefined) form.append("RoleId", formData.roleId.toString());
-
-    form.append("IsActive", "true"); // Default: Active on create
+    if (formData.roleId !== undefined)
+      form.append("RoleId", formData.roleId.toString());
+    form.append("IsActive", "true");
 
     if (selectedFile) {
       form.append("ProfilePicture", selectedFile);
     } else if (formData.profilePicture) {
-      // Send the existing file path to indicate "keep it"
-      form.append("ProfilePicture", formData.profilePicture); // ✅ Matches DTO
+      form.append("ProfilePicture", formData.profilePicture);
     }
     return form;
   };
@@ -192,6 +221,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
 
       setTimeout(() => {
         setIsSubmitting(false);
+        initialFormRef.current = { ...formData };
         navigate("/dashboard/users/list");
       }, 300);
     } catch (err) {
@@ -204,7 +234,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
         confirmButtonColor: "#dc3545",
       });
     }
-  }; // ✅ FIXED this closing brace
+  };
 
   const handleSaveAndNext = () => {
     handleSubmit({ preventDefault: () => {} });
@@ -271,7 +301,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 name="email"
                 type="email"
                 className="form-control"
-                value={formData.email}
+                value={formData.email ?? ""}
                 onChange={handleChange}
                 onInvalid={(e) =>
                   e.currentTarget.setCustomValidity(
@@ -288,7 +318,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 id="mobile"
                 name="mobile"
                 className="form-control"
-                value={formData.mobile}
+                value={formData.mobile ?? ""}
                 onChange={handleChange}
                 pattern="^\d{10}$"
                 maxLength={10}
@@ -307,7 +337,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 id="pinCode"
                 name="pinCode"
                 className="form-control"
-                value={formData.pinCode}
+                value={formData.pinCode ?? ""}
                 onChange={handleChange}
                 pattern="^\d{6}$"
                 maxLength={6}
@@ -328,7 +358,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 id="addressLine1"
                 name="addressLine1"
                 className="form-control"
-                value={formData.addressLine1}
+                value={formData.addressLine1 ?? ""}
                 onChange={handleChange}
               />
             </div>
@@ -341,7 +371,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 id="street"
                 name="street"
                 className="form-control"
-                value={formData.street}
+                value={formData.street ?? ""}
                 onChange={handleChange}
               />
             </div>
@@ -351,7 +381,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 id="city"
                 name="city"
                 className="form-control"
-                value={formData.city}
+                value={formData.city ?? ""}
                 onChange={handleChange}
               />
             </div>
@@ -361,7 +391,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 id="country"
                 name="country"
                 className="form-control"
-                value={formData.country}
+                value={formData.country ?? ""}
                 onChange={handleChange}
               />
             </div>
@@ -373,12 +403,10 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 id="gender"
                 name="gender"
                 className="form-select"
-                value={formData.gender}
+                value={formData.gender ?? ""}
                 onChange={handleChange}
               >
-                <option value="" selected>
-                  -- Select Gender --
-                </option>
+                <option value="">-- Select Gender --</option>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
               </select>
@@ -399,7 +427,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 id="remarks"
                 name="remarks"
                 className="form-control"
-                value={formData.remarks}
+                value={formData.remarks ?? ""}
                 onChange={handleChange}
               />
             </div>
