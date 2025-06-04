@@ -22,7 +22,7 @@ const Dashboard: React.FC = () => {
         <Topbar />
         <div className="d-flex flex-grow-1">
           {/* ❌ Remove the hook here – it doesn't belong in layout */}
-          <Sidebar hasUnsavedChanges={true} />
+          <Sidebar />
           <div className="dashboard-ebm-main-area d-flex flex-column">
             <div className="dashboard-ebm-main-area-inner">
               <Outlet />

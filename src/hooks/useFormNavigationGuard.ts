@@ -1,13 +1,13 @@
 // src/hooks/useFormNavigationGuard.ts
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import Swal from "sweetalert2";
+import { showUnsavedChangesDialog } from "../utils/showUnsavedChangesDialog";
 
 export const useFormNavigationGuard = (hasUnsavedChanges: boolean) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // ✅ Browser refresh/close alert
+  // ✅ Native browser refresh / close
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!hasUnsavedChanges) return;
@@ -18,11 +18,9 @@ export const useFormNavigationGuard = (hasUnsavedChanges: boolean) => {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
-  // ✅ In-App Anchor Tag Navigation Blocking
+  // ✅ In-app anchor navigation (menu/submenu clicks)
   useEffect(() => {
     const handleClick = async (e: MouseEvent) => {
-      if (!hasUnsavedChanges) return;
-
       const anchor = (e.target as HTMLElement).closest("a");
       if (!anchor) return;
 
@@ -32,56 +30,37 @@ export const useFormNavigationGuard = (hasUnsavedChanges: boolean) => {
 
       if (!href || href === "#" || isExternal || isSame) return;
 
+      if (!hasUnsavedChanges) return;
+
       e.preventDefault();
-
-      const result = await Swal.fire({
-        title: "Unsaved Changes",
-        text: "You have unsaved changes. Do you want to leave this page?",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonText: "Leave",
-        cancelButtonText: "Stay",
-      });
-
-      if (result.isConfirmed) {
-        navigate(href);
-      }
+      const shouldLeave = await showUnsavedChangesDialog();
+      if (shouldLeave) navigate(href);
     };
 
     document.addEventListener("click", handleClick);
     return () => document.removeEventListener("click", handleClick);
   }, [hasUnsavedChanges, location.pathname, navigate]);
 
-  // ✅ Browser Back Button Sweet Alert
+  // ✅ Browser back button (popstate)
   useEffect(() => {
     if (!hasUnsavedChanges) return;
 
-    // Push dummy state to trap back
     history.pushState(null, "", window.location.href);
-
-    let allowBack = false; // 🚨 fix flag
+    let allowBack = false;
 
     const onPopState = async () => {
-        if (allowBack) return; // ✅ allow true pop after confirmation
+      if (allowBack) return;
 
-        const result = await Swal.fire({
-        title: "Unsaved Changes",
-        text: "You have unsaved changes. Are you sure you want to go back?",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonText: "Leave",
-        cancelButtonText: "Stay",
-        });
-
-        if (result.isConfirmed) {
-        allowBack = true; // ✅ allow next pop
-        history.back();   // ✅ go back again now
-        } else {
-        history.pushState(null, "", window.location.href); // ❌ re-inject if canceled
-        }
+      const shouldLeave = await showUnsavedChangesDialog();
+      if (shouldLeave) {
+        allowBack = true;
+        window.history.go(-1); // ✅ Let browser handle real back navigation
+      } else {
+        history.pushState(null, "", window.location.href); // ❌ Prevent back
+      }
     };
 
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
-    }, [hasUnsavedChanges]);
+  }, [hasUnsavedChanges]);
 };

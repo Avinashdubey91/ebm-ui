@@ -8,9 +8,8 @@ import * as FaIcons from 'react-icons/fa';
 import { useMenuData } from '../hooks/useMenuData';
 import type { SideNavigationMenuDTO, SideNavigationSubMenuDTO } from '../../../types/menuTypes';
 import type { IconType } from 'react-icons';
-import Swal from 'sweetalert2';
 
-const Sidebar: React.FC<{ hasUnsavedChanges: boolean }> = ({ hasUnsavedChanges }) => {
+const Sidebar: React.FC<{ hasUnsavedChanges?: boolean }> = ({ hasUnsavedChanges = false }) => {
   const { collapsed, toggleSidebar, isSubmenuOpen, toggleSubmenu } = useSidebarState();
   const [searchQuery, setSearchQuery] = useState('');
   const { menus, loading } = useMenuData();
@@ -122,31 +121,7 @@ const Sidebar: React.FC<{ hasUnsavedChanges: boolean }> = ({ hasUnsavedChanges }
                       {subMenus.map((child, index) => (
                         <li key={`submenu-${child.sideNavigationSubMenuId ?? `${child.subMenuName}-${index}`}`} className="px-4">
                           <a
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              const base = `/${DYNAMIC_MENU_BASE_PATH}`;
-                              const menuPath = (item.routePath ?? '').replace(/^\/|\/$/g, '');
-                              const subPath = (child.routePath ?? '').replace(/^\/|\/$/g, '');
-                              const path = `${base}/${menuPath}/${subPath}`;
-
-                              if (hasUnsavedChanges) {
-                                Swal.fire({
-                                  title: "Unsaved Changes",
-                                  text: "You have unsaved changes. Are you sure you want to leave this page?",
-                                  icon: "warning",
-                                  showCancelButton: true,
-                                  confirmButtonText: "Yes, leave",
-                                  cancelButtonText: "No, stay",
-                                }).then((result) => {
-                                  if (result.isConfirmed) {
-                                    navigate(path);
-                                  }
-                                });
-                              } else {
-                                navigate(path);
-                              }
-                            }}
+                            href={`/${DYNAMIC_MENU_BASE_PATH}/${(item.routePath ?? '').replace(/^\/|\/$/g, '')}/${(child.routePath ?? '').replace(/^\/|\/$/g, '')}`}
                             className="dashboard-ebm-nav-link small px-4 py-2 d-block"
                           >
                             {child.subMenuName}
