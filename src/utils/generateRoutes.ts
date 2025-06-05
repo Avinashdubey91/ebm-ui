@@ -52,7 +52,7 @@ export const generateDynamicRoutes = (
     const children: RouteObject[] = [];
 
     for (const submenu of menu.subMenus ?? []) {
-      if (!submenu.routePath || !submenu.componentName || !submenu.isActive)
+      if (!submenu.routePath || !submenu.componentName)
         continue;
 
       const modulePath = componentMap[submenu.componentName];
@@ -100,20 +100,34 @@ export const generateDynamicRoutes = (
         ),
       });
 
-      dynamicRoutes.push({
-        path: menu.routePath.replace(/^\//, ""), // remove leading slash
-        children,
-      });
+      const routeParts = menu.routePath.replace(/^\//, "").split("/"); // ["dashboard", "users"]
+
+      // If path is "dashboard/users", split to ["dashboard", "users"]
+      // Then nest accordingly
+      const parent: RouteObject = { path: routeParts[0], children: [] };
+      let current = parent;
+
+      for (let i = 1; i < routeParts.length; i++) {
+        const newChild = { path: routeParts[i], children: [] };
+        current.children!.push(newChild);
+        current = newChild;
+      }
+
+      current.children!.push(...children);
+      dynamicRoutes.push(parent);
+
     }
   }
 
-  // console.log(
-  //   '📌 Final Dynamic Routes:',
-  //   dynamicRoutes.map((r) => ({
-  //     path: r.path,
-  //     children: r.children?.map((c) => c.path),
-  //   }))
-  // );
+  console.log(
+  '📌 Final Dynamic Routes:',
+  dynamicRoutes.map((r) => ({
+    parentPath: r.path,
+    children: r.children?.map((c) =>
+      typeof c.path === 'string' ? c.path : '[no-path]'
+    ),
+  }))
+);
 
   return dynamicRoutes;
 };

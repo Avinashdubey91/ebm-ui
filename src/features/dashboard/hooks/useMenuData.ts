@@ -21,8 +21,7 @@ export const useMenuData = () => {
           ...menu,
           subMenus: subMenus.filter(
             sub =>
-              sub.sideNavigationMenuId === menu.sideNavigationMenuId &&
-              sub.isActive === true
+              sub.sideNavigationMenuId === menu.sideNavigationMenuId
           )
         }));
 

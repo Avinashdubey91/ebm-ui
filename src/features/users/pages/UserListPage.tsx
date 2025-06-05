@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import UserListTable from '../forms/UserListing';
+import { useCurrentMenu } from '../../../hooks/useCurrentMenu';
 
 const UserListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -9,16 +10,18 @@ const UserListPage: React.FC = () => {
     navigate('/dashboard/users/create');
   };
 
+  const { singularMenuName, pluralMenuName } = useCurrentMenu();
+
   return (
     <div className="page-listing">
       <div className="inner-area-header-container d-flex align-items-center justify-content-between px-3">
         <h4 className="inner-area-header-title flex-grow-1 text-center m-0">
-          MANAGE USERS
+          MANAGE {pluralMenuName.toUpperCase()}
         </h4>
         <div style={{ flexShrink: 0 }}>
           <button className="btn btn-success btn-md" onClick={handleAddUser}>
             <i className="fa fa-plus me-2" />
-            Add New User
+            Add New {singularMenuName}
           </button>
         </div>
       </div>
