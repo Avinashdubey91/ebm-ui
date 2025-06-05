@@ -17,5 +17,6 @@ export interface SideNavigationMenuDTO {
   sortOrder: number;
   isActive: boolean;
   isDeleted: boolean;
+  parentListPath?: string; // ✅ Add this for navigation context
   subMenus?: SideNavigationSubMenuDTO[];
 }

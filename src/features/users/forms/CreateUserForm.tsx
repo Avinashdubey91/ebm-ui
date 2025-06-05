@@ -11,9 +11,10 @@ import { useFormNavigationGuard } from "../../../hooks/useFormNavigationGuard";
 
 interface CreateUserFormProps {
   userId?: number;
+  onUnsavedChange?: (unsaved: boolean) => void; // ✅ new prop
 }
 
-const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
+const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId, onUnsavedChange }) => {
   const [formData, setFormData] = useState<UserDTO>({
     userName: "",
     firstName: "",
@@ -114,6 +115,10 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
     });
   }, [formData]);
 
+  useEffect(() => {
+    onUnsavedChange?.(hasUnsavedChanges);
+  }, [hasUnsavedChanges, onUnsavedChange]);
+
   useFormNavigationGuard(hasUnsavedChanges && !isSubmitting);
 
   const handleChange = (
@@ -136,7 +141,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
 
   const resetForm = () => {
     const empty: UserDTO = {
-      userName: "",
+      userName: formData.userName,
       firstName: "",
       lastName: "",
       email: "",
@@ -240,6 +245,23 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
     handleSubmit({ preventDefault: () => {} });
   };
 
+  useEffect(() => {
+    if (!userId) {
+      const firstLetter = formData.firstName.trim().charAt(0);
+      const lastNameParts = formData.lastName.trim().split(/\s+/);
+      const lastWord = lastNameParts[lastNameParts.length - 1];
+
+      if (firstLetter && lastWord) {
+        const computedUserName = `${firstLetter}${lastWord}`.replace(/\s/g, "").trim();
+        const capitalizedUserName = computedUserName.charAt(0).toUpperCase() + computedUserName.slice(1);
+        setFormData((prev) => ({
+          ...prev,
+          userName: capitalizedUserName,
+        }));
+      }
+    }
+  }, [formData.firstName, formData.lastName, userId]);
+
   return (
     <>
       <div className="p-4 position-relative">
@@ -266,7 +288,8 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 className="form-control"
                 value={formData.userName}
                 onChange={handleChange}
-                disabled={!!userId}
+                disabled
+                title="Username is auto-generated and cannot be modified"
                 required
               />
             </div>
@@ -278,6 +301,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 className="form-control"
                 value={formData.firstName}
                 onChange={handleChange}
+                disabled={!!userId}
                 required
               />
             </div>
@@ -289,6 +313,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId }) => {
                 className="form-control"
                 value={formData.lastName}
                 onChange={handleChange}
+                disabled={!!userId}
                 required
               />
             </div>

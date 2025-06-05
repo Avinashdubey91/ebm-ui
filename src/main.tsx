@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import './index.css';
 import { NotificationProvider } from './context/NotificationProvider';
 import { DashboardProvider } from './features/dashboard/context/DashboardProvider';
+import { MenuProvider } from './context/MenuProvider';
 import AppEntry from './AppEntry';
 import './styles/_common.scss';
 import './styles/_listing.scss';
@@ -22,7 +23,9 @@ createRoot(document.getElementById('root')!).render(
     >
       <NotificationProvider>
         <DashboardProvider>
-          <AppEntry />
+           <MenuProvider>
+            <AppEntry />
+          </MenuProvider>
         </DashboardProvider>
       </NotificationProvider>
     </ConfigProvider>
