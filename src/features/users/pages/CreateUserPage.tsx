@@ -24,7 +24,7 @@ const CreateUserPage: React.FC = () => {
         <h4 className="inner-area-header-title m-0">
           {userId ? 'EDIT' : 'ADD NEW'} {singularMenuName.toUpperCase()}
         </h4>
-        <div style={{ flexShrink: 0 }}>
+        <div className="pe-2" style={{ flexShrink: 0 }}>
           <button className="btn btn-light btn-md" onClick={handleBack}>
             <i className="fa fa-arrow-left me-2" />
             Back

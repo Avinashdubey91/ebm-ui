@@ -5,7 +5,7 @@ import { useDashboardContext } from '../context/useDashboardContext';
 import { FaUser, FaToggleOn, FaToggleOff, FaSignOutAlt, FaCalendarAlt } from 'react-icons/fa';
 import { useNotificationContext } from '../../../hooks/useNotificationContext';
 import { Link, useNavigate } from 'react-router-dom';
-import { getUserProfile } from '../../../api/userService';
+import { getUserProfile } from '../../../api/userProfileService';
 import { markNotificationAsRead } from '../../../api/notificationApi';
 import type { UserProfile } from '../../../types/UserProfile';
 import ChangePasswordModal from '../../auth/pages/ChangePasswordModal';

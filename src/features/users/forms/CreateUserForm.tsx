@@ -8,13 +8,20 @@ import Swal from "sweetalert2";
 import DateInput from "../../../components/common/DateInput";
 import { useNavigate } from "react-router-dom";
 import { useFormNavigationGuard } from "../../../hooks/useFormNavigationGuard";
+import {
+  checkUsernameAvailability,
+  suggestUsernames,
+} from "../../../api/userProfileService";
 
 interface CreateUserFormProps {
   userId?: number;
-  onUnsavedChange?: (unsaved: boolean) => void; // ✅ new prop
+  onUnsavedChange?: (unsaved: boolean) => void;
 }
 
-const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId, onUnsavedChange }) => {
+const CreateUserForm: React.FC<CreateUserFormProps> = ({
+  userId,
+  onUnsavedChange,
+}) => {
   const [formData, setFormData] = useState<UserDTO>({
     userName: "",
     firstName: "",
@@ -40,13 +47,18 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId, onUnsavedChange
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const initialFormRef = useRef<UserDTO | null>(null);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [isUsernameAvailable, setIsUsernameAvailable] = useState(true);
+  const [usernameSuggestions, setUsernameSuggestions] = useState<string[]>([]);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wasSuggestionSelected = useRef(false);
 
   useEffect(() => {
     if (!userId) {
       initialFormRef.current = { ...formData };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]); // ✅ add userId (you don't need formData here)
+  }, [userId]);
 
   useEffect(() => {
     fetchUserRoles()
@@ -202,17 +214,20 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId, onUnsavedChange
     try {
       const form = buildFormData();
 
-      if (userId) {
-        await updateUser(userId, form, username);
-        await Swal.fire({
-          icon: "success",
-          title: "Success",
-          text: "User updated successfully!",
-          confirmButtonColor: "#28a745",
-          timer: 1500,
-          showConfirmButton: true,
-        });
-      } else {
+      // ✅ Check username availability just before submission (only for new user)
+      if (!userId) {
+        const isAvailable = await checkUsernameAvailability(formData.userName);
+        if (!isAvailable) {
+          await Swal.fire({
+            icon: "warning",
+            title: "Username already taken",
+            text: "Please choose a different username from the suggestions.",
+            confirmButtonColor: "#f27474",
+          });
+          setIsSubmitting(false);
+          return; // ⛔ stop submission
+        }
+
         await createUser(form, username);
         await Swal.fire({
           icon: "success",
@@ -221,6 +236,17 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId, onUnsavedChange
           confirmButtonColor: "#28a745",
           timer: 1500,
           showConfirmButton: false,
+        });
+      } else {
+        // ✅ Edit mode logic
+        await updateUser(userId, form, username);
+        await Swal.fire({
+          icon: "success",
+          title: "Success",
+          text: "User updated successfully!",
+          confirmButtonColor: "#28a745",
+          timer: 1500,
+          showConfirmButton: true,
         });
       }
 
@@ -246,20 +272,47 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId, onUnsavedChange
   };
 
   useEffect(() => {
-    if (!userId) {
-      const firstLetter = formData.firstName.trim().charAt(0);
-      const lastNameParts = formData.lastName.trim().split(/\s+/);
-      const lastWord = lastNameParts[lastNameParts.length - 1];
+    if (userId) return; // 👈 don't auto-generate in edit mode
 
-      if (firstLetter && lastWord) {
-        const computedUserName = `${firstLetter}${lastWord}`.replace(/\s/g, "").trim();
-        const capitalizedUserName = computedUserName.charAt(0).toUpperCase() + computedUserName.slice(1);
-        setFormData((prev) => ({
-          ...prev,
-          userName: capitalizedUserName,
-        }));
-      }
+    if (wasSuggestionSelected.current) {
+      wasSuggestionSelected.current = false;
+      return; // ✅ do NOT overwrite selected username
     }
+
+    const f = formData.firstName.trim();
+    const l = formData.lastName.trim();
+    
+    if (!f || !l) {
+      // Clear the username field if one of the names is missing
+      setFormData((prev) => ({ ...prev, userName: "" }));
+      setIsUsernameAvailable(true);
+      return;
+    }
+
+    const baseUsername = `${f[0]}${l}`;
+    setFormData((prev) => ({ ...prev, userName: baseUsername }));
+
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+
+    setIsCheckingUsername(true); // ⏳ show spinner immediately
+
+    debounceTimer.current = setTimeout(() => {
+      checkUsernameAvailability(baseUsername)
+        .then((available) => {
+          setIsUsernameAvailable(available);
+          if (!available) {
+            suggestUsernames(f, l).then(setUsernameSuggestions);
+          } else {
+            setUsernameSuggestions([]);
+          }
+        })
+        .catch(() => setUsernameSuggestions([]))
+        .finally(() => setIsCheckingUsername(false));
+    }, 800); // ⏱️ wait 800ms before checking
+
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
   }, [formData.firstName, formData.lastName, userId]);
 
   return (
@@ -282,16 +335,41 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId, onUnsavedChange
             {/* === Basic Info === */}
             <div className="col-md-4 mb-2">
               <FormLabel label="UserName" htmlFor="userName" required />
-              <input
-                id="userName"
-                name="userName"
-                className="form-control"
-                value={formData.userName}
-                onChange={handleChange}
-                disabled
-                title="Username is auto-generated and cannot be modified"
-                required
-              />
+              <div className="input-group">
+                <input
+                  id="userName"
+                  name="userName"
+                  className={`form-control pe-5 ${
+                    !isCheckingUsername && !isUsernameAvailable
+                      ? "is-invalid text-danger"
+                      : !isCheckingUsername && isUsernameAvailable && formData.userName !== ""
+                      ? "is-valid text-success"
+                      : ""
+                  }`}
+                  value={formData.userName}
+                  onChange={handleChange}
+                  disabled
+                  title="Username is auto-generated and cannot be modified"
+                  required
+                />
+                {isCheckingUsername && (
+                  <span
+                    className="position-absolute"
+                    style={{
+                      top: "50%",
+                      right: "12px",
+                      transform: "translateY(-50%)",
+                      pointerEvents: "none",
+                      color: "#6c757d",
+                    }}
+                  >
+                    <i
+                      className="fa fa-spinner fa-spin"
+                      style={{ color: "#0d6efd" }}
+                    ></i>
+                  </span>
+                )}
+              </div>
             </div>
             <div className="col-md-4 mb-2">
               <FormLabel label="First Name" htmlFor="firstName" required />
@@ -317,6 +395,35 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId, onUnsavedChange
                 required
               />
             </div>
+            {/* ✅ Suggestions on a new row (full-width, below username row) */}
+            {!isCheckingUsername && usernameSuggestions.length > 0 && (
+              <div className="row">
+                <div className="col-12 mb-2">
+                  <span className="fw-bold me-2" style={{ color: "#212529" }}>
+                    Suggestions:
+                  </span>
+                  {usernameSuggestions.map((s, i) => (
+                    <span
+                      key={i}
+                      className="badge me-2"
+                      style={{
+                        backgroundColor: "#05f56d",
+                        color: "#003c21",
+                        cursor: "pointer",
+                      }}
+                      onClick={() => {
+                        wasSuggestionSelected.current = true; // 🛑 Prevent auto-override
+                        setFormData((prev) => ({ ...prev, userName: s }));
+                        setIsUsernameAvailable(true);         // ✅ Apply green tick mark styling
+                        setUsernameSuggestions([]);          // ✅ Hide suggestions
+                      }}
+                    >
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* === Contact Info === */}
             <div className="col-md-4 mb-2">
@@ -357,7 +464,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ userId, onUnsavedChange
               />
             </div>
             <div className="col-md-4 mb-2">
-              <FormLabel label="Pin Code" htmlFor="pinCode" />
+              <FormLabel label="Pin Code" htmlFor="pinCode" required/>
               <input
                 id="pinCode"
                 name="pinCode"

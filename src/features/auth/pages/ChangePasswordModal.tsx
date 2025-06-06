@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../../../components/Modal';
 import { sendOtp, verifyOtp } from '../../../api/otpService';
 import { changePasswordWithOtp } from '../../../api/passwordService';
-import { getUserProfile } from '../../../api/userService';
+import { getUserProfile } from '../../../api/userProfileService';
 import PasswordSuccessModal from './PasswordSuccessModal';
 
 interface Props {
