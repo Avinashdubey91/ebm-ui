@@ -186,7 +186,7 @@ const UserListTable: React.FC = () => {
                     <strong>DOB:</strong> {u.dob ? new Date(u.dob).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : '-'} |{" "}
                     <strong>Street:</strong> {u.street || "-"} |{" "}
                     <strong>City:</strong> {u.city || "-"} |{" "}
-                    <strong>Country:</strong> {u.country || "-"}
+                    <strong>Country:</strong> {u.countryName || "-"}
                     <br />
                     <strong>Remarks:</strong> {u.remarks || "-"}
                   </td>

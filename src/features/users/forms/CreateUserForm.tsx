@@ -12,6 +12,10 @@ import {
   checkUsernameAvailability,
   suggestUsernames,
 } from "../../../api/userProfileService";
+import { fetchCountries, fetchDistrictsByStateId, fetchStatesByCountryId } from "../../../api/locationApi";
+import type { CountryDTO } from "../../../types/CountryDTO";
+import type { StateDTO } from "../../../types/StateDTO";
+import type { DistrictDTO } from "../../../types/DistrictDTO";
 
 interface CreateUserFormProps {
   userId?: number;
@@ -31,7 +35,6 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
     addressLine1: "",
     street: "",
     city: "",
-    country: "",
     gender: "",
     dob: "",
     remarks: "",
@@ -52,6 +55,9 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
   const [usernameSuggestions, setUsernameSuggestions] = useState<string[]>([]);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wasSuggestionSelected = useRef(false);
+  const [countries, setCountries] = useState<CountryDTO[]>([]);
+  const [states, setStates] = useState<StateDTO[]>([]);
+  const [districts, setDistricts] = useState<DistrictDTO[]>([]);
 
   useEffect(() => {
     if (!userId) {
@@ -80,7 +86,9 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
             addressLine1: user.addressLine1,
             street: user.street,
             city: user.city,
-            country: user.country,
+            countryId: user.countryId,
+            stateId: user.stateId,
+            districtId: user.districtId,
             gender: user.gender,
             dob: user.dob ? new Date(user.dob).toISOString().split("T")[0] : "",
             remarks: user.remarks,
@@ -143,6 +151,17 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
     }));
   };
 
+  const handleSelectChange = (
+    e: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value ? parseInt(value, 10) : undefined,
+    }));
+  };
+
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
@@ -161,7 +180,9 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
       addressLine1: "",
       street: "",
       city: "",
-      country: "",
+      countryId: undefined,
+      stateId: undefined,
+      districtId: undefined,
       gender: "",
       dob: "",
       remarks: "",
@@ -187,7 +208,9 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
       form.append("AddressLine1", formData.addressLine1);
     if (formData.street) form.append("Street", formData.street);
     if (formData.city) form.append("City", formData.city);
-    if (formData.country) form.append("Country", formData.country);
+    if (formData.countryId !== undefined) form.append("CountryId", formData.countryId.toString());
+    if (formData.stateId !== undefined) form.append("StateId", formData.stateId.toString());
+    if (formData.districtId !== undefined) form.append("DistrictId", formData.districtId.toString());
     if (formData.gender) form.append("Gender", formData.gender);
     if (formData.dob) form.append("DOB", formData.dob);
     if (formData.remarks) form.append("Remarks", formData.remarks);
@@ -314,6 +337,38 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
   }, [formData.firstName, formData.lastName, userId]);
+
+  useEffect(() => {
+    fetchCountries()
+      .then(setCountries)
+      .catch((err) => console.error("❌ Failed to fetch countries", err));
+  }, []);
+
+  useEffect(() => {
+    if (formData.countryId) {
+      fetchStatesByCountryId(formData.countryId)
+        .then(setStates)
+        .catch((err) => console.error("❌ Failed to fetch states", err));
+    } else {
+      setStates([]);
+    }
+
+    // Reset dependent fields
+    setFormData(prev => ({ ...prev, stateId: undefined, districtId: undefined }));
+      setDistricts([]);
+    }, [formData.countryId]);
+
+    useEffect(() => {
+      if (formData.stateId) {
+        fetchDistrictsByStateId(formData.stateId)
+          .then(setDistricts)
+          .catch((err) => console.error("❌ Failed to fetch districts", err));
+      } else {
+        setDistricts([]);
+      }
+
+      setFormData(prev => ({ ...prev, districtId: undefined }));
+    }, [formData.stateId]);
 
   return (
     <>
@@ -507,6 +562,67 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
                 onChange={handleChange}
               />
             </div>
+            {/* === Country === */}
+            <div className="col-md-4 mb-2">
+              <FormLabel label="Country" htmlFor="countryId" required />
+              <select
+                id="countryId"
+                name="countryId"
+                className="form-select"
+                value={formData.countryId ?? ""}
+                onChange={handleSelectChange}
+                required
+              >
+                <option value="">-- Select Country --</option>
+                {(countries ?? []).map((country) => (
+                  <option key={country.countryId} value={country.countryId}>
+                    {country.countryName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* === State === */}
+            <div className="col-md-4 mb-2">
+              <FormLabel label="State" htmlFor="stateId" required />
+              <select
+                id="stateId"
+                name="stateId"
+                className="form-select"
+                value={formData.stateId ?? ""}
+                onChange={handleSelectChange}
+                required
+                disabled={!formData.countryId}
+              >
+                <option value="">-- Select State --</option>
+                {states.map((state) => (
+                  <option key={state.stateId} value={state.stateId}>
+                    {state.stateName} ({state.stateCode})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* === District === */}
+            <div className="col-md-4 mb-2">
+              <FormLabel label="District" htmlFor="districtId" required />
+              <select
+                id="districtId"
+                name="districtId"
+                className="form-select"
+                value={formData.districtId ?? ""}
+                onChange={handleSelectChange}
+                required
+                disabled={!formData.stateId}
+              >
+                <option value="">-- Select District --</option>
+                {districts.map((district) => (
+                  <option key={district.districtId} value={district.districtId}>
+                    {district.districtName}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="col-md-4 mb-2">
               <FormLabel label="City / District" htmlFor="city" />
               <input
@@ -517,16 +633,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
                 onChange={handleChange}
               />
             </div>
-            <div className="col-md-4 mb-2">
-              <FormLabel label="Country" htmlFor="country" />
-              <input
-                id="country"
-                name="country"
-                className="form-control"
-                value={formData.country ?? ""}
-                onChange={handleChange}
-              />
-            </div>
+            
 
             {/* === Other Info === */}
             <div className="col-md-4 mb-2">
@@ -553,7 +660,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
                 }
               />
             </div>
-            <div className="col-md-8 mb-2">
+            <div className="col-md-4 mb-2">
               <FormLabel label="Remarks" htmlFor="remarks" />
               <input
                 id="remarks"
@@ -563,7 +670,22 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
                 onChange={handleChange}
               />
             </div>
-
+            {/* === Profile Picture & Buttons === */}
+            <div className="col-md-4 mb-2">
+              <FormLabel label="Profile Picture" htmlFor="profilePictureFile" />
+              <div className="d-flex align-items-center gap-3">
+                <input
+                  ref={fileInputRef}
+                  id="profilePictureFile"
+                  name="profilePictureFile"
+                  type="file"
+                  accept="image/*"
+                  className="form-control"
+                  onChange={handleFileChange}
+                  style={{ flex: "1" }}
+                />
+              </div>
+            </div>
             <div className="col-md-4 mb-2">
               <FormLabel label="User Role" htmlFor="roleId" required />
               <select
@@ -589,25 +711,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
                 )}
               </select>
             </div>
-
-            {/* === Profile Picture & Buttons === */}
-            <div className="col-md-6 mb-2">
-              <FormLabel label="Profile Picture" htmlFor="profilePictureFile" />
-              <div className="d-flex align-items-center gap-3">
-                <input
-                  ref={fileInputRef}
-                  id="profilePictureFile"
-                  name="profilePictureFile"
-                  type="file"
-                  accept="image/*"
-                  className="form-control"
-                  onChange={handleFileChange}
-                  style={{ flex: "1" }}
-                />
-              </div>
-            </div>
-
-            <div className="col-md-6 mb-2 d-flex align-items-end">
+            <div className="col-md-4 mb-2 d-flex align-items-end">
               <div className="d-flex flex-wrap w-100 gap-2">
                 <button
                   type="submit"

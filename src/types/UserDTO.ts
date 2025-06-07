@@ -6,7 +6,6 @@ export interface UserDTO {
   addressLine1?: string;
   street?: string;
   city?: string;
-  country?: string;
   gender?: string;
   dob?: string; // 🟡 string (ISO format) — convert to Date if needed
   pinCode?: string;
@@ -16,4 +15,10 @@ export interface UserDTO {
   roleName?: string;
   profilePicture?: string;
   remarks?: string;
+  countryId?: number;
+  countryName?: string;
+  stateId?: number;
+  stateName?: string;
+  districtId?: number;
+  districtName?: string;
 }
