@@ -21,7 +21,7 @@ const AppEntry: React.FC = () => {
 
     if (dashboardRoute && Array.isArray(dashboardRoute.children)) {
       const dynamicRoutes = generateDynamicRoutes(menus);
-      dashboardRoute.children.push(...dynamicRoutes); // ✅ Merge correctly
+      dashboardRoute.children.push(...dynamicRoutes);
     }
 
     return createBrowserRouter(routes);

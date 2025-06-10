@@ -66,9 +66,14 @@ const UserListTable: React.FC = () => {
     });
 
     if (result.isConfirmed) {
-      const deletedBy = localStorage.getItem("username") ?? "system";
+      const deletedBy = parseInt(localStorage.getItem("userId") ?? "0", 10);
+      if (!deletedBy) {
+        Swal.fire("Error", "Your userId is missing. Please login again.", "error");
+        return;
+      }
+
       try {
-        await deleteUser(userId, deletedBy);
+        await deleteUser(userId, deletedBy); // ✅ No more TS error
         setUsers((prev) => prev.filter((u) => u.userId !== userId));
         Swal.fire("Deleted!", "User has been deleted.", "success");
       } catch (err) {

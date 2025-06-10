@@ -46,9 +46,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     });
   }, [isReady]); // ✅ Only when ready
 
-  return (
+  return isReady ?(
     <NotificationContext.Provider value={{ notifications, setNotifications }}>
       {children}
     </NotificationContext.Provider>
-  );
+  ) : null;
 };

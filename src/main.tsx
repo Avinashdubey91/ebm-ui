@@ -1,7 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
-import { NotificationProvider } from './context/NotificationProvider';
 import { DashboardProvider } from './features/dashboard/context/DashboardProvider';
 import { MenuProvider } from './context/MenuProvider';
 import AppEntry from './AppEntry';
@@ -9,25 +8,26 @@ import './styles/_common.scss';
 import './styles/_listing.scss';
 import './styles/_forms.scss';
 import 'animate.css';
-import "react-datepicker/dist/react-datepicker.css"; // still needed for react-datepicker if used
+import "react-datepicker/dist/react-datepicker.css";
 import { ConfigProvider } from "antd";
+import { NotificationProvider } from './context/NotificationProvider';
 
-createRoot(document.getElementById('root')!).render(
+const token = localStorage.getItem('token');
+
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ConfigProvider
-      theme={{
-        token: {
-          fontFamily: "Segoe UI", // or your app-wide font
-        },
-      }}
-    >
-      <NotificationProvider>
-        <DashboardProvider>
-           <MenuProvider>
+    <ConfigProvider theme={{ token: { fontFamily: "Segoe UI" } }}>
+      <DashboardProvider>
+        <MenuProvider>
+          {token ? (
+            <NotificationProvider>
+              <AppEntry />
+            </NotificationProvider>
+          ) : (
             <AppEntry />
-          </MenuProvider>
-        </DashboardProvider>
-      </NotificationProvider>
+          )}
+        </MenuProvider>
+      </DashboardProvider>
     </ConfigProvider>
   </StrictMode>
 );

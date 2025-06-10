@@ -161,7 +161,6 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
     }));
   };
 
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
@@ -204,8 +203,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
     form.append("LastName", formData.lastName);
     if (formData.email) form.append("Email", formData.email);
     if (formData.mobile) form.append("Mobile", formData.mobile);
-    if (formData.addressLine1)
-      form.append("AddressLine1", formData.addressLine1);
+    if (formData.addressLine1) form.append("AddressLine1", formData.addressLine1);
     if (formData.street) form.append("Street", formData.street);
     if (formData.city) form.append("City", formData.city);
     if (formData.countryId !== undefined) form.append("CountryId", formData.countryId.toString());
@@ -215,8 +213,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
     if (formData.dob) form.append("DOB", formData.dob);
     if (formData.remarks) form.append("Remarks", formData.remarks);
     if (formData.pinCode) form.append("PinCode", formData.pinCode);
-    if (formData.roleId !== undefined)
-      form.append("RoleId", formData.roleId.toString());
+    if (formData.roleId !== undefined) form.append("RoleId", formData.roleId.toString());
     form.append("IsActive", "true");
 
     if (selectedFile) {
@@ -231,14 +228,15 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
     e: React.FormEvent<HTMLFormElement> | { preventDefault: () => void }
   ) => {
     e.preventDefault();
-    const username = localStorage.getItem("username") ?? "system";
+
+    const createdBy = parseInt(localStorage.getItem("userId") ?? "0"); // ✅ Use only for CreatedBy/ModifiedBy
     setIsSubmitting(true);
 
     try {
       const form = buildFormData();
 
-      // ✅ Check username availability just before submission (only for new user)
       if (!userId) {
+        // ✅ Creation Mode
         const isAvailable = await checkUsernameAvailability(formData.userName);
         if (!isAvailable) {
           await Swal.fire({
@@ -248,10 +246,10 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
             confirmButtonColor: "#f27474",
           });
           setIsSubmitting(false);
-          return; // ⛔ stop submission
+          return;
         }
 
-        await createUser(form, username);
+        await createUser(form, createdBy);
         await Swal.fire({
           icon: "success",
           title: "Success",
@@ -261,8 +259,9 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
           showConfirmButton: false,
         });
       } else {
-        // ✅ Edit mode logic
-        await updateUser(userId, form, username);
+        // ✅ Edit Mode
+        const modifiedBy = localStorage.getItem("userId") ?? "0";
+        await updateUser(userId, form, modifiedBy); // userId from props
         await Swal.fire({
           icon: "success",
           title: "Success",
@@ -346,29 +345,28 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
 
   useEffect(() => {
     if (formData.countryId) {
-      fetchStatesByCountryId(formData.countryId)
-        .then(setStates)
-        .catch((err) => console.error("❌ Failed to fetch states", err));
+      fetchStatesByCountryId(formData.countryId).then(setStates);
     } else {
       setStates([]);
     }
 
-    // Reset dependent fields
-    setFormData(prev => ({ ...prev, stateId: undefined, districtId: undefined }));
+    if (!userId) {
+      setFormData(prev => ({ ...prev, stateId: undefined, districtId: undefined }));
       setDistricts([]);
-    }, [formData.countryId]);
+    }
+  }, [formData.countryId, userId]);
 
-    useEffect(() => {
-      if (formData.stateId) {
-        fetchDistrictsByStateId(formData.stateId)
-          .then(setDistricts)
-          .catch((err) => console.error("❌ Failed to fetch districts", err));
-      } else {
-        setDistricts([]);
-      }
+  useEffect(() => {
+    if (formData.stateId) {
+      fetchDistrictsByStateId(formData.stateId).then(setDistricts);
+    } else {
+      setDistricts([]);
+    }
 
+    if (!userId) {
       setFormData(prev => ({ ...prev, districtId: undefined }));
-    }, [formData.stateId]);
+    }
+  }, [formData.stateId, userId]);
 
   return (
     <>

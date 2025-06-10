@@ -6,11 +6,11 @@ import type { UserDTO } from '../types/UserDTO';
  * @param data - FormData containing user details.
  * @param createdBy - Username of the creator.
  */
-export const createUser = async (data: FormData, createdBy: string) => {
+export const createUser = async (data: FormData, createdBy: number) => {
   return httpClient.post('/User/Create-New-User', data, {
     headers: {
       'Content-Type': 'multipart/form-data',
-      'CreatedBy': createdBy,
+      'CreatedBy': createdBy.toString(), // ✅ as string
     },
   });
 };
@@ -54,10 +54,10 @@ export const updateUser = async (id: number, data: FormData, modifiedBy: string)
  * @param id - User ID.
  * @param deletedBy - Username performing deletion.
  */
-export const deleteUser = async (id: number, deletedBy: string) => {
+export const deleteUser = async (id: number, deletedBy: number) => {
   return httpClient.delete(`/user/Delete-User/${id}`, {
     headers: {
-      'DeletedBy': deletedBy,
+      'DeletedBy': deletedBy.toString(),
     },
   });
 };

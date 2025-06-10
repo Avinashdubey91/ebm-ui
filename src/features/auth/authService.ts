@@ -9,6 +9,7 @@ interface LoginResponse {
   message: string;
   token: string;
   userId: number;
+  userName: string;
 }
 
 export const loginUser = async (credentials: LoginRequest): Promise<LoginResponse> => {

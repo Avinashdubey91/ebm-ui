@@ -7,6 +7,12 @@ export const useMenuData = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const isLoginPage = window.location.pathname.toLowerCase() === "/login";
+    if (isLoginPage) {
+      setLoading(false);
+      return;
+    }
+
     const loadMenus = async () => {
       try {
         const [mainMenus, subMenus] = await Promise.all([
@@ -14,14 +20,10 @@ export const useMenuData = () => {
           fetchSubMenus()
         ]);
 
-        console.log('✅ Fetched Menus:', mainMenus);
-        console.log('✅ Fetched SubMenus:', subMenus);
-
         const merged = mainMenus.map(menu => ({
           ...menu,
           subMenus: subMenus.filter(
-            sub =>
-              sub.sideNavigationMenuId === menu.sideNavigationMenuId
+            sub => sub.sideNavigationMenuId === menu.sideNavigationMenuId
           )
         }));
 
@@ -38,3 +40,4 @@ export const useMenuData = () => {
 
   return { menus, loading };
 };
+

@@ -45,22 +45,32 @@ const Login: React.FC = () => {
     try {
       const response = await loginUser({ userName: username, password });
 
-      // ✅ Store token and username for later use (like profile fetch)
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('username', username);
-      localStorage.setItem('userId', response.userId.toString());
-      localStorage.setItem('status', 'Online');
-      localStorage.setItem('status', 'Online'); // ✅ status saved
-      window.location.reload(); 
-      console.log("✅ Token stored before redirect:", response.token);
+      if (response.userId && response.token) {
+        // ✅ Store token & user info
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('userId', response.userId.toString());
+        localStorage.setItem('username', username);
+        localStorage.setItem('status', 'Online');
 
-      setModalType('success');
-      setModalMessage('Login Successful.');
+        console.log("✅ Token & User Info stored before redirect");
 
-      // ✅ Optional: redirect after a brief delay
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 1000);
+        // ✅ Dynamically start SignalR connection after login
+        const { startNotificationConnection } = await import('../../../api/signalR');
+        startNotificationConnection((notification) => {
+          console.log("🔔 Received notification:", notification);
+          // You can show toast or badge update here
+        });
+
+        setModalType('success');
+        setModalMessage('Login Successful.');
+
+        // ✅ Optional delay before navigating
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 1000);
+      } else {
+        throw new Error("Invalid login response: Missing user ID or token");
+      }
     } catch (error: unknown) {
       const err = error as ErrorResponse;
       const errorMessage = err.response?.data?.message || 'An unexpected error occurred.';
