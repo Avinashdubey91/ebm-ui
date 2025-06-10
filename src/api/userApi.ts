@@ -40,11 +40,15 @@ export const fetchUserById = async (id: number): Promise<UserDTO> => {
  * @param data - FormData containing updated user details.
  * @param modifiedBy - Username of the person modifying.
  */
-export const updateUser = async (id: number, data: FormData, modifiedBy: string) => {
+export const updateUser = async (
+  id: number,
+  data: FormData,
+  modifiedBy: number
+) => {
   return httpClient.put(`/user/Update-User/${id}`, data, {
     headers: {
       'Content-Type': 'multipart/form-data',
-      'ModifiedBy': modifiedBy,
+      'ModifiedBy': modifiedBy.toString(), // ✅ FIXED
     },
   });
 };

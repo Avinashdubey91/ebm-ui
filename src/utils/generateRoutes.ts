@@ -35,12 +35,15 @@ const componentMap: Record<string, string> = {
 
   // 📋 Navigation
   SideNavigationMenuComponent: "navigation/pages/SideNavigationMenuComponent",
-  SideNavigationSubMenuComponent: "navigation/pages/SideNavigationSubMenuComponent",
+  SideNavigationSubMenuComponent:
+    "navigation/pages/SideNavigationSubMenuComponent",
 };
 
 export const generateDynamicRoutes = (
   menus: SideNavigationMenuDTO[]
 ): RouteObject[] => {
+  //console.log("🧪 generateDynamicRoutes() CALLED with", menus.length, "menus");
+
   const dynamicRoutes: RouteObject[] = [];
 
   for (const menu of menus) {
@@ -49,7 +52,8 @@ export const generateDynamicRoutes = (
     const children: RouteObject[] = [];
 
     for (const submenu of menu.subMenus ?? []) {
-      if (!submenu.routePath || !submenu.componentName) continue;
+      if (!submenu.routePath || !submenu.componentName)
+        continue;
 
       const modulePath = componentMap[submenu.componentName];
       if (!modulePath) continue;
@@ -58,22 +62,26 @@ export const generateDynamicRoutes = (
       const loader = lazyModules[fullImportPath];
 
       const LazyComponent = loader
-        ? lazy(loader as () => Promise<{ default: React.ComponentType<unknown> }>)
+        ? lazy(
+            loader as () => Promise<{ default: React.ComponentType<unknown> }>
+          )
         : lazy(() => import("../components/NotFoundPlaceholder"));
 
-      // 🔹 Route for base path
+      // Normal Route
       children.push({
         path: submenu.routePath,
         element: React.createElement(LazyComponent),
       });
 
-      // 🔹 Optional dynamic ID route for forms like /create/:id
+      // Dynamically generate edit route if routePath matches known patterns
+      const editPatterns = ["create", "add"];
       const routeLower = submenu.routePath.toLowerCase();
-      const isFormRoute = ["create", "add"].some(
-        (p) => routeLower === p || routeLower.startsWith(`${p}-`)
-      );
 
-      if (isFormRoute) {
+      if (
+        editPatterns.some(
+          (p) => routeLower === p || routeLower.startsWith(`${p}-`)
+        )
+      ) {
         children.push({
           path: `${submenu.routePath}/:userId`,
           element: React.createElement(LazyComponent),
@@ -82,7 +90,7 @@ export const generateDynamicRoutes = (
     }
 
     if (children.length > 0) {
-      // 404 fallback
+      // Add fallback 404 for unknown subroutes
       children.push({
         path: "*",
         element: React.createElement(
@@ -92,30 +100,34 @@ export const generateDynamicRoutes = (
         ),
       });
 
-      const routeParts = menu.routePath.replace(/^\//, "").split("/");
+      const routeParts = menu.routePath.replace(/^\//, "").split("/"); // ["dashboard", "users"]
+
+      // If path is "dashboard/users", split to ["dashboard", "users"]
+      // Then nest accordingly
       const parent: RouteObject = { path: routeParts[0], children: [] };
       let current = parent;
 
       for (let i = 1; i < routeParts.length; i++) {
-        const newChild: RouteObject = { path: routeParts[i], children: [] };
+        const newChild = { path: routeParts[i], children: [] };
         current.children!.push(newChild);
         current = newChild;
       }
 
       current.children!.push(...children);
       dynamicRoutes.push(parent);
+
     }
   }
 
   console.log(
-    "📌 Final Dynamic Routes:",
-    dynamicRoutes.map((r) => ({
-      parentPath: r.path,
-      children: r.children?.map((c) =>
-        typeof c.path === "string" ? c.path : "[no-path]"
-      ),
-    }))
-  );
+  '📌 Final Dynamic Routes:',
+  dynamicRoutes.map((r) => ({
+    parentPath: r.path,
+    children: r.children?.map((c) =>
+      typeof c.path === 'string' ? c.path : '[no-path]'
+    ),
+  }))
+);
 
   return dynamicRoutes;
 };

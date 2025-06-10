@@ -197,32 +197,35 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
   };
 
   const buildFormData = (): FormData => {
-    const form = new FormData();
-    form.append("Username", formData.userName);
-    form.append("FirstName", formData.firstName);
-    form.append("LastName", formData.lastName);
-    if (formData.email) form.append("Email", formData.email);
-    if (formData.mobile) form.append("Mobile", formData.mobile);
-    if (formData.addressLine1) form.append("AddressLine1", formData.addressLine1);
-    if (formData.street) form.append("Street", formData.street);
-    if (formData.city) form.append("City", formData.city);
-    if (formData.countryId !== undefined) form.append("CountryId", formData.countryId.toString());
-    if (formData.stateId !== undefined) form.append("StateId", formData.stateId.toString());
-    if (formData.districtId !== undefined) form.append("DistrictId", formData.districtId.toString());
-    if (formData.gender) form.append("Gender", formData.gender);
-    if (formData.dob) form.append("DOB", formData.dob);
-    if (formData.remarks) form.append("Remarks", formData.remarks);
-    if (formData.pinCode) form.append("PinCode", formData.pinCode);
-    if (formData.roleId !== undefined) form.append("RoleId", formData.roleId.toString());
-    form.append("IsActive", "true");
+  const form = new FormData();
+  form.append("User.UserName", formData.userName);
+  form.append("User.FirstName", formData.firstName);
+  form.append("User.LastName", formData.lastName);
+  if (formData.email) form.append("User.Email", formData.email);
+  if (formData.mobile) form.append("User.Mobile", formData.mobile);
+  if (formData.addressLine1) form.append("User.AddressLine1", formData.addressLine1);
+  if (formData.street) form.append("User.Street", formData.street);
+  if (formData.city) form.append("User.City", formData.city);
+  if (formData.countryId !== undefined) form.append("User.CountryId", formData.countryId.toString());
+  if (formData.stateId !== undefined) form.append("User.StateId", formData.stateId.toString());
+  if (formData.districtId !== undefined) form.append("User.DistrictId", formData.districtId.toString());
+  if (formData.gender) form.append("User.Gender", formData.gender);
+  if (formData.dob) form.append("User.DOB", formData.dob);
+  if (formData.remarks) form.append("User.Remarks", formData.remarks);
+  if (formData.pinCode) form.append("User.PinCode", formData.pinCode);
+  if (formData.roleId !== undefined) form.append("User.RoleId", formData.roleId.toString());
+  form.append("User.IsActive", "true");
 
-    if (selectedFile) {
-      form.append("ProfilePicture", selectedFile);
-    } else if (formData.profilePicture) {
-      form.append("ProfilePicture", formData.profilePicture);
-    }
-    return form;
-  };
+  if (selectedFile) {
+    form.append("ProfilePicture", selectedFile); // ✅ actual file
+    form.append("User.ProfilePicture", "");      // ✅ wipe the string version
+  } else if (formData.profilePicture) {
+    form.append("User.ProfilePicture", formData.profilePicture); // ✅ explicitly map to User.ProfilePicture
+  }
+
+  return form;
+};
+
 
   const handleSubmit = async (
     e: React.FormEvent<HTMLFormElement> | { preventDefault: () => void }
@@ -260,8 +263,8 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
         });
       } else {
         // ✅ Edit Mode
-        const modifiedBy = localStorage.getItem("userId") ?? "0";
-        await updateUser(userId, form, modifiedBy); // userId from props
+        const modifiedBy = Number(localStorage.getItem("userId") ?? "0");
+        await updateUser(userId, form, modifiedBy);
         await Swal.fire({
           icon: "success",
           title: "Success",
