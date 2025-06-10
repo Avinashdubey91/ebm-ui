@@ -8,6 +8,7 @@ import * as FaIcons from 'react-icons/fa';
 import { useMenuData } from '../hooks/useMenuData';
 import type { SideNavigationMenuDTO, SideNavigationSubMenuDTO } from '../../../types/menuTypes';
 import type { IconType } from 'react-icons';
+import { Link } from "react-router-dom";
 
 const Sidebar: React.FC<{ hasUnsavedChanges?: boolean }> = ({ hasUnsavedChanges = false }) => {
   const { collapsed, toggleSidebar, isSubmenuOpen, toggleSubmenu } = useSidebarState();
@@ -120,12 +121,12 @@ const Sidebar: React.FC<{ hasUnsavedChanges?: boolean }> = ({ hasUnsavedChanges 
                     <ul className="dashboard-ebm-submenu list-unstyled" id={`${menuId}-submenu`}>
                       {subMenus.map((child, index) => (
                         <li key={`submenu-${child.sideNavigationSubMenuId ?? `${child.subMenuName}-${index}`}`} className="px-4">
-                          <a
-                            href={`/${DYNAMIC_MENU_BASE_PATH}/${(item.routePath ?? '').replace(/^\/|\/$/g, '')}/${(child.routePath ?? '').replace(/^\/|\/$/g, '')}`}
+                          <Link
+                            to={`/${DYNAMIC_MENU_BASE_PATH}/${(item.routePath ?? '').replace(/^\/|\/$/g, '')}/${(child.routePath ?? '').replace(/^\/|\/$/g, '')}`}
                             className="dashboard-ebm-nav-link small px-4 py-2 d-block"
                           >
                             {child.subMenuName}
-                          </a>
+                          </Link>
                         </li>
                       ))}
                     </ul>

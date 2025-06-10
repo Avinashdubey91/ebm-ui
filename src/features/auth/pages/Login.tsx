@@ -8,6 +8,7 @@ import Modal from '../../../components/Modal';
 import { useNavigate } from 'react-router-dom';
 import ChangePasswordModal from './ChangePasswordModal';
 import UnlockAccountModal from './UnlockAccountModal';
+import { clearSession } from '../../../utils/session';
 
 type ErrorResponse = {
   response?: {
@@ -29,13 +30,10 @@ const Login: React.FC = () => {
   const [showChangePwdModal, setShowChangePwdModal] = useState(false);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
 
-  // Optional: Redirect to dashboard if already logged in
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      navigate('/dashboard');
-    }
-  }, [navigate]);
+    clearSession();
+    console.log("🧹 Session forcibly cleared via /login route");
+  }, []);
 
   const togglePassword = () => {
     setShowPassword(prev => !prev);
