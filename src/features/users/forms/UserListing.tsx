@@ -5,6 +5,7 @@ import type { UserDTO } from "../../../types/UserDTO";
 import { FaEdit, FaTrash, FaSort, FaSortUp, FaSortDown } from "react-icons/fa";
 import Swal from "sweetalert2";
 import { abbreviateRole } from "../../../utils/abbreviate";
+import { toTitleCase, safeValue, formatDate } from "../../../utils/format";
 
 const UserListTable: React.FC = () => {
   const [users, setUsers] = useState<UserDTO[]>([]);
@@ -188,12 +189,14 @@ const UserListTable: React.FC = () => {
               {expandedRowId === u.userId && (
                 <tr>
                   <td colSpan={9} className="bg-light text-muted">
-                    <strong>DOB:</strong> {u.dob ? new Date(u.dob).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : '-'} |{" "}
-                    <strong>Street:</strong> {u.street || "-"} |{" "}
-                    <strong>City:</strong> {u.city || "-"} |{" "}
-                    <strong>Country:</strong> {u.countryName || "-"}
+                    <strong>DOB:</strong> {formatDate(u.dob)} |{" "}
+                    <strong>Street:</strong> {safeValue(u.street)} |{" "}
+                    <strong>City:</strong> {safeValue(u.city)} |{" "}
+                    <strong>District:</strong> {u.districtName ? toTitleCase(u.districtName) : "-"} |{" "}
+                    <strong>State:</strong> {u.stateName ? toTitleCase(u.stateName) : "-"} |{" "}
+                    <strong>Country:</strong> {u.countryName ? toTitleCase(u.countryName) : "-"}
                     <br />
-                    <strong>Remarks:</strong> {u.remarks || "-"}
+                    <strong>Remarks:</strong> {safeValue(u.remarks)}
                   </td>
                 </tr>
               )}
