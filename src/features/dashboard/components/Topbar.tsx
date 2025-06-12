@@ -10,6 +10,7 @@ import { markNotificationAsRead } from '../../../api/notificationApi';
 import type { UserProfile } from '../../../types/UserProfile';
 import ChangePasswordModal from '../../auth/pages/ChangePasswordModal';
 import { stopNotificationConnection } from '../../../api/signalR';
+import OverlayMessage from "../../../components/common/OverlayMessage";
 
 const Topbar: React.FC = () => {
   const user = useDashboardContext();
@@ -20,6 +21,7 @@ const Topbar: React.FC = () => {
   const [isDropdownOpen, setDropdownOpen] = useState(false);
   const [isProfileOpen, setProfileOpen] = useState(false);
   const [showChangePwdModal, setShowChangePwdModal] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const monthRef = useRef<HTMLInputElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -81,15 +83,20 @@ const Topbar: React.FC = () => {
   };
 
   const handleLogout = async () => {
+    setIsLoggingOut(true); // 👈 Show spinner overlay
+
     await stopNotificationConnection(); // ✅ Disconnect SignalR
 
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
-    localStorage.removeItem('userId');
-    localStorage.removeItem('status');
+    // Optional delay for visual effect
+    setTimeout(() => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('username');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('status');
 
-    user.setStatus('Offline');
-    navigate('/login');
+      user.setStatus('Offline');
+      navigate('/login');
+    }, 1500); // 🕒 Delay before redirect
   };
 
   const markNotificationAsReadHandler = async (id: number) => {
@@ -292,6 +299,12 @@ const Topbar: React.FC = () => {
           showUsername={false}
         />
       )}
+      <OverlayMessage
+        show={isLoggingOut}
+        message="Logging you out..."
+        subMessage=""
+        icon={<i className="fa fa-sign-out-alt fa-3x text-danger" />}
+      />
     </div>
   );
 };

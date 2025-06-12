@@ -13,6 +13,7 @@ import Modal from "../../../components/Modal";
 import ChangePasswordModal from "./ChangePasswordModal";
 import UnlockAccountModal from "./UnlockAccountModal";
 import { UseAuth } from "../../../context/UseAuth";
+import OverlayMessage from "../../../components/common/OverlayMessage";
 
 type ErrorResponse = {
   response?: {
@@ -32,6 +33,7 @@ const Login: React.FC = () => {
   const [modalMessage, setModalMessage] = useState("");
   const [showChangePwdModal, setShowChangePwdModal] = useState(false);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [isLoadingPostLogin, setIsLoadingPostLogin] = useState(false);
 
   useEffect(() => {
     clearSession();
@@ -59,17 +61,28 @@ const Login: React.FC = () => {
         console.log("🔔 Notification:", notification);
       }, response.token);
 
-      setModalType("success");
-      setModalMessage("Login Successful.");
+      setIsLoadingPostLogin(true);
 
-      setTimeout(() => navigate("/dashboard"), 1000);
+      // Optionally simulate backend boot time or wait for menus/SIGNALR
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 1000);
+
+      
     } catch (error: unknown) {
-      const err = error as ErrorResponse;
-      const msg =
-        err.response?.data?.message || "An unexpected error occurred.";
-      setModalType("error");
-      setModalMessage(msg);
-    }
+        const err = error as ErrorResponse & { message?: string };
+
+        let msg = "Something went wrong while trying to log in.";
+
+        if (err.response?.data?.message) {
+          msg = err.response.data.message;
+        } else if (err.message === "Network Error") {
+          msg =
+            "Cannot connect to the server. Please check your network or ensure the backend is running.";
+        }
+          setModalType("error");
+          setModalMessage(msg);
+      }
   };
 
   const closeModal = () => {
@@ -214,6 +227,11 @@ const Login: React.FC = () => {
           onClose={() => setShowUnlockModal(false)}
         />
       )}
+      <OverlayMessage
+        show={isLoadingPostLogin}
+        message="✅ You've successfully logged in!"
+        subMessage="Please wait while we load your dashboard..."
+      />
     </div>
   );
 };
