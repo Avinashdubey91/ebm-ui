@@ -9,6 +9,7 @@ import { getUserProfile } from '../../../api/userProfileService';
 import { markNotificationAsRead } from '../../../api/notificationApi';
 import type { UserProfile } from '../../../types/UserProfile';
 import ChangePasswordModal from '../../auth/pages/ChangePasswordModal';
+import { stopNotificationConnection } from '../../../api/signalR';
 
 const Topbar: React.FC = () => {
   const user = useDashboardContext();
@@ -79,9 +80,14 @@ const Topbar: React.FC = () => {
     setProfileOpen(prev => !prev);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await stopNotificationConnection(); // ✅ Disconnect SignalR
+
     localStorage.removeItem('token');
     localStorage.removeItem('username');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('status');
+
     user.setStatus('Offline');
     navigate('/login');
   };

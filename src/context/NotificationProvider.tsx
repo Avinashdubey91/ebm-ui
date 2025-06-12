@@ -1,54 +1,51 @@
+// src/context/NotificationProvider.tsx
 import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { NotificationContext } from './NotificationContext';
 import { startNotificationConnection } from '../api/signalR';
 import { fetchUserNotifications } from '../api/notificationApi';
 import type { NotificationItem } from '../types/notification';
+import { UseAuth } from './UseAuth';
+import { useMenuData } from '../features/dashboard/hooks/useMenuData';
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { token, userId, isAuthenticated, isReady } = UseAuth();
+  const { loading: menuLoading } = useMenuData();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [isReady, setIsReady] = useState(false);
-
-  // 🔄 Check login state changes
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const token = localStorage.getItem('token');
-      const userId = localStorage.getItem('userId');
-      if (token && userId) {
-        setIsReady(true); // ✅ Now ready to start SignalR
-        clearInterval(interval);
-      }
-    }, 500); // Poll every 500ms
-
-    return () => clearInterval(interval);
-  }, []);
+  const { pathname } = useLocation();
 
   useEffect(() => {
-    if (!isReady) return;
-
-    const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
-
-    if (!token || !userId) {
-      console.warn('⛔ Token or userId missing — skipping SignalR init');
+    // ✅ Safe to skip inside the hook — avoids ESLint violation
+    if (pathname === "/login") {
+      console.log("🚫 Skipping Notification setup on /login");
       return;
     }
+
+    if (!isReady || !isAuthenticated || !token || !userId || menuLoading) {
+      console.log("⏳ Notification setup pending:", {
+        isReady, isAuthenticated, token, userId, menuLoading
+      });
+      return;
+    }
+
+    console.log("✅ Initializing SignalR notification setup");
 
     fetchUserNotifications(userId)
       .then(setNotifications)
       .catch(console.error);
 
     startNotificationConnection((notification: NotificationItem) => {
-      console.log('📥 Received SignalR notification:', notification);
-      setNotifications(prev => {
-        if (prev.some(n => n.notificationId === notification.notificationId)) return prev;
-        return [notification, ...prev];
-      });
-    });
-  }, [isReady]); // ✅ Only when ready
+      setNotifications(prev =>
+        prev.some(n => n.notificationId === notification.notificationId)
+          ? prev
+          : [notification, ...prev]
+      );
+    }, token);
+  }, [pathname, isReady, isAuthenticated, token, userId, menuLoading]);
 
-  return isReady ?(
+  return (
     <NotificationContext.Provider value={{ notifications, setNotifications }}>
       {children}
     </NotificationContext.Provider>
-  ) : null;
+  );
 };

@@ -16,6 +16,7 @@ import { fetchCountries, fetchDistrictsByStateId, fetchStatesByCountryId } from 
 import type { CountryDTO } from "../../../types/CountryDTO";
 import type { StateDTO } from "../../../types/StateDTO";
 import type { DistrictDTO } from "../../../types/DistrictDTO";
+import LoaderOverlay from "../../../components/common/LoaderOverlay";
 
 interface CreateUserFormProps {
   userId?: number;
@@ -375,11 +376,8 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
     <>
       <div className="p-4 position-relative">
         {isSubmitting && (
-          <div className="form-overlay">
-            <div className="spinner-border big-red-spinner" role="status" />
-          </div>
+          <LoaderOverlay text="Saving user..." spinnerClass="spinner-border text-primary" />
         )}
-
         <form
           onSubmit={handleSubmit}
           style={{

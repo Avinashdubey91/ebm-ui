@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import UserListTable from '../forms/UserListing';
 import { useCurrentMenu } from '../../../hooks/useCurrentMenu';
@@ -9,6 +9,10 @@ const UserListPage: React.FC = () => {
   const handleAddUser = () => {
     navigate('/dashboard/users/create');
   };
+
+  useEffect(() => {
+    console.log("✅ UserListPage mounted");
+  }, []);
 
   const { singularMenuName, pluralMenuName } = useCurrentMenu();
 

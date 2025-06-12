@@ -1,7 +1,7 @@
 import * as signalR from '@microsoft/signalr';
 import type { NotificationItem } from '../types/notification';
 
-let connection: signalR.HubConnection;
+let connection: signalR.HubConnection | null = null;
 
 const isTokenExpired = (token: string): boolean => {
   try {
@@ -14,29 +14,59 @@ const isTokenExpired = (token: string): boolean => {
   }
 };
 
-export const startNotificationConnection = (onReceive: (notification: NotificationItem) => void) => {
-  const token = localStorage.getItem('token');
-
+export const startNotificationConnection = async (
+  onReceive: (notification: NotificationItem) => void,
+  token: string
+) => {
   if (!token || isTokenExpired(token)) {
-    console.warn('⛔ No valid token found or token expired — aborting SignalR connection');
+    console.warn('⛔ No valid token or token expired — aborting SignalR');
     return;
   }
 
-  console.log("🧪 [SignalR] Token used in accessTokenFactory:", token);
+  if (connection && connection.state === signalR.HubConnectionState.Connected) {
+    console.log("ℹ️ SignalR already connected.");
+    return;
+  }
 
-  connection = new signalR.HubConnectionBuilder()
-    .withUrl('https://localhost:5001/notificationHub', {
-      accessTokenFactory: () => token
-    })
-    .withAutomaticReconnect()
-    .build();
+  if (connection && connection.state === signalR.HubConnectionState.Connecting) {
+    console.log("🔄 SignalR is currently connecting...");
+    return;
+  }
 
-  connection
-    .start()
-    .then(() => console.log('✅ SignalR connected'))
-    .catch((err) => console.error('❌ SignalR connection failed:', err));
+  if (!connection || connection.state === signalR.HubConnectionState.Disconnected) {
+    connection = new signalR.HubConnectionBuilder()
+      .withUrl(`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '')}/notificationHub`, {
+        accessTokenFactory: () => token,
+      })
+      .withAutomaticReconnect()
+      .configureLogging(signalR.LogLevel.Information)
+      .build();
 
-  connection.on('ReceiveNotification', (notification: NotificationItem) => {
-    onReceive(notification);
-  });
+    connection.on('ReceiveNotification', (notification: NotificationItem) => {
+      console.log("📥 SignalR: Notification received", notification);
+      onReceive(notification);
+    });
+
+    try {
+      await connection.start();
+      console.log('✅ SignalR connected');
+    } catch (err) {
+      console.error('❌ SignalR failed to connect:', err);
+    }
+  }
+};
+
+export const stopNotificationConnection = async () => {
+  if (connection) {
+    try {
+      if (connection.state !== signalR.HubConnectionState.Disconnected) {
+        await connection.stop();
+        console.log("🔌 SignalR disconnected.");
+      }
+    } catch (err) {
+      console.error("❌ Error stopping SignalR", err);
+    } finally {
+      connection = null;
+    }
+  }
 };

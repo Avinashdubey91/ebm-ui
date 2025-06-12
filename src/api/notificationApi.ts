@@ -17,5 +17,3 @@ export const markNotificationAsRead = async (id: number) => {
     }
   });
 };
-
-

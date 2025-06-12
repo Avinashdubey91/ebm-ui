@@ -10,24 +10,18 @@ import './styles/_forms.scss';
 import 'animate.css';
 import "react-datepicker/dist/react-datepicker.css";
 import { ConfigProvider } from "antd";
-import { NotificationProvider } from './context/NotificationProvider';
-
-const token = localStorage.getItem('token');
+import { AuthProvider } from './context/AuthProvider';
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ConfigProvider theme={{ token: { fontFamily: "Segoe UI" } }}>
-      <DashboardProvider>
-        <MenuProvider>
-          {token ? (
-            <NotificationProvider>
-              <AppEntry />
-            </NotificationProvider>
-          ) : (
-            <AppEntry />
-          )}
-        </MenuProvider>
-      </DashboardProvider>
+      <AuthProvider>
+        <DashboardProvider>
+          <MenuProvider>
+            <AppEntry /> {/* ✅ Only AppEntry here, NotificationProvider moved inside */}
+          </MenuProvider>
+        </DashboardProvider>
+      </AuthProvider>
     </ConfigProvider>
   </StrictMode>
 );
