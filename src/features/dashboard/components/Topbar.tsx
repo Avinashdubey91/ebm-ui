@@ -303,7 +303,6 @@ const Topbar: React.FC = () => {
         show={isLoggingOut}
         message="Logging you out..."
         subMessage=""
-        icon={<i className="fa fa-sign-out-alt fa-3x text-danger" />}
       />
     </div>
   );
