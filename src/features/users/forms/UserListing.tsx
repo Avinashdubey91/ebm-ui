@@ -6,6 +6,7 @@ import { FaEdit, FaTrash, FaSort, FaSortUp, FaSortDown } from "react-icons/fa";
 import Swal from "sweetalert2";
 import { abbreviateRole } from "../../../utils/abbreviate";
 import { toTitleCase, safeValue, formatDate } from "../../../utils/format";
+import OverlayMessage from '../../../components/common/OverlayMessage'; // adjust path if needed
 
 const UserListTable: React.FC = () => {
   const [users, setUsers] = useState<UserDTO[]>([]);
@@ -84,8 +85,17 @@ const UserListTable: React.FC = () => {
     }
   };
 
-  if (loading) return <p>Loading...</p>;
-  if (users.length === 0) return <p>No users found.</p>;
+  if (loading)
+    return (
+      <OverlayMessage
+        show={true}
+        message="Fetching users..."
+        subMessage="Please wait while we load user data."
+      />
+    );
+
+  if (users.length === 0)
+    return <p>No users found.</p>;
 
   return (
     <div className="table-responsive p-2">

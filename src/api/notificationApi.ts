@@ -17,3 +17,14 @@ export const markNotificationAsRead = async (id: number) => {
     }
   });
 };
+
+// ✅ Mark all as read
+export const markAllNotificationsAsRead = async (userId: string) => {
+  return httpClient.put(`/notification/mark-all-read/${userId}`);
+};
+
+// ✅ Mark all as unread
+export const markAllNotificationsAsUnread = async (userId: string) => {
+  return httpClient.put(`/notification/mark-all-unread/${userId}`);
+};
+

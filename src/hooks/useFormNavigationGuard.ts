@@ -22,7 +22,7 @@ export const useFormNavigationGuard = (hasUnsavedChanges: boolean) => {
   useEffect(() => {
     const handleClick = async (e: MouseEvent) => {
       const anchor = (e.target as HTMLElement).closest("a");
-      if (!anchor) return;
+      if (!anchor || anchor.dataset.bypassGuard === "true") return;
 
       const href = anchor.getAttribute("href");
       const isExternal = anchor.host !== window.location.host;
