@@ -426,11 +426,19 @@ input[type="month"]::-webkit-calendar-picker-indicator {
   right: 0;
   z-index: 1050;
   min-width: 280px;
-  max-height: 300px;
-  overflow-y: auto;
+  max-height: 280px;
+  overflow-y: hidden;
   font-size: 0.85rem;
 }
 
+.custom-scroll {
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* IE 10+ */
+}
+
+.custom-scroll::-webkit-scrollbar {
+  display: none;                  /* Chrome, Safari, Edge */
+}
 
 /* ===================== Responsive (≤ 768px) ===================== */
 @media (max-width: 768px) {

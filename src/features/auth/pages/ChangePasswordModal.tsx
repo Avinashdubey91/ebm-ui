@@ -42,7 +42,7 @@ const ChangePasswordModal: React.FC<Props> = ({
 
       if (storedUsername) {
         getUserProfile(storedUsername)
-          .then((profile) => setEmail(profile.email))
+          .then((profile) => setEmail(profile.email ?? ""))
           .catch(() => setError("Failed to fetch user email for OTP."));
       }
     }

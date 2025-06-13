@@ -1,8 +1,8 @@
 import httpClient from './httpClient';
-import type { UserProfile } from '../types/UserProfile';
+import type { UserDTO } from "../types/UserDTO";
 
-export const getUserProfile = async (username: string): Promise<UserProfile> => {
-  const response = await httpClient.get<UserProfile>(`/User/Get-UserProfile/${username}`);
+export const getUserProfile = async (username: string): Promise<UserDTO> => {
+  const response = await httpClient.get<UserDTO>(`/User/Get-UserProfile/${username}`);
   return response.data;
 };
 

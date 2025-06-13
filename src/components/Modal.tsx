@@ -2,7 +2,7 @@ import React from 'react';
 import './Modal.css';
 
 interface ModalProps {
-  type: 'success' | 'error';
+  type: 'success' | 'error' | 'info'; // ✅ Add "info" here
   message?: string;
   title?: string;
   onClose: () => void;
@@ -14,7 +14,7 @@ const Modal: React.FC<ModalProps> = ({ type, message, title, onClose, children }
     <div className={`modal-backdrop ${type}`}>
       <div className="modal-box">
         <div className="modal-icon">
-          {type === 'success' ? '✔️' : type === 'error' ? '❌' : ''}
+          {type === 'success' ? '✔️' : type === 'error' ? '❌' : type === 'info' ? 'ℹ️' : ''}
         </div>
 
         {(title || type === 'success' || type === 'error') && (

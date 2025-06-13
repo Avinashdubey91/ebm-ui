@@ -13,21 +13,23 @@ import { useNotificationContext } from "../../../hooks/useNotificationContext";
 import { Link, useNavigate } from "react-router-dom";
 import { getUserProfile } from "../../../api/userProfileService";
 import { markNotificationAsRead, markAllNotificationsAsRead,markAllNotificationsAsUnread } from "../../../api/notificationApi";
-import type { UserProfile } from "../../../types/UserProfile";
+import type { UserDTO } from "../../../types/UserDTO";
 import ChangePasswordModal from "../../auth/pages/ChangePasswordModal";
 import { stopNotificationConnection } from "../../../api/signalR";
 import OverlayMessage from "../../../components/common/OverlayMessage";
+import UserProfileModal from "./UserProfileModal";
 
 const Topbar: React.FC = () => {
   const user = useDashboardContext();
   const navigate = useNavigate();
   const { notifications, setNotifications } = useNotificationContext();
 
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<UserDTO | null>(null);
   const [isDropdownOpen, setDropdownOpen] = useState(false);
   const [isProfileOpen, setProfileOpen] = useState(false);
   const [showChangePwdModal, setShowChangePwdModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   const monthRef = useRef<HTMLInputElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -206,7 +208,6 @@ const Topbar: React.FC = () => {
               {/* Sticky Header + Controls */}
               <div
                 className="fw-bold border-bottom text-dark mb-1 text-center pt-2 pb-2"
-                style={{ fontSize: "0.95rem" }}
               >
                 Notifications
               </div>
@@ -239,8 +240,8 @@ const Topbar: React.FC = () => {
 
               {/* Notification list */}
               <div
-                className="px-2 pt-1 pb-2"
-                style={{ maxHeight: "300px", overflowY: "auto" }}
+                className="px-2 pt-1 pb-2 custom-scroll"
+                style={{ maxHeight: "300px", overflowY: "scroll" }}
               >
                 {notifications.map((note) => (
                   <a
@@ -367,7 +368,7 @@ const Topbar: React.FC = () => {
                   </strong>
                 </div>
                 <small className="text-muted dashboard-ebm-user-role">
-                  {profile?.role ? `🛡️ ${profile.role}` : "User"}
+                  {profile?.roleName ? `🛡️ ${profile.roleName}` : "User"}
                 </small>
                 <div className="mt-1">
                   <span
@@ -395,7 +396,7 @@ const Topbar: React.FC = () => {
                 )}
                 Set {user.status === "Online" ? "Offline" : "Online"}
               </a>
-              <a className="dropdown-item" href="#">
+              <a className="dropdown-item" href="#" onClick={() => setShowProfileModal(true)}>
                 <FaUser className="mr-2" /> Profile
               </a>
               <a
@@ -429,6 +430,14 @@ const Topbar: React.FC = () => {
         message="Logging you out..."
         subMessage=""
       />
+      {showProfileModal && profile && (
+        <UserProfileModal
+          isOpen={true}
+          onClose={() => setShowProfileModal(false)}
+          profile={profile}
+        />
+      )}
+
     </div>
   );
 };

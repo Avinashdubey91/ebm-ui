@@ -10,7 +10,7 @@ export const markNotificationAsRead = async (id: number) => {
   const userId = localStorage.getItem('userId');
   const username = localStorage.getItem('username');
 
-  return httpClient.put(`/notification/mark-as-read/${id}`, null, {
+  return httpClient.put(`/notification/Mark-As-Read/${id}`, null, {
     headers: {
         'X-User-Id': userId ?? '',
         'X-User-Name': username ?? ''
@@ -20,11 +20,11 @@ export const markNotificationAsRead = async (id: number) => {
 
 // ✅ Mark all as read
 export const markAllNotificationsAsRead = async (userId: string) => {
-  return httpClient.put(`/notification/mark-all-read/${userId}`);
+  return httpClient.put(`/notification/Mark-All-Read/${userId}`);
 };
 
 // ✅ Mark all as unread
 export const markAllNotificationsAsUnread = async (userId: string) => {
-  return httpClient.put(`/notification/mark-all-unread/${userId}`);
+  return httpClient.put(`/notification/Mark-All-Unread/${userId}`);
 };
 
