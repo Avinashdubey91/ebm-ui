@@ -48,9 +48,9 @@ const UserProfileModal: React.FC<Props> = ({ isOpen, onClose, profile }) => {
                 </div>
                 <div className="text-dark small mt-1">{profile.email}</div>
               </div>
-              <button className="btn btn-outline-secondary btn-sm" onClick={handleCopy}>
+              <button className="btn btn-outline-success btn-sm" onClick={handleCopy}>
                 <FaCopy className="me-2" />
-                Copy link
+                Copy Profile link
               </button>
             </div>
 

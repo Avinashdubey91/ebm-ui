@@ -171,6 +171,37 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
   };
 
   const resetForm = () => {
+  if (userId && initialFormRef.current) {
+    // 🔄 In Edit Mode: Reset only optional fields, keep required fields intact
+    setFormData((prev) => ({
+      ...prev,
+      // 🛑 Required fields restored from initialRef
+      firstName: initialFormRef.current!.firstName,
+      lastName: initialFormRef.current!.lastName,
+      email: initialFormRef.current!.email,
+      mobile: initialFormRef.current!.mobile,
+      userName: initialFormRef.current!.userName,
+      pinCode: initialFormRef.current!.pinCode,
+      roleId: initialFormRef.current!.roleId,
+      countryId: initialFormRef.current!.countryId,
+      stateId: initialFormRef.current!.stateId,
+      districtId: initialFormRef.current!.districtId,
+
+      // ✅ Optional fields cleared
+      remarks: "",
+      addressLine1: "",
+      street: "",
+      city: "",
+      gender: "",
+      dob: "",
+      profilePicture: "",
+    }));
+
+    setSelectedFile(null);
+    setPreviewUrl("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  } else {
+    // 🆕 In Create Mode: Reset everything except username
     const empty: UserDTO = {
       userName: formData.userName,
       firstName: "",
@@ -193,9 +224,11 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
 
     setFormData(empty);
     setSelectedFile(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
     setPreviewUrl("");
-  };
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+};
+
 
   const buildFormData = (): FormData => {
   const form = new FormData();
@@ -499,7 +532,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
               />
             </div>
             <div className="col-md-4 mb-2">
-              <FormLabel label="Mobile" htmlFor="mobile" />
+              <FormLabel label="Mobile" htmlFor="mobile" required />
               <input
                 id="mobile"
                 name="mobile"
@@ -539,13 +572,14 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
 
             {/* === Address Info === */}
             <div className="col-md-4 mb-2">
-              <FormLabel label="Address Line 1" htmlFor="addressLine1" />
+              <FormLabel label="Address Line 1" htmlFor="addressLine1" required/>
               <input
                 id="addressLine1"
                 name="addressLine1"
                 className="form-control"
                 value={formData.addressLine1 ?? ""}
                 onChange={handleChange}
+                required 
               />
             </div>
             <div className="col-md-4 mb-2">
@@ -714,7 +748,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
               <div className="d-flex flex-wrap w-100 gap-2">
                 <button
                   type="submit"
-                  className="btn btn-success flex-fill"
+                  className="btn btn-outline-success flex-fill"
                   disabled={isSubmitting}
                 >
                   <i className="fa fa-save me-2"></i>Save
@@ -728,7 +762,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
                 </button>
                 <button
                   type="button"
-                  className="btn btn-primary flex-fill"
+                  className="btn btn-outline-primary flex-fill"
                   onClick={handleSaveAndNext}
                 >
                   <i className="fa fa-plus me-2"></i>Save & Next

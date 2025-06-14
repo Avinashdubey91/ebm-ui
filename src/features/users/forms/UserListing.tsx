@@ -55,6 +55,16 @@ const UserListTable: React.FC = () => {
   const handleDelete = async (userId?: number) => {
     if (!userId) return;
 
+    const loggedInUserId = parseInt(localStorage.getItem("userId") ?? "0", 10);
+    if (userId === loggedInUserId) {
+      Swal.fire({
+        icon: "error",
+        title: "Action Not Allowed",
+        text: "You cannot delete your own User Account",
+        confirmButtonColor: "#f39c12",
+      });
+      return;
+    }
     const result = await Swal.fire({
       icon: "warning",
       title: "Are you sure?",
