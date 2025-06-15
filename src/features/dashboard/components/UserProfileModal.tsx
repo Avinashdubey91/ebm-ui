@@ -111,7 +111,7 @@ const UserProfileModal: React.FC<Props> = ({ isOpen, onClose, profile }) => {
               <div className="col-md-4">
                 <input className="form-control" value={profile.countryName || "-"} readOnly />
               </div>
-              <label className="col-md-1 col-form-label text-dark fw-bold">Pin</label>
+              <label className="col-md-1 col-form-label text-dark fw-bold">PIN</label>
               <div className="col-md-4">
                 <input className="form-control" value={profile.pinCode || "-"} readOnly />
               </div>

@@ -1,14 +1,15 @@
+// features/users/forms/UserListing.tsx
+
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchAllUsers, deleteUser } from "../../../api/userApi";
 import type { UserDTO } from "../../../types/UserDTO";
-import { FaEdit, FaTrash, FaSort, FaSortUp, FaSortDown } from "react-icons/fa";
-import Swal from "sweetalert2";
 import { abbreviateRole } from "../../../utils/abbreviate";
-import { toTitleCase, safeValue, formatDate } from "../../../utils/format";
-import OverlayMessage from '../../../components/common/OverlayMessage'; // adjust path if needed
+import { formatDate, safeValue, toTitleCase } from "../../../utils/format";
+import ListingTable from "../../shared/ListingTable";
+import { showDeleteConfirmation, showDeleteResult } from "../../../utils/alerts/showDeleteConfirmation";
 
-const UserListTable: React.FC = () => {
+const UserListing: React.FC = () => {
   const [users, setUsers] = useState<UserDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortField, setSortField] = useState<keyof UserDTO>("userName");
@@ -18,29 +19,37 @@ const UserListTable: React.FC = () => {
 
   useEffect(() => {
     fetchAllUsers()
-      .then((data) => setUsers(data))
+      .then((data) => {
+        console.log("✅ Users Fetched:", data);
+        setUsers(data);
+      })
       .catch((err) => console.error("❌ Failed to fetch users", err))
       .finally(() => setLoading(false));
   }, []);
 
-  const handleSort = (field: keyof UserDTO) => {
-    if (sortField === field) setSortAsc(!sortAsc);
-    else {
-      setSortField(field);
-      setSortAsc(true);
+  const handleDelete = async (userId?: number) => {
+    if (!userId) return;
+
+    const loggedInUserId = parseInt(localStorage.getItem("userId") ?? "0", 10);
+    if (userId === loggedInUserId) {
+      await showDeleteResult(false, "You cannot delete your own User Account.");
+      return;
+    }
+
+    const confirmed = await showDeleteConfirmation("user");
+    if (!confirmed) return;
+
+    try {
+      await deleteUser(userId, loggedInUserId);
+      setUsers((prev) => prev.filter((u) => u.userId !== userId));
+      await showDeleteResult(true, "user");
+    } catch (err) {
+      console.error("❌ Failed to delete user", err);
+      await showDeleteResult(false, "user");
     }
   };
 
-  const getSortIcon = (field: keyof UserDTO) => {
-    if (sortField !== field) return <FaSort className="text-muted" />;
-    return sortAsc ? (
-      <FaSortUp className="text-primary" />
-    ) : (
-      <FaSortDown className="text-primary" />
-    );
-  };
-
-  const sortedUsers = [...users].sort((a, b) => {
+  const sorted = [...users].sort((a, b) => {
     const valA = a[sortField] ?? "";
     const valB = b[sortField] ?? "";
     return sortAsc
@@ -48,184 +57,51 @@ const UserListTable: React.FC = () => {
       : String(valB).localeCompare(String(valA));
   });
 
-  const handleEdit = (userId?: number) => {
-    if (userId) navigate(`/dashboard/users/create/${userId}`);
-  };
-
-  const handleDelete = async (userId?: number) => {
-    if (!userId) return;
-
-    const loggedInUserId = parseInt(localStorage.getItem("userId") ?? "0", 10);
-    if (userId === loggedInUserId) {
-      Swal.fire({
-        icon: "error",
-        title: "Action Not Allowed",
-        text: "You cannot delete your own User Account",
-        confirmButtonColor: "#f39c12",
-      });
-      return;
-    }
-    const result = await Swal.fire({
-      icon: "warning",
-      title: "Are you sure?",
-      text: "Do you really want to delete this user? This process cannot be undone.",
-      showCancelButton: true,
-      confirmButtonColor: "#e74c3c",
-      cancelButtonColor: "#aaa",
-      confirmButtonText: "Delete",
-      cancelButtonText: "Cancel",
-      reverseButtons: true,
-    });
-
-    if (result.isConfirmed) {
-      const deletedBy = parseInt(localStorage.getItem("userId") ?? "0", 10);
-      if (!deletedBy) {
-        Swal.fire("Error", "Your userId is missing. Please login again.", "error");
-        return;
-      }
-
-      try {
-        await deleteUser(userId, deletedBy); // ✅ No more TS error
-        setUsers((prev) => prev.filter((u) => u.userId !== userId));
-        Swal.fire("Deleted!", "User has been deleted.", "success");
-      } catch (err) {
-        console.error("❌ Failed to delete user", err);
-        Swal.fire("Error!", "Failed to delete user.", "error");
-      }
-    }
-  };
-
-  if (loading)
-    return (
-      <OverlayMessage
-        show={true}
-        message="Fetching users..."
-        subMessage="Please wait while we load user data."
-      />
-    );
-
-  if (users.length === 0)
-    return <p>No users found.</p>;
-
   return (
-    <div className="table-responsive p-2">
-      <table className="table table-ebm-listing align-middle">
-        <thead className="table-primary">
-          <tr>
-            {[
-              { key: "userName", label: "User Name", width: "120px" },
-              { key: "firstName", label: "Name", width: "160px" },
-              { key: "email", label: "Email", width: "200px" },
-              { key: "mobile", label: "Mobile", width: "120px" },
-              { key: "addressLine1", label: "Address", width: "160px" },
-              { key: "pinCode", label: "Pin Code", width: "100px" },
-              { key: "profilePicture", label: "Photo", width: "100px" },
-              { key: "roleName", label: "Role", width: "100px" },
-            ].map(({ key, label, width }) => (
-              <th
-                key={key}
-                onClick={() => handleSort(key as keyof UserDTO)}
-                style={{ cursor: "pointer", whiteSpace: "nowrap", width }}
-              >
-                <div className="d-flex justify-content-between align-items-center">
-                  <span>{label}</span>
-                  <span className="ms-1">
-                    {getSortIcon(key as keyof UserDTO)}
-                  </span>
-                </div>
-              </th>
-            ))}
-            <th
-              style={{
-                textAlign: "center",
-                width: "110px",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {sortedUsers.map((u) => (
-            <React.Fragment key={u.userId}>
-              <tr
-                onClick={() =>
-                  setExpandedRowId((prev: number | null): number | null =>
-                    prev === u.userId ? null : u.userId ?? null
-                  )
-                }
-                style={{ cursor: "pointer" }}
-              >
-                <td>{u.userName}</td>
-                <td>
-                  {u.firstName} {u.lastName}
-                </td>
-                <td>{u.email || "-"}</td>
-                <td>{u.mobile || "-"}</td>
-                <td>{u.addressLine1 || "-"}</td>
-                <td>{u.pinCode || "-"}</td>
-                <td className="text-center">
-                  {u.profilePicture &&
-                  u.profilePicture.trim().toLowerCase() !== "string" ? (
-                    <img
-                      src={`${import.meta.env.VITE_API_BASE_URL?.replace(
-                        "/api",
-                        ""
-                      )}/${u.profilePicture}`}
-                      alt="Profile"
-                      width={70}
-                      height={70}
-                      style={{
-                        objectFit: "cover",
-                        borderRadius: "6px",
-                        border: "1px solid #ccc",
-                      }}
-                    />
-                  ) : (
-                    <strong><span style={{ color: "#e0552b" }}>#NA</span></strong>
-                  )}
-                </td>
-                <td title={u.roleName}>{abbreviateRole(u.roleName)}</td>
-                <td className="text-center">
-                  <div className="d-flex justify-content-center gap-3 fs-2">
-                    <button
-                      className="btn btn-link p-0 text-primary"
-                      title="Edit"
-                      onClick={() => handleEdit(u.userId)}
-                    >
-                      <FaEdit size={22} />
-                    </button>
-                    <button
-                      className="btn btn-link p-0 text-danger"
-                      title="Delete"
-                      onClick={() => handleDelete(u.userId)}
-                    >
-                      <FaTrash size={22} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-              {expandedRowId === u.userId && (
-                <tr>
-                  <td colSpan={9} className="bg-light text-muted">
-                    <strong>DOB:</strong> {formatDate(u.dob)} |{" "}
-                    <strong>Street:</strong> {safeValue(u.street)} |{" "}
-                    <strong>City:</strong> {safeValue(u.city)} |{" "}
-                    <strong>District:</strong> {u.districtName ? toTitleCase(u.districtName) : "-"} |{" "}
-                    <strong>State:</strong> {u.stateName ? toTitleCase(u.stateName) : "-"} |{" "}
-                    <strong>Country:</strong> {u.countryName ? toTitleCase(u.countryName) : "-"}
-                    <br />
-                    <strong>Remarks:</strong> {safeValue(u.remarks)}
-                  </td>
-                </tr>
-              )}
-            </React.Fragment>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <ListingTable
+      data={sorted}
+      loading={loading}
+      columns={[
+        { key: "userName", label: "User Name", width: "120px" },
+        { key: "firstName", label: "Name", width: "160px" },
+        { key: "email", label: "Email", width: "200px" },
+        { key: "mobile", label: "Mobile", width: "120px" },
+        { key: "addressLine1", label: "Address", width: "160px" },
+        { key: "pinCode", label: "Pin Code", width: "100px" },
+        {
+          key: "roleName",
+          label: "Role",
+          width: "100px",
+          renderCell: (user) => (
+            <span title={user.roleName}>{abbreviateRole(user.roleName)}</span>
+          ),
+        }
+      ]}
+      sortField={sortField}
+      sortAsc={sortAsc}
+      onSort={(field) => {
+        setSortField(field);
+        setSortAsc((prev) => (field === sortField ? !prev : true));
+      }}
+      onEdit={(id) => navigate(`/dashboard/users/create/${id}`)}
+      onDelete={handleDelete}
+      expandedRowId={expandedRowId}
+      onExpand={setExpandedRowId}
+      getRowKey={(user) => user.userId ?? Math.floor(Math.random() * 100000)}
+      renderExpandedRow={(u) => (
+        <>
+          <strong>DOB:</strong> {formatDate(u.dob)} |{" "}
+          <strong>Street:</strong> {safeValue(u.street)} |{" "}
+          <strong>City:</strong> {safeValue(u.city)} |{" "}
+          <strong>District:</strong> {u.districtName ? toTitleCase(u.districtName) : "-"} |{" "}
+          <strong>State:</strong> {u.stateName ? toTitleCase(u.stateName) : "-"} |{" "}
+          <strong>Country:</strong> {u.countryName ? toTitleCase(u.countryName) : "-"}
+          <br />
+          <strong>Remarks:</strong> {safeValue(u.remarks)}
+        </>
+      )}
+    />
   );
 };
 
-export default UserListTable;
+export default UserListing;

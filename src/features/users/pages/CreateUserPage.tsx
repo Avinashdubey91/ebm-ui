@@ -15,8 +15,15 @@ const CreateUserPage: React.FC = () => {
       const shouldLeave = await showUnsavedChangesDialog();
       if (!shouldLeave) return;
     }
-    navigate(parentListPath);
+
+    // ✅ Prefer browser back if available
+    if (window.history.length > 2) {
+      navigate(-1);
+    } else {
+      navigate(parentListPath); // fallback from useCurrentMenu
+    }
   };
+
 
   return (
     <div className="page-form">

@@ -3,7 +3,7 @@ import type { SideNavigationMenuDTO } from "../types/menuTypes";
 import type { RouteObject } from "react-router-dom";
 
 // ✅ Glob import to preload all .tsx pages
-const lazyModules = import.meta.glob("../features/**/pages/**/*.tsx");
+const lazyModules = import.meta.glob("../features/**/{pages,forms,shared}/**/*.tsx");
 
 // ✅ Map DB ComponentName to actual relative paths
 const componentMap: Record<string, string> = {
@@ -13,9 +13,15 @@ const componentMap: Record<string, string> = {
   UserRoleForm: "users/pages/UserRoleForm",
   UserRoleMappingForm: "users/pages/UserRoleMappingForm",
 
-  // 🏢 Property
-  ApartmentCreateForm: "property/pages/ApartmentCreateForm",
-  FlatCreateForm: "property/pages/FlatCreateForm",
+  // 🏢 Add New Property Forms
+  AddNewSociety: "property/society/pages/AddSocietyPage",
+  AddNewApartment: "property/society/pages/AddApartmentPage",
+  AddNewFlat: "property/society/pages/AddFlatPage",
+
+  // Property Listing Page
+  SocietyListView: "property/society/pages/SocietyListingPage",
+  ApartmentListView: "property/society/pages/ApartmentListingPage",
+  FlatListView: "property/society/pages/FlatListingPage",
 
   // 🔌 Electricity
   AddMeterReadingForm: "billing/pages/AddMeterReadingForm",
