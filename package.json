@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build --mode production",
-    "build:prod": "vite build --mode production && xcopy /E /Y dist\\* ..\\EBM.API\\wwwroot\\",
+    "build:prod": "vite build --mode production && xcopy /E /Y /V /F /H dist\\ ..\\Self.Solution\\EBM.API\\wwwroot\\",
     "lint": "eslint .",
     "preview": "vite preview"
   },

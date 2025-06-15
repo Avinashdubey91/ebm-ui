@@ -56,9 +56,14 @@ function ListingTable<T>({
   }
 
   if (data.length === 0) {
-    return <p>No records found.</p>;
+    return (
+      <div className="alert alert-warning text-center m-5">
+        <h5>📭 No Records Found</h5>
+        <p>There are currently no entries to display.</p>
+      </div>
+    );
   }
-
+  
   return (
     <div className="table-responsive p-2">
       <table className="table table-ebm-listing align-middle">
