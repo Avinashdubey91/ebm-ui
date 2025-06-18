@@ -1,27 +1,33 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
-import { createUser, fetchUserById, updateUser } from "../../../api/userApi";
 import { fetchUserRoles } from "../../../api/userRoleApi";
 import type { UserDTO } from "../../../types/UserDTO";
 import type { UserRole } from "../../../types/UserRole";
-import FormLabel from "../../../components/common/FormLabel";
 import Swal from "sweetalert2";
 import DateInput from "../../../components/common/DateInput";
 import { useNavigate } from "react-router-dom";
 import { useFormNavigationGuard } from "../../../hooks/useFormNavigationGuard";
-import {
-  checkUsernameAvailability,
-  suggestUsernames,
-} from "../../../api/userProfileService";
-import { fetchCountries, fetchDistrictsByStateId, fetchStatesByCountryId } from "../../../api/locationApi";
+import { checkUsernameAvailability, suggestUsernames, } from "../../../api/userProfileService";
+import { createEntity, fetchEntityById, updateEntity, } from '../../../api/genericCrudApi';
+import { fetchCountries, fetchDistrictsByStateId, fetchStatesByCountryId, } from "../../../api/locationApi";
 import type { CountryDTO } from "../../../types/CountryDTO";
 import type { StateDTO } from "../../../types/StateDTO";
 import type { DistrictDTO } from "../../../types/DistrictDTO";
 import LoaderOverlay from "../../../components/common/LoaderOverlay";
+import TextInputField from "../../../components/common/TextInputField";
+import SelectField from "../../../components/common/SelectField";
+import FileUploadField from "../../../components/common/FileUploadField";
 
 interface CreateUserFormProps {
   userId?: number;
   onUnsavedChange?: (unsaved: boolean) => void;
 }
+
+const endpoints = {
+  base: '/user',
+  add: '/user/Add-New-User',
+  update: '/user/Update-User',
+  getById: '/user/Get-User-By-Id',
+};
 
 const CreateUserForm: React.FC<CreateUserFormProps> = ({
   userId,
@@ -75,7 +81,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
 
   useEffect(() => {
     if (userId) {
-      fetchUserById(userId)
+      fetchEntityById<UserDTO>(endpoints.getById, userId)
         .then((user) => {
           const formattedUser: UserDTO = {
             userId: user.userId,
@@ -91,7 +97,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
             stateId: user.stateId,
             districtId: user.districtId,
             gender: user.gender,
-            dob: user.dob ? new Date(user.dob).toISOString().split("T")[0] : "",
+            dob: user.dob ? new Date(user.dob).toISOString().split('T')[0] : '',
             remarks: user.remarks,
             pinCode: user.pinCode,
             roleId: user.roleId,
@@ -103,17 +109,15 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
 
           if (
             user.profilePicture &&
-            user.profilePicture.trim().toLowerCase() !== "string"
+            user.profilePicture.trim().toLowerCase() !== 'string'
           ) {
             setPreviewUrl(
-              `${import.meta.env.VITE_API_BASE_URL?.replace("/api", "")}/${
-                user.profilePicture
-              }`
+              `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '')}/${user.profilePicture}`
             );
           }
         })
         .catch((err) => {
-          console.error("❌ Failed to fetch user by ID", err);
+          console.error('❌ Failed to fetch user by ID', err);
         });
     }
   }, [userId]);
@@ -152,9 +156,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
     }));
   };
 
-  const handleSelectChange = (
-    e: React.ChangeEvent<HTMLSelectElement>
-  ) => {
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -171,95 +173,98 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
   };
 
   const resetForm = () => {
-  if (userId && initialFormRef.current) {
-    // 🔄 In Edit Mode: Reset only optional fields, keep required fields intact
-    setFormData((prev) => ({
-      ...prev,
-      // 🛑 Required fields restored from initialRef
-      firstName: initialFormRef.current!.firstName,
-      lastName: initialFormRef.current!.lastName,
-      email: initialFormRef.current!.email,
-      mobile: initialFormRef.current!.mobile,
-      userName: initialFormRef.current!.userName,
-      pinCode: initialFormRef.current!.pinCode,
-      roleId: initialFormRef.current!.roleId,
-      countryId: initialFormRef.current!.countryId,
-      stateId: initialFormRef.current!.stateId,
-      districtId: initialFormRef.current!.districtId,
+    if (userId && initialFormRef.current) {
+      // 🔄 In Edit Mode: Reset only optional fields, keep required fields intact
+      setFormData((prev) => ({
+        ...prev,
+        // 🛑 Required fields restored from initialRef
+        firstName: initialFormRef.current!.firstName,
+        lastName: initialFormRef.current!.lastName,
+        email: initialFormRef.current!.email,
+        mobile: initialFormRef.current!.mobile,
+        userName: initialFormRef.current!.userName,
+        pinCode: initialFormRef.current!.pinCode,
+        roleId: initialFormRef.current!.roleId,
+        countryId: initialFormRef.current!.countryId,
+        stateId: initialFormRef.current!.stateId,
+        districtId: initialFormRef.current!.districtId,
 
-      // ✅ Optional fields cleared
-      remarks: "",
-      addressLine1: "",
-      street: "",
-      city: "",
-      gender: "",
-      dob: "",
-      profilePicture: "",
-    }));
+        // ✅ Optional fields cleared
+        remarks: "",
+        addressLine1: "",
+        street: "",
+        city: "",
+        gender: "",
+        dob: "",
+        profilePicture: "",
+      }));
 
-    setSelectedFile(null);
-    setPreviewUrl("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  } else {
-    // 🆕 In Create Mode: Reset everything except username
-    const empty: UserDTO = {
-      userName: formData.userName,
-      firstName: "",
-      lastName: "",
-      email: "",
-      mobile: "",
-      addressLine1: "",
-      street: "",
-      city: "",
-      countryId: undefined,
-      stateId: undefined,
-      districtId: undefined,
-      gender: "",
-      dob: "",
-      remarks: "",
-      pinCode: "",
-      roleId: undefined,
-      profilePicture: "",
-    };
+      setSelectedFile(null);
+      setPreviewUrl("");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } else {
+      // 🆕 In Create Mode: Reset everything except username
+      const empty: UserDTO = {
+        userName: formData.userName,
+        firstName: "",
+        lastName: "",
+        email: "",
+        mobile: "",
+        addressLine1: "",
+        street: "",
+        city: "",
+        countryId: undefined,
+        stateId: undefined,
+        districtId: undefined,
+        gender: "",
+        dob: "",
+        remarks: "",
+        pinCode: "",
+        roleId: undefined,
+        profilePicture: "",
+      };
 
-    setFormData(empty);
-    setSelectedFile(null);
-    setPreviewUrl("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  }
-};
-
+      setFormData(empty);
+      setSelectedFile(null);
+      setPreviewUrl("");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const buildFormData = (): FormData => {
-  const form = new FormData();
-  form.append("User.UserName", formData.userName);
-  form.append("User.FirstName", formData.firstName);
-  form.append("User.LastName", formData.lastName);
-  if (formData.email) form.append("User.Email", formData.email);
-  if (formData.mobile) form.append("User.Mobile", formData.mobile);
-  if (formData.addressLine1) form.append("User.AddressLine1", formData.addressLine1);
-  if (formData.street) form.append("User.Street", formData.street);
-  if (formData.city) form.append("User.City", formData.city);
-  if (formData.countryId !== undefined) form.append("User.CountryId", formData.countryId.toString());
-  if (formData.stateId !== undefined) form.append("User.StateId", formData.stateId.toString());
-  if (formData.districtId !== undefined) form.append("User.DistrictId", formData.districtId.toString());
-  if (formData.gender) form.append("User.Gender", formData.gender);
-  if (formData.dob) form.append("User.DOB", formData.dob);
-  if (formData.remarks) form.append("User.Remarks", formData.remarks);
-  if (formData.pinCode) form.append("User.PinCode", formData.pinCode);
-  if (formData.roleId !== undefined) form.append("User.RoleId", formData.roleId.toString());
-  form.append("User.IsActive", "true");
+    const form = new FormData();
+    form.append("User.UserName", formData.userName);
+    form.append("User.FirstName", formData.firstName);
+    form.append("User.LastName", formData.lastName);
+    if (formData.email) form.append("User.Email", formData.email);
+    if (formData.mobile) form.append("User.Mobile", formData.mobile);
+    if (formData.addressLine1)
+      form.append("User.AddressLine1", formData.addressLine1);
+    if (formData.street) form.append("User.Street", formData.street);
+    if (formData.city) form.append("User.City", formData.city);
+    if (formData.countryId !== undefined)
+      form.append("User.CountryId", formData.countryId.toString());
+    if (formData.stateId !== undefined)
+      form.append("User.StateId", formData.stateId.toString());
+    if (formData.districtId !== undefined)
+      form.append("User.DistrictId", formData.districtId.toString());
+    if (formData.gender) form.append("User.Gender", formData.gender);
+    if (formData.dob) form.append("User.DOB", formData.dob);
+    if (formData.remarks) form.append("User.Remarks", formData.remarks);
+    if (formData.pinCode) form.append("User.PinCode", formData.pinCode);
+    if (formData.roleId !== undefined)
+      form.append("User.RoleId", formData.roleId.toString());
+    form.append("User.IsActive", "true");
 
-  if (selectedFile) {
-    form.append("ProfilePicture", selectedFile); // ✅ actual file
-    form.append("User.ProfilePicture", "");      // ✅ wipe the string version
-  } else if (formData.profilePicture) {
-    form.append("User.ProfilePicture", formData.profilePicture); // ✅ explicitly map to User.ProfilePicture
-  }
+    if (selectedFile) {
+      form.append("ProfilePicture", selectedFile); // ✅ actual file
+      form.append("User.ProfilePicture", ""); // ✅ wipe the string version
+    } else if (formData.profilePicture) {
+      form.append("User.ProfilePicture", formData.profilePicture); // ✅ explicitly map to User.ProfilePicture
+    }
 
-  return form;
-};
-
+    return form;
+  };
 
   const handleSubmit = async (
     e: React.FormEvent<HTMLFormElement> | { preventDefault: () => void }
@@ -286,7 +291,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
           return;
         }
 
-        await createUser(form, createdBy);
+        await createEntity(endpoints.add, form, createdBy, true);
         await Swal.fire({
           icon: "success",
           title: "Success",
@@ -298,7 +303,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
       } else {
         // ✅ Edit Mode
         const modifiedBy = Number(localStorage.getItem("userId") ?? "0");
-        await updateUser(userId, form, modifiedBy);
+        await updateEntity(endpoints.update, userId, form, modifiedBy, true);
         await Swal.fire({
           icon: "success",
           title: "Success",
@@ -338,17 +343,17 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
       return; // ✅ do NOT overwrite selected username
     }
 
-    const f = formData.firstName.trim();
-    const l = formData.lastName.trim();
-    
-    if (!f || !l) {
+    const fn = formData.firstName.trim();
+    const ln = formData.lastName.trim();
+
+    if (!fn || !ln) {
       // Clear the username field if one of the names is missing
       setFormData((prev) => ({ ...prev, userName: "" }));
       setIsUsernameAvailable(true);
       return;
     }
 
-    const baseUsername = `${f[0]}${l}`;
+    const baseUsername = `${fn[0]}${ln}`;
     setFormData((prev) => ({ ...prev, userName: baseUsername }));
 
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
@@ -360,7 +365,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
         .then((available) => {
           setIsUsernameAvailable(available);
           if (!available) {
-            suggestUsernames(f, l).then(setUsernameSuggestions);
+            suggestUsernames(fn, ln).then(setUsernameSuggestions);
           } else {
             setUsernameSuggestions([]);
           }
@@ -388,7 +393,11 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
     }
 
     if (!userId) {
-      setFormData(prev => ({ ...prev, stateId: undefined, districtId: undefined }));
+      setFormData((prev) => ({
+        ...prev,
+        stateId: undefined,
+        districtId: undefined,
+      }));
       setDistricts([]);
     }
   }, [formData.countryId, userId]);
@@ -401,7 +410,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
     }
 
     if (!userId) {
-      setFormData(prev => ({ ...prev, districtId: undefined }));
+      setFormData((prev) => ({ ...prev, districtId: undefined }));
     }
   }, [formData.stateId, userId]);
 
@@ -409,7 +418,10 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
     <>
       <div className="p-4 position-relative">
         {isSubmitting && (
-          <LoaderOverlay text="Saving user..." spinnerClass="spinner-border text-primary" />
+          <LoaderOverlay
+            text="Saving user..."
+            spinnerClass="spinner-border text-primary"
+          />
         )}
         <form
           onSubmit={handleSubmit}
@@ -420,62 +432,58 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
         >
           <div className="row align-items-end">
             {/* === Basic Info === */}
-            <div className="col-md-4 mb-2">
-              <FormLabel label="UserName" htmlFor="userName" required />
-              <div className="input-group">
-                <input
-                  id="userName"
-                  name="userName"
-                  className={`form-control pe-5 ${
-                    !isCheckingUsername && !isUsernameAvailable
-                      ? "is-invalid text-danger"
-                      : !isCheckingUsername && isUsernameAvailable && formData.userName !== ""
-                      ? "is-valid text-success"
-                      : ""
-                  }`}
-                  value={formData.userName}
-                  onChange={handleChange}
-                  disabled
-                  title="Username is auto-generated and cannot be modified"
-                  required
-                />
-                {isCheckingUsername && (
-                  <span
-                    className="position-absolute"
-                    style={{
-                      top: "50%",
-                      right: "12px",
-                      transform: "translateY(-50%)",
-                      pointerEvents: "none",
-                      color: "#6c757d",
-                    }}
-                  >
-                    <i
-                      className="fa fa-spinner fa-spin"
-                      style={{ color: "#0d6efd" }}
-                    ></i>
-                  </span>
-                )}
-              </div>
+            <div className="col-md-4">
+              <TextInputField
+                id="userName"
+                label="UserName"
+                name="userName"
+                className={`form-control pe-5 ${
+                  !isCheckingUsername && !isUsernameAvailable
+                    ? "is-invalid text-danger"
+                    : !isCheckingUsername &&
+                      isUsernameAvailable &&
+                      formData.userName !== ""
+                    ? "is-valid text-success"
+                    : ""
+                }`}
+                value={formData.userName}
+                onChange={handleChange}
+                disabled
+                title="Username is auto-generated and cannot be modified"
+                required
+              />
+              {isCheckingUsername && (
+                <span
+                  className="position-absolute"
+                  style={{
+                    top: "50%",
+                    right: "12px",
+                    transform: "translateY(-50%)",
+                    pointerEvents: "none",
+                    color: "#6c757d",
+                  }}
+                >
+                  <i
+                    className="fa fa-spinner fa-spin"
+                    style={{ color: "#0d6efd" }}
+                  ></i>
+                </span>
+              )}
             </div>
-            <div className="col-md-4 mb-2">
-              <FormLabel label="First Name" htmlFor="firstName" required />
-              <input
-                id="firstName"
+            <div className="col-md-4">
+              <TextInputField
                 name="firstName"
-                className="form-control"
+                label="First Name"
                 value={formData.firstName}
                 onChange={handleChange}
                 disabled={!!userId}
                 required
               />
             </div>
-            <div className="col-md-4 mb-2">
-              <FormLabel label="Last Name" htmlFor="lastName" required />
-              <input
-                id="lastName"
+            <div className="col-md-4">
+              <TextInputField
                 name="lastName"
-                className="form-control"
+                label="Last Name"
                 value={formData.lastName}
                 onChange={handleChange}
                 disabled={!!userId}
@@ -485,7 +493,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
             {/* ✅ Suggestions on a new row (full-width, below username row) */}
             {!isCheckingUsername && usernameSuggestions.length > 0 && (
               <div className="row">
-                <div className="col-12 mb-2">
+                <div className="col-12 py-2">
                   <span className="fw-bold me-2" style={{ color: "#212529" }}>
                     Suggestions:
                   </span>
@@ -501,8 +509,8 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
                       onClick={() => {
                         wasSuggestionSelected.current = true; // 🛑 Prevent auto-override
                         setFormData((prev) => ({ ...prev, userName: s }));
-                        setIsUsernameAvailable(true);         // ✅ Apply green tick mark styling
-                        setUsernameSuggestions([]);          // ✅ Hide suggestions
+                        setIsUsernameAvailable(true); // ✅ Apply green tick mark styling
+                        setUsernameSuggestions([]); // ✅ Hide suggestions
                       }}
                     >
                       {s}
@@ -513,177 +521,150 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
             )}
 
             {/* === Contact Info === */}
-            <div className="col-md-4 mb-2">
-              <FormLabel label="Email" htmlFor="email" required />
-              <input
-                id="email"
+            <div className="col-md-4">
+              <TextInputField
                 name="email"
+                label="Email"
                 type="email"
-                className="form-control"
                 value={formData.email ?? ""}
                 onChange={handleChange}
+                required
                 onInvalid={(e) =>
                   e.currentTarget.setCustomValidity(
                     "Please enter valid Email Address"
                   )
                 }
                 onInput={(e) => e.currentTarget.setCustomValidity("")}
-                required
               />
             </div>
-            <div className="col-md-4 mb-2">
-              <FormLabel label="Mobile" htmlFor="mobile" required />
-              <input
-                id="mobile"
+
+            <div className="col-md-4">
+              <TextInputField
                 name="mobile"
-                className="form-control"
+                label="Mobile"
                 value={formData.mobile ?? ""}
                 onChange={handleChange}
                 pattern="^\d{10}$"
                 maxLength={10}
                 title="Mobile number must be 10 digits"
                 inputMode="numeric"
+                required
                 onInput={(e: React.FormEvent<HTMLInputElement>) => {
                   const input = e.currentTarget;
                   input.value = input.value.replace(/[^0-9]/g, "").slice(0, 10);
                 }}
-                required
               />
             </div>
-            <div className="col-md-4 mb-2">
-              <FormLabel label="Pin Code" htmlFor="pinCode" required/>
-              <input
-                id="pinCode"
+
+            <div className="col-md-4">
+              <TextInputField
                 name="pinCode"
-                className="form-control"
+                label="Pin Code"
                 value={formData.pinCode ?? ""}
                 onChange={handleChange}
                 pattern="^\d{6}$"
                 maxLength={6}
                 title="Pin code must be 6 digits"
                 inputMode="numeric"
+                required
                 onInput={(e: React.FormEvent<HTMLInputElement>) => {
                   const input = e.currentTarget;
                   input.value = input.value.replace(/[^0-9]/g, "").slice(0, 6);
                 }}
-                required
               />
             </div>
 
             {/* === Address Info === */}
-            <div className="col-md-4 mb-2">
-              <FormLabel label="Address Line 1" htmlFor="addressLine1" required/>
-              <input
-                id="addressLine1"
+            <div className="col-md-4">
+              <TextInputField
                 name="addressLine1"
-                className="form-control"
+                label="Address Line 1"
                 value={formData.addressLine1 ?? ""}
                 onChange={handleChange}
-                required 
+                required
               />
             </div>
-            <div className="col-md-4 mb-2">
-              <FormLabel
-                label="Street / Mohalla / Apartment"
-                htmlFor="street"
-              />
-              <input
-                id="street"
+
+            <div className="col-md-4">
+              <TextInputField
                 name="street"
-                className="form-control"
+                label="Street / Mohalla / Apartment"
                 value={formData.street ?? ""}
                 onChange={handleChange}
               />
             </div>
+
             {/* === Country === */}
-            <div className="col-md-4 mb-2">
-              <FormLabel label="Country" htmlFor="countryId" required />
-              <select
-                id="countryId"
+            <div className="col-md-4">
+              <SelectField
+                label="Country"
                 name="countryId"
-                className="form-select"
                 value={formData.countryId ?? ""}
                 onChange={handleSelectChange}
                 required
-              >
-                <option value="">-- Select Country --</option>
-                {(countries ?? []).map((country) => (
-                  <option key={country.countryId} value={country.countryId}>
-                    {country.countryName}
-                  </option>
-                ))}
-              </select>
+                options={(countries ?? []).map((country) => ({
+                  label: country.countryName,
+                  value: country.countryId,
+                }))}
+              />
             </div>
 
             {/* === State === */}
-            <div className="col-md-4 mb-2">
-              <FormLabel label="State" htmlFor="stateId" required />
-              <select
-                id="stateId"
+            <div className="col-md-4">
+              <SelectField
+                label="State"
                 name="stateId"
-                className="form-select"
                 value={formData.stateId ?? ""}
                 onChange={handleSelectChange}
                 required
                 disabled={!formData.countryId}
-              >
-                <option value="">-- Select State --</option>
-                {states.map((state) => (
-                  <option key={state.stateId} value={state.stateId}>
-                    {state.stateName} ({state.stateCode})
-                  </option>
-                ))}
-              </select>
+                options={states.map((state) => ({
+                  label: `${state.stateName} (${state.stateCode})`,
+                  value: state.stateId,
+                }))}
+              />
             </div>
 
             {/* === District === */}
-            <div className="col-md-4 mb-2">
-              <FormLabel label="District" htmlFor="districtId" required />
-              <select
-                id="districtId"
+            <div className="col-md-4">
+              <SelectField
+                label="District"
                 name="districtId"
-                className="form-select"
                 value={formData.districtId ?? ""}
                 onChange={handleSelectChange}
                 required
-                disabled={!formData.stateId}
-              >
-                <option value="">-- Select District --</option>
-                {districts.map((district) => (
-                  <option key={district.districtId} value={district.districtId}>
-                    {district.districtName}
-                  </option>
-                ))}
-              </select>
+                disabled={districts.length === 0}
+                options={districts.map((district) => ({
+                  label: district.districtName,
+                  value: district.districtId,
+                }))}
+              />
             </div>
-            <div className="col-md-4 mb-2">
-              <FormLabel label="City / District" htmlFor="city" />
-              <input
-                id="city"
+
+            {/* === City === */}
+            <div className="col-md-4">
+              <TextInputField
                 name="city"
-                className="form-control"
+                label="City / District"
                 value={formData.city ?? ""}
                 onChange={handleChange}
               />
             </div>
-            
-
             {/* === Other Info === */}
-            <div className="col-md-4 mb-2">
-              <FormLabel label="Gender" htmlFor="gender" />
-              <select
-                id="gender"
+            <div className="col-md-4">
+              <SelectField
+                label="Gender"
                 name="gender"
-                className="form-select"
                 value={formData.gender ?? ""}
                 onChange={handleChange}
-              >
-                <option value="">-- Select Gender --</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-              </select>
+                options={[
+                  { label: "Male", value: "Male" },
+                  { label: "Female", value: "Female" },
+                ]}
+              />
             </div>
-            <div className="col-md-4 mb-2">
+
+            <div className="col-md-4">
               <DateInput
                 id="dob"
                 label="Date of Birth"
@@ -693,57 +674,44 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
                 }
               />
             </div>
-            <div className="col-md-4 mb-2">
-              <FormLabel label="Remarks" htmlFor="remarks" />
-              <input
-                id="remarks"
+
+            <div className="col-md-4">
+              <TextInputField
                 name="remarks"
-                className="form-control"
+                label="Remarks"
                 value={formData.remarks ?? ""}
                 onChange={handleChange}
               />
             </div>
+
             {/* === Profile Picture & Buttons === */}
-            <div className="col-md-4 mb-2">
-              <FormLabel label="Profile Picture" htmlFor="profilePictureFile" />
-              <div className="d-flex align-items-center gap-3">
-                <input
-                  ref={fileInputRef}
-                  id="profilePictureFile"
-                  name="profilePictureFile"
-                  type="file"
-                  accept="image/*"
-                  className="form-control"
-                  onChange={handleFileChange}
-                  style={{ flex: "1" }}
-                />
-              </div>
+            <div className="col-md-4">
+              <FileUploadField
+                name="profilePictureFile"
+                label="Profile Picture"
+                fileInputRef={fileInputRef}
+                onChange={handleFileChange}
+              />
             </div>
-            <div className="col-md-4 mb-2">
-              <FormLabel label="User Role" htmlFor="roleId" required />
-              <select
-                id="roleId"
+
+            <div className="col-md-4">
+              <SelectField
+                label="User Role"
                 name="roleId"
-                className="form-select"
                 value={
                   formData.roleId !== undefined ? String(formData.roleId) : ""
                 }
                 onChange={handleChange}
                 required
-              >
-                <option value="">-- Select Role --</option>
-                {roles.map((role) =>
-                  role.userRoleId !== undefined ? (
-                    <option
-                      key={role.userRoleId}
-                      value={String(role.userRoleId)}
-                    >
-                      {role.roleName}
-                    </option>
-                  ) : null
-                )}
-              </select>
+                options={roles
+                  .filter((role) => role.userRoleId !== undefined)
+                  .map((role) => ({
+                    label: role.roleName,
+                    value: String(role.userRoleId),
+                  }))}
+              />
             </div>
+
             <div className="col-md-4 mb-2 d-flex align-items-end">
               <div className="d-flex flex-wrap w-100 gap-2">
                 <button
@@ -771,7 +739,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
             </div>
 
             {/* === Preview Image === */}
-            <div className="col-md-4 mb-2">
+            <div className="col-md-4">
               {previewUrl && (
                 <img
                   src={previewUrl}

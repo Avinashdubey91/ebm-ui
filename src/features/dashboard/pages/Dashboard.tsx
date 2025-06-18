@@ -18,7 +18,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <DashboardContext.Provider value={user}>
-      <div className="dashboard-ebm-layout-wrapper d-flex flex-column min-vh-100">
+      <div className="dashboard-ebm-layout-wrapper d-flex flex-column">
         <Topbar />
         <div className="d-flex flex-grow-1">
           {/* ❌ Remove the hook here – it doesn't belong in layout */}

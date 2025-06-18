@@ -4,6 +4,12 @@ import CreateUserForm from '../forms/CreateUserForm';
 import { useCurrentMenu } from '../../../hooks/useCurrentMenu';
 import { showUnsavedChangesDialog } from '../../../utils/showUnsavedChangesDialog'; 
 
+declare global {
+  interface Window {
+    __suppressNavigationGuard?: boolean;
+  }
+}
+
 const CreateUserPage: React.FC = () => {
   const { userId } = useParams<{ userId?: string }>();
   const navigate = useNavigate();
@@ -11,18 +17,17 @@ const CreateUserPage: React.FC = () => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const handleBack = async () => {
-    if (hasUnsavedChanges) {
-      const shouldLeave = await showUnsavedChangesDialog();
-      if (!shouldLeave) return;
-    }
+  if (hasUnsavedChanges) {
+    const shouldLeave = await showUnsavedChangesDialog();
+    if (!shouldLeave) return;
+  }
 
-    // ✅ Prefer browser back if available
-    if (window.history.length > 2) {
-      navigate(-1);
-    } else {
-      navigate(parentListPath); // fallback from useCurrentMenu
-    }
-  };
+  // ✅ Suppress popstate-based guard
+  window.__suppressNavigationGuard = true;
+
+  // ✅ Go directly to the fallback route — safer
+  navigate(parentListPath);
+};
 
 
   return (

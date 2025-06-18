@@ -24,7 +24,7 @@ const DateInput: React.FC<DateInputProps> = ({
   const parsedDate = value ? dayjs(value, "YYYY-MM-DD") : null;
 
   return (
-    <div className="form-group w-100">
+    <div className="form-group w-100 mb-2">
       <FormLabel label={label} htmlFor={id} required={required} />
       <DatePicker
         id={id}

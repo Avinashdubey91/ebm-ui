@@ -81,7 +81,7 @@ function ListingTable<T>({
                 </div>
               </th>
             ))}
-            <th style={{ textAlign: "center", width: "110px", whiteSpace: "nowrap" }}>
+            <th style={{ textAlign: "center", width: "90px", whiteSpace: "nowrap" }}>
               Actions
             </th>
           </tr>

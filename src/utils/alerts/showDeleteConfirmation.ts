@@ -24,13 +24,21 @@ export const showDeleteConfirmation = async (entityName = "item"): Promise<boole
 /**
  * Shows a toast-style success or error message after delete.
  */
-export const showDeleteResult = async (success: boolean, entityName = "item") => {
+export const showDeleteResult = async (
+  success: boolean,
+  entityName = "item",
+  customMessage?: string,
+  titleOverride?: string // ✅ optional custom title
+) => {
   await Swal.fire({
     icon: success ? "success" : "error",
-    title: success ? "Deleted!" : "Error!",
-    text: success
-      ? `${entityName.charAt(0).toUpperCase() + entityName.slice(1)} has been deleted.`
-      : `Failed to delete the ${entityName}.`,
+    title: titleOverride || (success ? "Deleted!" : "Error!"), // ✅ fallback
+    text: customMessage
+      ? customMessage
+      : success
+        ? `${entityName.charAt(0).toUpperCase() + entityName.slice(1)} has been deleted.`
+        : `Failed to delete the ${entityName}.`,
     confirmButtonColor: success ? "#28a745" : "#e74c3c",
   });
 };
+

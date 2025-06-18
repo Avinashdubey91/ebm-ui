@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchAllSocieties, deleteSociety } from "../../../../api/SocietyApi";
 import type { SocietyDTO } from "../../../../types/SocietyDTO";
-import { formatDate, safeValue } from "../../../../utils/format";
+import { safeValue } from "../../../../utils/format";
 import ListingTable from "../../../shared/ListingTable";
 import { showDeleteConfirmation, showDeleteResult } from "../../../../utils/alerts/showDeleteConfirmation";
 
@@ -39,7 +39,7 @@ const SocietyListing: React.FC = () => {
       data={sorted}
       loading={loading}
       columns={[
-		{ key: "societyId", label: "Id", width: "30px"},
+		    { key: "societyId", label: "Id", width: "30px"},
         { key: "societyName", label: "Name", width: "160px" },
         { key: "city", label: "City", width: "140px" },
         { key: "address", label: "Address", width: "200px" },
@@ -85,7 +85,6 @@ const SocietyListing: React.FC = () => {
           <strong>Contact Person:</strong> {safeValue(s.contactPerson)} |{" "}
           <strong>Email:</strong> {safeValue(s.email)} |{" "}
           <strong>Contact No.:</strong> {safeValue(s.contactNumber)} |{" "}
-          <strong>Created:</strong> {formatDate(s.createdDate)}
         </>
       )}
     />

@@ -9,12 +9,12 @@ const lazyModules = import.meta.glob("../features/**/{pages,forms,shared}/**/*.t
 const componentMap: Record<string, string> = {
   // 🔒 Users
   CreateUserForm: "users/pages/CreateUserPage",
-  UserListView: "users/pages/UserListPage",
+  UserListView: "users/pages/UserListingPage",
   UserRoleForm: "users/pages/UserRoleForm",
   UserRoleMappingForm: "users/pages/UserRoleMappingForm",
 
   // 🏢 Add New Property Forms
-  AddNewSociety: "property/society/pages/AddSocietyPage",
+  AddNewSociety: "property/society/pages/AddEditSocietyPage",
   AddNewApartment: "property/society/pages/AddApartmentPage",
   AddNewFlat: "property/society/pages/AddFlatPage",
 
@@ -88,8 +88,10 @@ export const generateDynamicRoutes = (
           (p) => routeLower === p || routeLower.startsWith(`${p}-`)
         )
       ) {
+        const baseEditPath = submenu.routePath.replace(/create$/i, "edit");
+
         children.push({
-          path: `${submenu.routePath}/:userId`,
+          path: `${baseEditPath}/:userId`, // ✅ this enables /edit/:id
           element: React.createElement(LazyComponent),
         });
       }

@@ -3,18 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import UserListTable from '../forms/UserListing';
 import { useCurrentMenu } from '../../../hooks/useCurrentMenu';
 
-const UserListPage: React.FC = () => {
-  const navigate = useNavigate();
+const UserListingPage: React.FC = () => { const navigate = useNavigate();
+
+  const { singularMenuName, pluralMenuName, createRoutePath  } = useCurrentMenu();
 
   const handleAddUser = () => {
-    navigate('/dashboard/users/create');
-  };
-
+  if (createRoutePath) {
+    navigate(createRoutePath);
+  } else {
+    console.warn("⚠️ No dynamic create path found for current menu");
+  }
+};
   useEffect(() => {
     console.log("✅ UserListPage mounted");
   }, []);
-
-  const { singularMenuName, pluralMenuName } = useCurrentMenu();
 
   return (
     <div className="page-listing">
@@ -34,4 +36,4 @@ const UserListPage: React.FC = () => {
   );
 };
 
-export default UserListPage;
+export default UserListingPage;

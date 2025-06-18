@@ -5,15 +5,19 @@ import { useCurrentMenu } from '../../../../hooks/useCurrentMenu';
 
 const SocietyListingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { singularMenuName, pluralMenuName } = useCurrentMenu();
-
-  const handleAddSociety = () => {
-    navigate('/dashboard/property/create');
-  };
+  const { singularMenuName, pluralMenuName, createRoutePath } = useCurrentMenu();
 
   useEffect(() => {
-    console.log("✅ SocietyListPage mounted");
+    console.log("✅ SocietyListingPage mounted");
   }, []);
+
+  const handleAddSociety = () => {
+    if (createRoutePath) {
+      navigate(createRoutePath);
+    } else {
+      console.warn("⚠️ No dynamic create route path found for current menu.");
+    }
+  };
 
   return (
     <div className="page-listing">

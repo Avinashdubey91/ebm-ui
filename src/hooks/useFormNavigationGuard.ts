@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { showUnsavedChangesDialog } from "../utils/showUnsavedChangesDialog";
 
-export const useFormNavigationGuard = (hasUnsavedChanges: boolean) => {
+export const useFormNavigationGuard = (hasUnsavedChanges: boolean, suppressPopstate = false) => {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -42,25 +42,31 @@ export const useFormNavigationGuard = (hasUnsavedChanges: boolean) => {
   }, [hasUnsavedChanges, location.pathname, navigate]);
 
   // ✅ Browser back button (popstate)
-  useEffect(() => {
-    if (!hasUnsavedChanges) return;
+    useEffect(() => {
+    if (!hasUnsavedChanges || suppressPopstate) return; // ✅ Ignore if suppressed
 
     history.pushState(null, "", window.location.href);
     let allowBack = false;
 
     const onPopState = async () => {
+      // ✅ If we're manually navigating (custom Back button), skip the alert
+      if (window.__suppressNavigationGuard) {
+        window.__suppressNavigationGuard = false; // Reset it
+        return;
+      }
+
       if (allowBack) return;
 
       const shouldLeave = await showUnsavedChangesDialog();
       if (shouldLeave) {
         allowBack = true;
-        window.history.go(-1); // ✅ Let browser handle real back navigation
+        window.history.go(-1); // ✅ proceed
       } else {
-        history.pushState(null, "", window.location.href); // ❌ Prevent back
+        history.pushState(null, "", window.location.href); // ❌ prevent back
       }
     };
 
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
-  }, [hasUnsavedChanges]);
+  }, [hasUnsavedChanges, suppressPopstate]);
 };
