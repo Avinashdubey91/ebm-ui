@@ -1,62 +1,120 @@
-// src/components/shared/SharedAddEditForm.tsx
-
-import React, { useEffect } from "react";
+import React, { forwardRef, useImperativeHandle, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useFormNavigationGuard } from "../../hooks/useFormNavigationGuard";
+import { useCurrentMenu } from "../../hooks/useCurrentMenu";
+import { showUnsavedChangesDialog } from "../../utils/showUnsavedChangesDialog";
+
+export interface AddEditFormHandle {
+  submit: () => void;
+  reset: () => void;
+  saveAndNext: () => void;
+}
 
 interface SharedAddEditFormProps {
   isSubmitting: boolean;
   hasUnsavedChanges: boolean;
-  onUnsavedChange: (unsaved: boolean) => void;
-  onSubmit: (e: React.FormEvent<HTMLFormElement> | { preventDefault: () => void }) => void;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   onReset?: () => void;
   onSaveAndNext?: () => void;
   children: React.ReactNode;
+  className?: string;
+  disableSaveAndNext?: boolean;
+  formRef?: React.RefObject<HTMLFormElement | null>;
+  isEditMode?: boolean;
 }
 
-const SharedAddEditForm: React.FC<SharedAddEditFormProps> = ({
-  isSubmitting,
-  hasUnsavedChanges,
-  onUnsavedChange,
-  onSubmit,
-  onReset,
-  onSaveAndNext,
-  children,
-}) => {
-  useFormNavigationGuard(hasUnsavedChanges && !isSubmitting);
+const SharedAddEditForm = forwardRef<AddEditFormHandle, SharedAddEditFormProps>(
+  (
+    {
+      isSubmitting,
+      hasUnsavedChanges,
+      onSubmit,
+      onReset,
+      onSaveAndNext,
+      children,
+      disableSaveAndNext,
+      formRef,
+      isEditMode,
+    },
+    ref
+  ) => {
+    const internalFormRef = useRef<HTMLFormElement | null>(null);
+    const formRefToUse = formRef ?? internalFormRef;
+    const navigate = useNavigate();
+    const { parentListPath, singularMenuName } = useCurrentMenu();
 
-  useEffect(() => {
-    onUnsavedChange(hasUnsavedChanges);
-  }, [hasUnsavedChanges, onUnsavedChange]);
+    useFormNavigationGuard(hasUnsavedChanges && !isSubmitting);
 
-  return (
-    <form
-      onSubmit={onSubmit}
-      style={{
-        pointerEvents: isSubmitting ? "none" : "auto",
-        opacity: isSubmitting ? 0.6 : 1,
-      }}
-    >
-      <div className="row align-items-end">
-        {children}
+    const handleBack = async () => {
+      if (hasUnsavedChanges) {
+        const shouldLeave = await showUnsavedChangesDialog();
+        if (!shouldLeave) return;
+      }
+      window.__suppressNavigationGuard = true;
+      navigate(parentListPath);
+    };
 
-        <div className="col-md-12 mt-3 d-flex gap-3 flex-wrap">
-          <button type="submit" className="btn btn-outline-success" disabled={isSubmitting}>
-            <i className="fa fa-save me-2" /> Save
-          </button>
-          {onReset && (
-            <button type="button" className="btn btn-outline-danger" onClick={onReset}>
-              <i className="fa fa-undo me-2" /> Reset
-            </button>
-          )}
-          {onSaveAndNext && (
-            <button type="button" className="btn btn-outline-primary" onClick={onSaveAndNext}>
-              <i className="fa fa-plus me-2" /> Save & Next
-            </button>
-          )}
-        </div>
-      </div>
-    </form>
-  );
-};
+    useImperativeHandle(ref, () => ({
+      submit: () => formRefToUse.current?.requestSubmit(),
+      reset: () => onReset?.(),
+      saveAndNext: () => formRefToUse.current?.requestSubmit(),
+    }));
+
+    return (
+      <>
+        <form
+          ref={formRefToUse}
+          onSubmit={onSubmit}
+          style={{
+            pointerEvents: isSubmitting ? "none" : "auto",
+            opacity: isSubmitting ? 0.6 : 1,
+          }}
+        >
+          <div className="inner-area-header-container d-flex align-items-center justify-content-between px-3">
+            <h4 className="inner-area-header-title">
+              {isEditMode ? "EDIT" : "ADD NEW"}{" "}
+              {singularMenuName ? singularMenuName.toUpperCase() : ""}
+            </h4>
+            <div className="pe-3 gap-2 d-flex" style={{ flexShrink: 0 }}>
+              <button type="submit" className="btn btn-success">
+                <i className="fa fa-save me-1" />
+                {isEditMode ? "Update" : "Save"}
+              </button>
+              {onReset && (
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={() => onReset()}
+                >
+                  <i className="fa fa-undo me-1" />
+                  Reset
+                </button>
+              )}
+              {!isEditMode && !disableSaveAndNext && onSaveAndNext && (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => formRefToUse.current?.requestSubmit()}
+                >
+                  <i className="fa fa-plus me-1" />
+                  Save & Next
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn btn-light"
+                onClick={handleBack}
+              >
+                <i className="fa fa-arrow-left me-2" />
+                Back
+              </button>
+            </div>
+          </div>
+          <div className="p-4 position-relative"> {children} </div>
+        </form>
+      </>
+    );
+  }
+);
 
 export default SharedAddEditForm;

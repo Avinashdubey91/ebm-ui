@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import CreateUserForm from '../forms/CreateUserForm';
+import AddEditUserForm from '../forms/AddEditUserForm';
 import { useCurrentMenu } from '../../../hooks/useCurrentMenu';
 import { showUnsavedChangesDialog } from '../../../utils/showUnsavedChangesDialog'; 
 
@@ -10,25 +10,23 @@ declare global {
   }
 }
 
-const CreateUserPage: React.FC = () => {
-  const { userId } = useParams<{ userId?: string }>();
+const AddEditUserPage: React.FC = () => {
+  const { id } = useParams<{ id?: string }>();  // 👈 Extract 'id' from route
+  const userId = id ? parseInt(id, 10) : undefined;
+
   const navigate = useNavigate();
-  const { parentListPath, singularMenuName } = useCurrentMenu(); // ✅ Get dynamic path
+  const { parentListPath, singularMenuName } = useCurrentMenu();
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const handleBack = async () => {
-  if (hasUnsavedChanges) {
-    const shouldLeave = await showUnsavedChangesDialog();
-    if (!shouldLeave) return;
-  }
+    if (hasUnsavedChanges) {
+      const shouldLeave = await showUnsavedChangesDialog();
+      if (!shouldLeave) return;
+    }
 
-  // ✅ Suppress popstate-based guard
-  window.__suppressNavigationGuard = true;
-
-  // ✅ Go directly to the fallback route — safer
-  navigate(parentListPath);
-};
-
+    window.__suppressNavigationGuard = true;
+    navigate(parentListPath);
+  };
 
   return (
     <div className="page-form">
@@ -37,20 +35,20 @@ const CreateUserPage: React.FC = () => {
           {userId ? 'EDIT' : 'ADD NEW'} {singularMenuName.toUpperCase()}
         </h4>
         <div className="pe-2" style={{ flexShrink: 0 }}>
-          <button className="btn btn-light btn-md" onClick={handleBack}>
+          <button className="btn btn-light btn-md w-100" onClick={handleBack}>
             <i className="fa fa-arrow-left me-2" />
             Back
           </button>
         </div>
       </div>
 
-      <CreateUserForm
+      <AddEditUserForm
         key={userId ?? 'new'}
-        userId={userId ? parseInt(userId, 10) : undefined}
-         onUnsavedChange={setHasUnsavedChanges}
+        userId={userId}
+        onUnsavedChange={setHasUnsavedChanges}
       />
     </div>
   );
 };
 
-export default CreateUserPage;
+export default AddEditUserPage;

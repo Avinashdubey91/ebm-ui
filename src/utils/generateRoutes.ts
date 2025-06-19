@@ -8,7 +8,7 @@ const lazyModules = import.meta.glob("../features/**/{pages,forms,shared}/**/*.t
 // ✅ Map DB ComponentName to actual relative paths
 const componentMap: Record<string, string> = {
   // 🔒 Users
-  CreateUserForm: "users/pages/CreateUserPage",
+  CreateUserForm: "users/pages/AddEditUserPage",
   UserListView: "users/pages/UserListingPage",
   UserRoleForm: "users/pages/UserRoleForm",
   UserRoleMappingForm: "users/pages/UserRoleMappingForm",
@@ -45,10 +45,9 @@ const componentMap: Record<string, string> = {
     "navigation/pages/SideNavigationSubMenuComponent",
 };
 
-export const generateDynamicRoutes = (
+export const generateRoutes = (
   menus: SideNavigationMenuDTO[]
 ): RouteObject[] => {
-  //console.log("🧪 generateDynamicRoutes() CALLED with", menus.length, "menus");
 
   const dynamicRoutes: RouteObject[] = [];
 
@@ -83,18 +82,31 @@ export const generateDynamicRoutes = (
       const editPatterns = ["create", "add"];
       const routeLower = submenu.routePath.toLowerCase();
 
-      if (
-        editPatterns.some(
-          (p) => routeLower === p || routeLower.startsWith(`${p}-`)
-        )
-      ) {
-        const baseEditPath = submenu.routePath.replace(/create$/i, "edit");
+      const matchedPattern = editPatterns.find((p) =>
+        routeLower === p || routeLower.endsWith(`/${p}`)
+      );
 
-        children.push({
-          path: `${baseEditPath}/:userId`, // ✅ this enables /edit/:id
-          element: React.createElement(LazyComponent),
-        });
-      }
+      if (matchedPattern) {
+  const pathSegments = submenu.routePath.split("/").filter(Boolean);
+  if (pathSegments.length === 1) {
+    // e.g., 'create' → generate 'edit/:id'
+    children.push({
+      path: `edit/:id`,
+      element: React.createElement(LazyComponent),
+    });
+  } else {
+    // e.g., 'society/create' → generate 'society/edit/:id'
+    const baseEditPath = submenu.routePath.replace(
+      new RegExp(`/${matchedPattern}$`, "i"),
+      "/edit"
+    );
+    children.push({
+      path: `${baseEditPath}/:id`,
+      element: React.createElement(LazyComponent),
+    });
+  }
+}
+
     }
 
     if (children.length > 0) {

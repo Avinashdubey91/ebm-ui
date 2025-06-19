@@ -22,23 +22,45 @@ export const showDeleteConfirmation = async (entityName = "item"): Promise<boole
 };
 
 /**
- * Shows a toast-style success or error message after delete.
+ * Shows a SweetAlert and toast-style result after delete operation.
  */
 export const showDeleteResult = async (
   success: boolean,
   entityName = "item",
   customMessage?: string,
-  titleOverride?: string // ✅ optional custom title
+  titleOverride?: string
 ) => {
+  const capitalizedEntity = entityName.charAt(0).toUpperCase() + entityName.slice(1);
+  const defaultTitle = titleOverride || (success ? "Deleted!" : "Error!");
+  const defaultMessage = customMessage
+    ? customMessage
+    : success
+      ? `${capitalizedEntity} has been deleted successfully.`
+      : `Failed to delete the ${entityName}.`;
+
+  // ✅ Centered SWAL (no OK button)
   await Swal.fire({
     icon: success ? "success" : "error",
-    title: titleOverride || (success ? "Deleted!" : "Error!"), // ✅ fallback
-    text: customMessage
-      ? customMessage
-      : success
-        ? `${entityName.charAt(0).toUpperCase() + entityName.slice(1)} has been deleted.`
-        : `Failed to delete the ${entityName}.`,
-    confirmButtonColor: success ? "#28a745" : "#e74c3c",
+    title: defaultTitle,
+    text: defaultMessage,
+    showConfirmButton: false,
+    timer: 2000,
+    timerProgressBar: true,
+    background: "#fff",
+    iconColor: success ? "#28a745" : "#e74c3c",
+  });
+
+  // ✅ Toast
+  await Swal.fire({
+    icon: success ? "success" : "error",
+    title: defaultTitle,
+    text: defaultMessage,
+    toast: true,
+    position: "top-end",
+    timer: 3000,
+    timerProgressBar: true,
+    showConfirmButton: false,
+    background: "#fff",
+    iconColor: success ? "#28a745" : "#e74c3c",
   });
 };
-

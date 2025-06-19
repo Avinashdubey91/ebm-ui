@@ -6,9 +6,20 @@ import Swal from "sweetalert2";
 import DateInput from "../../../components/common/DateInput";
 import { useNavigate } from "react-router-dom";
 import { useFormNavigationGuard } from "../../../hooks/useFormNavigationGuard";
-import { checkUsernameAvailability, suggestUsernames, } from "../../../api/userProfileService";
-import { createEntity, fetchEntityById, updateEntity, } from '../../../api/genericCrudApi';
-import { fetchCountries, fetchDistrictsByStateId, fetchStatesByCountryId, } from "../../../api/locationApi";
+import {
+  checkUsernameAvailability,
+  suggestUsernames,
+} from "../../../api/userProfileService";
+import {
+  createEntity,
+  fetchEntityById,
+  updateEntity,
+} from "../../../api/genericCrudApi";
+import {
+  fetchCountries,
+  fetchDistrictsByStateId,
+  fetchStatesByCountryId,
+} from "../../../api/locationApi";
 import type { CountryDTO } from "../../../types/CountryDTO";
 import type { StateDTO } from "../../../types/StateDTO";
 import type { DistrictDTO } from "../../../types/DistrictDTO";
@@ -23,10 +34,10 @@ interface CreateUserFormProps {
 }
 
 const endpoints = {
-  base: '/user',
-  add: '/user/Add-New-User',
-  update: '/user/Update-User',
-  getById: '/user/Get-User-By-Id',
+  base: "/user",
+  add: "/user/Add-New-User",
+  update: "/user/Update-User",
+  getById: "/user/Get-User-By-Id",
 };
 
 const CreateUserForm: React.FC<CreateUserFormProps> = ({
@@ -97,7 +108,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
             stateId: user.stateId,
             districtId: user.districtId,
             gender: user.gender,
-            dob: user.dob ? new Date(user.dob).toISOString().split('T')[0] : '',
+            dob: user.dob ? new Date(user.dob).toISOString().split("T")[0] : "",
             remarks: user.remarks,
             pinCode: user.pinCode,
             roleId: user.roleId,
@@ -109,15 +120,17 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
 
           if (
             user.profilePicture &&
-            user.profilePicture.trim().toLowerCase() !== 'string'
+            user.profilePicture.trim().toLowerCase() !== "string"
           ) {
             setPreviewUrl(
-              `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '')}/${user.profilePicture}`
+              `${import.meta.env.VITE_API_BASE_URL?.replace("/api", "")}/${
+                user.profilePicture
+              }`
             );
           }
         })
         .catch((err) => {
-          console.error('❌ Failed to fetch user by ID', err);
+          console.error("❌ Failed to fetch user by ID", err);
         });
     }
   }, [userId]);
@@ -719,7 +732,8 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
                   className="btn btn-outline-success flex-fill"
                   disabled={isSubmitting}
                 >
-                  <i className="fa fa-save me-2"></i>Save
+                  <i className="fa fa-save me-2"></i>
+                  {userId ? "Update" : "Save"}
                 </button>
                 <button
                   type="button"
@@ -728,13 +742,15 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
                 >
                   <i className="fa fa-undo me-2"></i>Reset Form
                 </button>
-                <button
-                  type="button"
-                  className="btn btn-outline-primary flex-fill"
-                  onClick={handleSaveAndNext}
-                >
-                  <i className="fa fa-plus me-2"></i>Save & Next
-                </button>
+                {!userId && (
+                  <button
+                    type="button"
+                    className="btn btn-outline-primary flex-fill"
+                    onClick={handleSaveAndNext}
+                  >
+                    <i className="fa fa-plus me-2"></i>Save & Next
+                  </button>
+                )}
               </div>
             </div>
 

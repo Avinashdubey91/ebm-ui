@@ -2,7 +2,7 @@
 import { useMemo } from 'react';
 import { useLocation, useRoutes } from 'react-router-dom';
 import { baseRoutes } from '../routes/AppRoutes';
-import { generateDynamicRoutes } from '../utils/generateRoutes';
+import { generateRoutes } from '../utils/generateRoutes';
 import { useMenuData } from '../features/dashboard/hooks/useMenuData';
 import { DYNAMIC_MENU_BASE_PATH } from '../constants/routes';
 import LoaderOverlay from '../components/common/LoaderOverlay';
@@ -24,7 +24,7 @@ const AppRoutes = () => {
       );
 
       if (dashboardRoute && Array.isArray(dashboardRoute.children)) {
-        const dynamicRoutes = generateDynamicRoutes(menus);
+        const dynamicRoutes = generateRoutes(menus);
         dashboardRoute.children.push(...dynamicRoutes);
         console.log('✅ Dynamic routes generated and injected');
       }

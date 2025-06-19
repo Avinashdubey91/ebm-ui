@@ -6,7 +6,11 @@ import { fetchAllSocieties, deleteSociety } from "../../../../api/SocietyApi";
 import type { SocietyDTO } from "../../../../types/SocietyDTO";
 import { safeValue } from "../../../../utils/format";
 import ListingTable from "../../../shared/ListingTable";
-import { showDeleteConfirmation, showDeleteResult } from "../../../../utils/alerts/showDeleteConfirmation";
+import {
+  showDeleteConfirmation,
+  showDeleteResult,
+} from "../../../../utils/alerts/showDeleteConfirmation";
+import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
 
 const SocietyListing: React.FC = () => {
   const [societies, setSocieties] = useState<SocietyDTO[]>([]);
@@ -15,16 +19,38 @@ const SocietyListing: React.FC = () => {
   const [sortAsc, setSortAsc] = useState(true);
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
   const navigate = useNavigate();
+  const { createRoutePath } = useCurrentMenu();
 
   useEffect(() => {
-  fetchAllSocieties()
-    .then((data) => {
-      console.log("✅ Societies Fetched:", data);
-      setSocieties(data);
-    })
-    .catch((err) => console.error("❌ Failed to fetch societies", err))
-    .finally(() => setLoading(false));
-}, []);
+    fetchAllSocieties()
+      .then((data) => {
+        console.log("✅ Societies Fetched:", data);
+        setSocieties(data);
+      })
+      .catch((err) => console.error("❌ Failed to fetch societies", err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  // ✅ Show toast after Add or Update
+  useEffect(() => {
+    const toastMessage = sessionStorage.getItem("showToast");
+    if (toastMessage) {
+      import("sweetalert2").then((Swal) => {
+        Swal.default.fire({
+          icon: "success",
+          title: toastMessage,
+          toast: true,
+          position: "top-end",
+          timer: 3000,
+          timerProgressBar: true,
+          showConfirmButton: false,
+          background: "#fff",
+          iconColor: "#28a745",
+        });
+      });
+      sessionStorage.removeItem("showToast");
+    }
+  }, []);
 
   const sorted = [...societies].sort((a, b) => {
     const valA = a[sortField] ?? "";
@@ -33,13 +59,14 @@ const SocietyListing: React.FC = () => {
       ? String(valA).localeCompare(String(valB))
       : String(valB).localeCompare(String(valA));
   });
+  
 
   return (
     <ListingTable
       data={sorted}
       loading={loading}
       columns={[
-		    { key: "societyId", label: "Id", width: "30px"},
+        { key: "societyId", label: "Id", width: "30px" },
         { key: "societyName", label: "Name", width: "160px" },
         { key: "city", label: "City", width: "140px" },
         { key: "address", label: "Address", width: "200px" },
@@ -52,7 +79,10 @@ const SocietyListing: React.FC = () => {
         setSortField(field);
         setSortAsc((prev) => (field === sortField ? !prev : true));
       }}
-      onEdit={(id) => navigate(`/dashboard/property/create/${id}`)}
+      onEdit={(id) => {
+        const editPath = createRoutePath.replace(/create$/i, `edit/${id}`);
+        navigate(editPath);
+      }}
       onDelete={async (id) => {
         const deletedBy = parseInt(localStorage.getItem("userId") ?? "0", 10);
         if (!deletedBy || !id) return;
