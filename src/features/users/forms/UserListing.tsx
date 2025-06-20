@@ -34,32 +34,31 @@ const UserListing: React.FC = () => {
   }, []);
 
   const handleDelete = async (userId?: number) => {
-  if (!userId) return;
+    if (!userId) return;
 
-  const loggedInUserId = parseInt(localStorage.getItem("userId") ?? "0", 10);
-  if (userId === loggedInUserId) {
-    await showDeleteResult(
-      false,
-      "user",
-      "You can't delete your own User Account.",
-      "Action Prohibited!" // ✅ override the default title
-    );
-    return;
-  }
+    const loggedInUserId = parseInt(localStorage.getItem("userId") ?? "0", 10);
+    if (userId === loggedInUserId) {
+      await showDeleteResult(
+        false,
+        "user",
+        "You can't delete your own User Account.",
+        "Action Prohibited!" // ✅ override the default title
+      );
+      return;
+    }
 
-  const confirmed = await showDeleteConfirmation("user");
-  if (!confirmed) return;
+    const confirmed = await showDeleteConfirmation("user");
+    if (!confirmed) return;
 
-  try {
-    await deleteEntity(endpoints.delete, userId, loggedInUserId);
-    setUsers((prev) => prev.filter((u) => u.userId !== userId));
-    await showDeleteResult(true, "user");
-  } catch (err) {
-    console.error("❌ Failed to delete user", err);
-    await showDeleteResult(false, "user");
-  }
-};
-
+    try {
+      await deleteEntity(endpoints.delete, userId, loggedInUserId);
+      setUsers((prev) => prev.filter((u) => u.userId !== userId));
+      await showDeleteResult(true, "user");
+    } catch (err) {
+      console.error("❌ Failed to delete user", err);
+      await showDeleteResult(false, "user");
+    }
+  };
 
   const sorted = [...users].sort((a, b) => {
     const valA = a[sortField] ?? "";

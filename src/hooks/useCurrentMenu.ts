@@ -70,16 +70,13 @@ export const useCurrentMenu = () => {
       matchedMenu.sideNavigationMenuId !== currentMenu?.sideNavigationMenuId
     ) {
       setCurrentMenu(matchedMenu);
-      console.log(
-        "📌 Context Updated: Current Menu Set:",
-        matchedMenu.menuName
-      );
+      console.log("📌 Context Updated: Current Menu Set:",matchedMenu.menuName);
     }
   }, [matchedMenu, currentMenu, setCurrentMenu]);
 
   // STEP 4: Format menu name labels
   const rawSubMenuName =
-    matchedSubMenu?.subMenuName ?? matchedMenu?.menuName ?? "Items";
+    matchedSubMenu?.subMenuName ?? matchedMenu?.menuName ?? (menus.length === 0 ? "" : "Items");
   const cleanSubMenuName = rawSubMenuName.replace(/List$/i, "").trim();
   const pluralMenuName = cleanSubMenuName;
   const singularMenuName = pluralize.singular(pluralMenuName);

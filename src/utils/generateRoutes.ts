@@ -20,8 +20,8 @@ const componentMap: Record<string, string> = {
 
   // Property Listing Page
   SocietyListView: "property/society/pages/SocietyListingPage",
-  ApartmentListView: "property/society/pages/ApartmentListingPage",
-  FlatListView: "property/society/pages/FlatListingPage",
+  ApartmentListView: "property/apartment/pages/ApartmentListingPage",
+  FlatListView: "property/apartment/pages/FlatListingPage",
 
   // 🔌 Electricity
   AddMeterReadingForm: "billing/pages/AddMeterReadingForm",

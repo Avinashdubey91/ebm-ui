@@ -1,8 +1,8 @@
 // features/property/society/forms/SocietyListing.tsx
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchAllSocieties, deleteSociety } from "../../../../api/SocietyApi";
+import { fetchAllEntities, deleteEntity } from "../../../../api/genericCrudApi";
 import type { SocietyDTO } from "../../../../types/SocietyDTO";
 import { safeValue } from "../../../../utils/format";
 import ListingTable from "../../../shared/ListingTable";
@@ -12,58 +12,81 @@ import {
 } from "../../../../utils/alerts/showDeleteConfirmation";
 import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
 
+const endpoints = {
+  getAll: "/society/Get-All-Societies",
+  delete: "/society/Delete-Society",
+};
+
+const ENTITY_NAME = "society";
+
 const SocietyListing: React.FC = () => {
   const [societies, setSocieties] = useState<SocietyDTO[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortField, setSortField] = useState<keyof SocietyDTO>("societyName");
+  const [sortField, setSortField] = useState<keyof SocietyDTO>("societyId");
   const [sortAsc, setSortAsc] = useState(true);
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
+
   const navigate = useNavigate();
   const { createRoutePath } = useCurrentMenu();
 
+  // 🔄 Fetch data
   useEffect(() => {
-    fetchAllSocieties()
-      .then((data) => {
-        console.log("✅ Societies Fetched:", data);
+    const fetchSocieties = async () => {
+      try {
+        const data = await fetchAllEntities<SocietyDTO>(endpoints.getAll);
         setSocieties(data);
-      })
-      .catch((err) => console.error("❌ Failed to fetch societies", err))
-      .finally(() => setLoading(false));
+      } catch (err) {
+        console.error("❌ Failed to fetch societies", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSocieties();
   }, []);
 
-  // ✅ Show toast after Add or Update
+  // ✅ Toast after add/update
   useEffect(() => {
     const toastMessage = sessionStorage.getItem("showToast");
     if (toastMessage) {
-      import("sweetalert2").then((Swal) => {
-        Swal.default.fire({
-          icon: "success",
-          title: toastMessage,
-          toast: true,
-          position: "top-end",
-          timer: 3000,
-          timerProgressBar: true,
-          showConfirmButton: false,
-          background: "#fff",
-          iconColor: "#28a745",
-        });
-      });
+      showDeleteResult(true, ENTITY_NAME, toastMessage); // Only Toast
       sessionStorage.removeItem("showToast");
     }
   }, []);
 
-  const sorted = [...societies].sort((a, b) => {
-    const valA = a[sortField] ?? "";
-    const valB = b[sortField] ?? "";
-    return sortAsc
-      ? String(valA).localeCompare(String(valB))
-      : String(valB).localeCompare(String(valA));
-  });
-  
+  // 🔁 Memoized sorted data
+  const sortedSocieties = useMemo(() => {
+    return [...societies].sort((a, b) => {
+      const valA = a[sortField] ?? "";
+      const valB = b[sortField] ?? "";
+      return sortAsc
+        ? String(valA).localeCompare(String(valB))
+        : String(valB).localeCompare(String(valA));
+    });
+  }, [societies, sortField, sortAsc]);
+
+  // 🗑️ Handle delete
+  const handleDeleteSociety = async (id?: number) => {
+    if (!id) return;
+
+    const deletedBy = parseInt(localStorage.getItem("userId") ?? "0", 10);
+    if (!deletedBy || !id) return;
+
+    const confirmed = await showDeleteConfirmation(ENTITY_NAME);
+    if (!confirmed) return;
+
+    try {
+      await deleteEntity(endpoints.delete, id, deletedBy);
+      setSocieties((prev) => prev.filter((s) => s.societyId !== id));
+      await showDeleteResult(true, ENTITY_NAME);
+    } catch (err) {
+      console.error("❌ Failed to delete society", err);
+      await showDeleteResult(false, ENTITY_NAME);
+    }
+  };
 
   return (
     <ListingTable
-      data={sorted}
+      data={sortedSocieties}
       loading={loading}
       columns={[
         { key: "societyId", label: "Id", width: "30px" },
@@ -83,22 +106,7 @@ const SocietyListing: React.FC = () => {
         const editPath = createRoutePath.replace(/create$/i, `edit/${id}`);
         navigate(editPath);
       }}
-      onDelete={async (id) => {
-        const deletedBy = parseInt(localStorage.getItem("userId") ?? "0", 10);
-        if (!deletedBy || !id) return;
-
-        const confirmed = await showDeleteConfirmation("society");
-        if (!confirmed) return;
-
-        try {
-          await deleteSociety(id, deletedBy);
-          setSocieties((prev) => prev.filter((s) => s.societyId !== id));
-          await showDeleteResult(true, "society");
-        } catch (err) {
-          console.error("❌ Failed to delete society", err);
-          await showDeleteResult(false, "society");
-        }
-      }}
+      onDelete={handleDeleteSociety}
       expandedRowId={expandedRowId}
       onExpand={setExpandedRowId}
       getRowKey={(item) => item.societyId ?? Math.floor(Math.random() * 100000)}
