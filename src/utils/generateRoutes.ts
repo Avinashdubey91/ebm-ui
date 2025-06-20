@@ -3,52 +3,24 @@ import type { SideNavigationMenuDTO } from "../types/menuTypes";
 import type { RouteObject } from "react-router-dom";
 
 // ✅ Glob import to preload all .tsx pages
-const lazyModules = import.meta.glob("../features/**/{pages,forms,shared}/**/*.tsx");
+const lazyModules = import.meta.glob(
+  "../features/**/{pages,forms,shared}/**/*.tsx"
+);
 
 // ✅ Map DB ComponentName to actual relative paths
-const componentMap: Record<string, string> = {
-  // 🔒 Users
-  CreateUserForm: "users/pages/AddEditUserPage",
-  UserListView: "users/pages/UserListingPage",
-  UserRoleForm: "users/pages/UserRoleForm",
-  UserRoleMappingForm: "users/pages/UserRoleMappingForm",
+const componentMap: Record<string, string> = {};
 
-  // 🏢 Add New Property Forms
-  AddNewSociety: "property/society/pages/AddEditSocietyPage",
-  AddNewApartment: "property/apartment/pages/AddEditApartmentPage",
-  AddNewFlat: "property/flat/pages/AddEditFlatPage",
-
-  // Property Listing Page
-  SocietyListView: "property/society/pages/SocietyListingPage",
-  ApartmentListView: "property/apartment/pages/ApartmentListingPage",
-  FlatListView: "property/flat/pages/FlatListingPage",
-
-  // 🔌 Electricity
-  AddMeterReadingForm: "billing/pages/AddMeterReadingForm",
-  GenerateBillForm: "billing/pages/GenerateBillForm",
-  UpdatePaymentForm: "billing/pages/UpdatePaymentForm",
-  ElectricMeterForm: "electricity/pages/ElectricMeterForm",
-  UnitChargeForm: "electricity/pages/UnitChargeForm",
-
-  // 🛠️ Maintenance
-  MaintenanceGroupForm: "maintenance/pages/MaintenanceGroupForm",
-  MaintenanceComponentForm: "maintenance/pages/MaintenanceComponentForm",
-  GroupComponentForm: "maintenance/pages/GroupComponentForm",
-
-  // 💸 Expenses
-  ExpenseCategoryForm: "expenses/pages/ExpenseCategoryForm",
-  ExtraExpenseForm: "expenses/pages/ExtraExpenseForm",
-
-  // 📋 Navigation
-  SideNavigationMenuComponent: "navigation/pages/SideNavigationMenuComponent",
-  SideNavigationSubMenuComponent:
-    "navigation/pages/SideNavigationSubMenuComponent",
-};
+for (const path in lazyModules) {
+  const match = path.match(/\/([^/]+)\.tsx$/);
+  if (match) {
+    const componentName = match[1];
+    componentMap[componentName] = path;
+  }
+}
 
 export const generateRoutes = (
   menus: SideNavigationMenuDTO[]
 ): RouteObject[] => {
-
   const dynamicRoutes: RouteObject[] = [];
 
   for (const menu of menus) {
@@ -57,14 +29,12 @@ export const generateRoutes = (
     const children: RouteObject[] = [];
 
     for (const submenu of menu.subMenus ?? []) {
-      if (!submenu.routePath || !submenu.componentName)
-        continue;
+      if (!submenu.routePath || !submenu.componentName) continue;
 
       const modulePath = componentMap[submenu.componentName];
       if (!modulePath) continue;
 
-      const fullImportPath = `../features/${modulePath}.tsx`;
-      const loader = lazyModules[fullImportPath];
+      const loader = lazyModules[componentMap[submenu.componentName]];
 
       const LazyComponent = loader
         ? lazy(
@@ -82,31 +52,30 @@ export const generateRoutes = (
       const editPatterns = ["create", "add"];
       const routeLower = submenu.routePath.toLowerCase();
 
-      const matchedPattern = editPatterns.find((p) =>
-        routeLower === p || routeLower.endsWith(`/${p}`)
+      const matchedPattern = editPatterns.find(
+        (p) => routeLower === p || routeLower.endsWith(`/${p}`)
       );
 
       if (matchedPattern) {
-  const pathSegments = submenu.routePath.split("/").filter(Boolean);
-  if (pathSegments.length === 1) {
-    // e.g., 'create' → generate 'edit/:id'
-    children.push({
-      path: `edit/:id`,
-      element: React.createElement(LazyComponent),
-    });
-  } else {
-    // e.g., 'society/create' → generate 'society/edit/:id'
-    const baseEditPath = submenu.routePath.replace(
-      new RegExp(`/${matchedPattern}$`, "i"),
-      "/edit"
-    );
-    children.push({
-      path: `${baseEditPath}/:id`,
-      element: React.createElement(LazyComponent),
-    });
-  }
-}
-
+        const pathSegments = submenu.routePath.split("/").filter(Boolean);
+        if (pathSegments.length === 1) {
+          // e.g., 'create' → generate 'edit/:id'
+          children.push({
+            path: `edit/:id`,
+            element: React.createElement(LazyComponent),
+          });
+        } else {
+          // e.g., 'society/create' → generate 'society/edit/:id'
+          const baseEditPath = submenu.routePath.replace(
+            new RegExp(`/${matchedPattern}$`, "i"),
+            "/edit"
+          );
+          children.push({
+            path: `${baseEditPath}/:id`,
+            element: React.createElement(LazyComponent),
+          });
+        }
+      }
     }
 
     if (children.length > 0) {
@@ -135,19 +104,18 @@ export const generateRoutes = (
 
       current.children!.push(...children);
       dynamicRoutes.push(parent);
-
     }
   }
 
   console.log(
-  '📌 Final Dynamic Routes:',
-  dynamicRoutes.map((r) => ({
-    parentPath: r.path,
-    children: r.children?.map((c) =>
-      typeof c.path === 'string' ? c.path : '[no-path]'
-    ),
-  }))
-);
+    "📌 Final Dynamic Routes:",
+    dynamicRoutes.map((r) => ({
+      parentPath: r.path,
+      children: r.children?.map((c) =>
+        typeof c.path === "string" ? c.path : "[no-path]"
+      ),
+    }))
+  );
 
   return dynamicRoutes;
 };
