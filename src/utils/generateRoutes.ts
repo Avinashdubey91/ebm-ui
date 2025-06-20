@@ -15,13 +15,13 @@ const componentMap: Record<string, string> = {
 
   // 🏢 Add New Property Forms
   AddNewSociety: "property/society/pages/AddEditSocietyPage",
-  AddNewApartment: "property/society/pages/AddApartmentPage",
-  AddNewFlat: "property/society/pages/AddFlatPage",
+  AddNewApartment: "property/apartment/pages/AddEditApartmentPage",
+  AddNewFlat: "property/flat/pages/AddEditFlatPage",
 
   // Property Listing Page
   SocietyListView: "property/society/pages/SocietyListingPage",
   ApartmentListView: "property/apartment/pages/ApartmentListingPage",
-  FlatListView: "property/apartment/pages/FlatListingPage",
+  FlatListView: "property/flat/pages/FlatListingPage",
 
   // 🔌 Electricity
   AddMeterReadingForm: "billing/pages/AddMeterReadingForm",
