@@ -76,6 +76,8 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
   const [countries, setCountries] = useState<CountryDTO[]>([]);
   const [states, setStates] = useState<StateDTO[]>([]);
   const [districts, setDistricts] = useState<DistrictDTO[]>([]);
+  const [isFirstNameLocked, setIsFirstNameLocked] = useState(true);
+  const [isLastNameLocked, setIsLastNameLocked] = useState(true);
 
   useEffect(() => {
     if (!userId) {
@@ -484,24 +486,70 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
               )}
             </div>
             <div className="col-md-4">
-              <TextInputField
-                name="firstName"
-                label="First Name"
-                value={formData.firstName}
-                onChange={handleChange}
-                disabled={!!userId}
-                required
-              />
+              <div className="d-flex align-items-end gap-2">
+                <div className="flex-grow-1">
+                  <TextInputField
+                    name="firstName"
+                    label="First Name"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    disabled={userId ? isFirstNameLocked : false} 
+                    required
+                  />
+                </div>
+                {userId && (
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    title={isFirstNameLocked ? "Unlock to edit" : "Lock"}
+                    style={{
+                      height: "38px",
+                      width: "38px",
+                      padding: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: 8
+                    }}
+                    onClick={() => setIsFirstNameLocked((prev) => !prev)}
+                  >
+                    <i className={`fa ${isFirstNameLocked ? "fa-lock" : "fa-unlock"}`}></i>
+                  </button>
+                )}
+              </div>
             </div>
             <div className="col-md-4">
-              <TextInputField
-                name="lastName"
-                label="Last Name"
-                value={formData.lastName}
-                onChange={handleChange}
-                disabled={!!userId}
-                required
-              />
+              <div className="d-flex align-items-end gap-2">
+                <div className="flex-grow-1">
+                  <TextInputField
+                    name="lastName"
+                    label="Last Name"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    disabled={userId ? isLastNameLocked : false}
+                    required
+                  />
+                </div>
+                {userId && (
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    title={isLastNameLocked ? "Unlock to edit" : "Lock"}
+                    style={{
+                      height: "38px",
+                      width: "38px",
+                      padding: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: 8
+                    }}
+                    onClick={() => setIsLastNameLocked((prev) => !prev)}
+                  >
+                    <i className={`fa ${isLastNameLocked ? "fa-lock" : "fa-unlock"}`}></i>
+                  </button>
+                )}
+              </div>
             </div>
             {/* ✅ Suggestions on a new row (full-width, below username row) */}
             {!isCheckingUsername && usernameSuggestions.length > 0 && (
@@ -532,7 +580,6 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
                 </div>
               </div>
             )}
-
             {/* === Contact Info === */}
             <div className="col-md-4">
               <TextInputField
@@ -658,7 +705,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
             <div className="col-md-4">
               <TextInputField
                 name="city"
-                label="City / District"
+                label="City"
                 value={formData.city ?? ""}
                 onChange={handleChange}
               />

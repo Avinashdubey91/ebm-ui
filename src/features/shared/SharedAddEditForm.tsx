@@ -70,39 +70,39 @@ const SharedAddEditForm = forwardRef<AddEditFormHandle, SharedAddEditFormProps>(
             opacity: isSubmitting ? 0.6 : 1,
           }}
         >
-          <div className="inner-area-header-container d-flex align-items-center justify-content-between px-3">
+          <div className="inner-area-header-container d-flex align-items-center justify-content-between px-2">
             <h4 className="inner-area-header-title">
               {isEditMode ? "EDIT" : "ADD NEW"}{" "}
               {singularMenuName ? singularMenuName.toUpperCase() : ""}
             </h4>
             <div className="pe-3 gap-2 d-flex" style={{ flexShrink: 0 }}>
-              <button type="submit" className="btn btn-success">
-                <i className="fa fa-save me-1" />
+              <button type="submit" className="btn btn-success add-edit-action-button ">
+                <i className="fa fa-save me-2" />
                 {isEditMode ? "Update" : "Save"}
               </button>
               {onReset && (
                 <button
                   type="button"
-                  className="btn btn-danger"
+                  className="btn btn-danger add-edit-action-button "
                   onClick={() => onReset()}
                 >
-                  <i className="fa fa-undo me-1" />
+                  <i className="fa fa-undo me-2" />
                   Reset
                 </button>
               )}
               {!isEditMode && !disableSaveAndNext && onSaveAndNext && (
                 <button
                   type="button"
-                  className="btn btn-primary"
+                  className="btn btn-primary add-edit-action-button "
                   onClick={() => formRefToUse.current?.requestSubmit()}
                 >
-                  <i className="fa fa-plus me-1" />
+                  <i className="fa fa-plus me-2" />
                   Save & Next
                 </button>
               )}
               <button
                 type="button"
-                className="btn btn-light"
+                className="btn btn-light add-edit-action-button"
                 onClick={handleBack}
               >
                 <i className="fa fa-arrow-left me-2" />

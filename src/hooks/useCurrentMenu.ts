@@ -28,8 +28,8 @@ export const useCurrentMenu = () => {
     "/list"
   );
 
-  console.log("🧭 Pathname:", pathname);
-  console.log("🔁 Normalized Route:", normalizedRouteSegment);
+  // console.log("🧭 Pathname:", pathname);
+  // console.log("🔁 Normalized Route:", normalizedRouteSegment);
 
   let matchedMenu: SideNavigationMenuDTO | undefined;
   let matchedSubMenu: SideNavigationSubMenuDTO | undefined;
@@ -45,7 +45,7 @@ export const useCurrentMenu = () => {
       if (normalizedRouteSegment === fullSubPath) {
         matchedMenu = menu;
         matchedSubMenu = sub;
-        console.log("✅ Matched SubMenu:", sub);
+        // console.log("✅ Matched SubMenu:", sub);
         break;
       }
     }
@@ -59,7 +59,7 @@ export const useCurrentMenu = () => {
       (m) => `/${m.routePath}` === normalizedRouteSegment
     );
     if (matchedMenu) {
-      console.log("🔁 Fallback: matched top-level menu:", matchedMenu.menuName);
+      // console.log("🔁 Fallback: matched top-level menu:", matchedMenu.menuName);
     }
   }
 
@@ -70,7 +70,7 @@ export const useCurrentMenu = () => {
       matchedMenu.sideNavigationMenuId !== currentMenu?.sideNavigationMenuId
     ) {
       setCurrentMenu(matchedMenu);
-      console.log("📌 Context Updated: Current Menu Set:",matchedMenu.menuName);
+      // console.log("📌 Context Updated: Current Menu Set:",matchedMenu.menuName);
     }
   }, [matchedMenu, currentMenu, setCurrentMenu]);
 
@@ -92,22 +92,22 @@ export const useCurrentMenu = () => {
       ? `/dashboard/${matchedMenu.routePath}/list`
       : "/dashboard"; // 🛑 used only if absolutely no match
 
-  console.log(
-    "📣 Final menu names → Singular:",
-    singularMenuName,
-    "| Plural:",
-    pluralMenuName
-  );
-  console.log("🔙 Back path resolved →", parentListPath);
+  // console.log(
+  //   "📣 Final menu names → Singular:",
+  //   singularMenuName,
+  //   "| Plural:",
+  //   pluralMenuName
+  // );
+  // console.log("🔙 Back path resolved →", parentListPath);
 
-  // ✅ STEP 6: Get 'create' or 'add' submenu if present
+ // STEP 6 – locate the correct sibling "create" submenu
+  const currentBase = (matchedSubMenu?.routePath ?? "")
+    .toLowerCase()
+    .replace(/\/(list|edit(\/:?\w+)?)$/i, "");
+
   const siblingCreateSubmenu = matchedMenu?.subMenus?.find((sub) => {
-    const path = sub.routePath?.toLowerCase() ?? "";
-
-    // Match either:
-    // 1. path === 'create' (like user)
-    // 2. path ends with '/create' (like society/create)
-    return !sub.isDeleted && (path === "create" || path.endsWith("/create"));
+    const subRoute = (sub.routePath ?? "").toLowerCase();
+    return subRoute === `${currentBase}/create` || subRoute === "create";
   });
 
   // ✅ STEP 7: Build dynamic route

@@ -89,7 +89,9 @@ const Sidebar: React.FC<{ hasUnsavedChanges?: boolean }> = ({ hasUnsavedChanges 
 
       <ul className="nav flex-column mt-2" id="sidebarMenu">
         {loading && <li className="text-white text-center small">Loading...</li>}
-        {!loading && filteredMenu.map((item: SideNavigationMenuDTO) => {
+        {!loading && filteredMenu
+          .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+          .map((item: SideNavigationMenuDTO) => {
           const Icon = getIconComponent(item.iconClass);
           const menuId = item.menuName || `menu-${item.sideNavigationMenuId ?? Math.random().toString(36).substring(2)}`;
           const keyId = item.sideNavigationMenuId ?? `missing-${menuId}`;

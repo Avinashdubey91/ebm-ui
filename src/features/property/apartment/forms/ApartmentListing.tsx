@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { fetchAllEntities, deleteEntity } from "../../../../api/genericCrudApi";
 import type { ApartmentDTO } from "../../../../types/ApartmentDTO";
 import { safeValue } from "../../../../utils/format";
-import ListingTable from "../../../shared/ListingTable";
+import SharedListingTable from "../../../shared/SharedListingTable";
 import {
   showDeleteConfirmation,
   showDeleteResult,
@@ -81,18 +81,17 @@ const ApartmentListing: React.FC = () => {
   };
 
   return (
-    <ListingTable
+    <SharedListingTable
       data={sortedApartments}
       loading={loading}
       columns={[
-        { key: "apartmentId", label: "ID", width: "60px" },
+        { key: "apartmentId", label: "ID", width: "30px" },
         { key: "apartmentName", label: "Name", width: "160px" },
         { key: "blockName", label: "Block", width: "120px" },
         { key: "buildingType", label: "Type", width: "120px" },
         { key: "totalFloors", label: "Floors", width: "80px" },
         { key: "totalFlats", label: "Flats", width: "80px" },
         { key: "hasLift", label: "Lift", width: "80px" },
-        { key: "isOccupied", label: "Occupied", width: "100px" },
       ]}
       sortField={sortField}
       sortAsc={sortAsc}
@@ -113,7 +112,7 @@ const ApartmentListing: React.FC = () => {
           <strong>Caretaker:</strong> {safeValue(a.caretakerName)} |{" "}
           <strong>Phone:</strong> {safeValue(a.caretakerPhone)} |{" "}
           <strong>Maintenance Lead:</strong> {safeValue(a.maintenanceLead)} |{" "}
-          <strong>Emergency Contact:</strong> {safeValue(a.emergencyContact)} <br />
+          <strong>Emergency Contact:</strong> {safeValue(a.emergencyContact)} |{" "}
           <strong>Gate Facing:</strong> {safeValue(a.gateFacing)} |{" "}
           <strong>Lift:</strong> {a.hasLift ? "Yes" : "No"} |{" "}
           <strong>Generator:</strong> {a.hasGenerator ? "Yes" : "No"}

@@ -1,4 +1,4 @@
-// features/shared/ListingTable.tsx
+// features/shared/SharedListingTable.tsx
 
 import React from "react";
 import { FaSort, FaSortUp, FaSortDown, FaEdit, FaTrash } from "react-icons/fa";
@@ -8,7 +8,7 @@ type Column<T> = {
   key: keyof T;
   label: string;
   width?: string;
-  renderCell?: (item: T) => React.ReactNode; // ✅ Add this
+  renderCell?: (item: T) => React.ReactNode;
 };
 
 type Props<T> = {
@@ -26,7 +26,7 @@ type Props<T> = {
   getRowKey: (item: T) => number;
 };
 
-function ListingTable<T>({
+function SharedListingTable<T>({
   data,
   columns,
   loading = false,
@@ -98,7 +98,9 @@ function ListingTable<T>({
                     <td key={String(key)}>
                       {renderCell
                         ? renderCell(item)
-                        : typeof item[key] === "object" || typeof item[key] === "undefined" || item[key] === null
+                        : typeof item[key] === "boolean"
+                        ? item[key] ? "Yes" : "No"
+                        : typeof item[key] === "object" || item[key] == null
                         ? "-"
                         : String(item[key])}
                     </td>
@@ -144,4 +146,4 @@ function ListingTable<T>({
   );
 }
 
-export default ListingTable;
+export default SharedListingTable;

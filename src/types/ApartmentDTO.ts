@@ -12,7 +12,6 @@ export interface ApartmentDTO {
   hasLift: boolean;
   hasGenerator: boolean;
   gateFacing?: string;
-  isOccupied: boolean;
 
   caretakerName?: string;
   caretakerPhone?: string;

@@ -4,7 +4,7 @@ import { fetchAllEntities, deleteEntity } from "../../../api/genericCrudApi";
 import type { UserDTO } from "../../../types/UserDTO";
 import { abbreviateRole } from "../../../utils/abbreviate";
 import { formatDate, safeValue, toTitleCase } from "../../../utils/format";
-import ListingTable from "../../shared/ListingTable";
+import SharedListingTable from "../../shared/SharedListingTable";
 import { showDeleteConfirmation, showDeleteResult } from "../../../utils/alerts/showDeleteConfirmation";
 import { renderImageThumbnail } from "../../../utils/renderImageThumbnail";
 import { useCurrentMenu } from "../../../hooks/useCurrentMenu";
@@ -69,12 +69,12 @@ const UserListing: React.FC = () => {
   });
 
   return (
-    <ListingTable
+    <SharedListingTable
       data={sorted}
       loading={loading}
       columns={[
         { key: "userName", label: "User Name", width: "10px" },
-        { key: "firstName", label: "Name", width: "100px" },
+        { key: "firstName", label: "Name", width: "100px", renderCell: (user) => `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()},
         { key: "email", label: "Email", width: "150px" },
         { key: "mobile", label: "Mobile", width: "100px" },
         { key: "addressLine1", label: "Address", width: "160px" },

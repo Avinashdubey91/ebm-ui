@@ -14,12 +14,7 @@ import ChangePasswordModal from "./ChangePasswordModal";
 import UnlockAccountModal from "./UnlockAccountModal";
 import { UseAuth } from "../../../context/UseAuth";
 import OverlayMessage from "../../../components/common/OverlayMessage";
-
-type ErrorResponse = {
-  response?: {
-    data?: { message?: string };
-  };
-};
+import { handleApiError } from "../../../utils/handleApiError";
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -46,44 +41,30 @@ const Login: React.FC = () => {
   };
 
   const handleLogin = async () => {
-    try {
-      const response = await loginUser({ userName: username, password });
+  try {
+    const response = await loginUser({ userName: username, password });
 
-      if (!response.userId || !response.token) {
-        throw new Error("Invalid login response: Missing user ID or token");
-      }
+    if (!response.userId || !response.token) {
+      throw new Error("Invalid login response: Missing user ID or token");
+    }
 
-      setAuth(response.token, response.userId.toString());
-      localStorage.setItem("username", username);
-      localStorage.setItem("status", "Online");
+    setAuth(response.token, response.userId.toString());
+    localStorage.setItem("username", username);
+    localStorage.setItem("status", "Online");
 
-      await startNotificationConnection((notification) => {
-        console.log("🔔 Notification:", notification);
-      }, response.token);
+    await startNotificationConnection((notification) => {
+      console.log("🔔 Notification:", notification);
+    }, response.token);
 
-      setIsLoadingPostLogin(true);
-
-      // Optionally simulate backend boot time or wait for menus/SIGNALR
-      setTimeout(() => {
-        navigate("/dashboard");
-      }, 1000);
-
-      
-    } catch (error: unknown) {
-        const err = error as ErrorResponse & { message?: string };
-
-        let msg = "Something went wrong while trying to log in.";
-
-        if (err.response?.data?.message) {
-          msg = err.response.data.message;
-        } else if (err.message === "Network Error") {
-          msg =
-            "Cannot connect to the server. Please check your network or ensure the backend is running.";
-        }
-          setModalType("error");
-          setModalMessage(msg);
-      }
-  };
+    setIsLoadingPostLogin(true);
+    setTimeout(() => navigate("/dashboard"), 1000);
+  } catch (error: unknown) {
+    const { userMessage, statusCode } = handleApiError(error, "Login failed");
+    console.warn("Login failed with status:", statusCode);
+    setModalType("error");
+    setModalMessage(`${userMessage} (Error Code: ${statusCode ?? "N/A"})`);
+  }
+};
 
   const closeModal = () => {
     setModalType(null);

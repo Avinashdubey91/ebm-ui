@@ -2,7 +2,7 @@
   position: sticky;
   top: 56px;
   z-index: 10;
-  background-color: #8e8e8e;
+  background-color: #991e61;
   color: white;
   padding: 12px 0;
   font-size: 1.25rem;
@@ -103,3 +103,6 @@
   }
 }
 
+.add-edit-action-button {
+  min-width: 140px;
+}

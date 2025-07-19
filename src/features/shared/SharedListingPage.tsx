@@ -1,47 +1,49 @@
-import React, { useEffect } from "react";
+import React, { useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCurrentMenu } from "../../hooks/useCurrentMenu";
 
 interface SharedListingPageProps {
-  title?: string; // Optional: custom header title (otherwise uses pluralMenuName)
-  children: React.ReactNode; // Listing component (e.g., <ApartmentListing />)
+  title?: string;
+  ListingComponent: React.FC;
 }
 
 const SharedListingPage: React.FC<SharedListingPageProps> = ({
   title,
-  children,
+  ListingComponent,
 }) => {
   const navigate = useNavigate();
   const { singularMenuName, pluralMenuName, createRoutePath } = useCurrentMenu();
 
-  useEffect(() => {
-    console.log("✅ SharedListingPage mounted");
-  }, []);
-
-  const handleAddClick = () => {
+  // 🧠 Memoize handler so it doesn't recreate every render
+  const handleAddNew = useCallback(() => {
     if (createRoutePath) {
       navigate(createRoutePath);
     } else {
-      console.warn("⚠️ No dynamic create route path found for current menu.");
+      console.warn("⚠️ No dynamic create route path.");
     }
-  };
+  }, [createRoutePath, navigate]);
+
+  // ✨ Memoize expensive text processing (if needed)
+  const headerText = useMemo(() => {
+    return title || `MANAGE ${pluralMenuName.toUpperCase()}`;
+  }, [title, pluralMenuName]);
 
   return (
     <div className="page-listing">
-      <div className="inner-area-header-container d-flex align-items-center justify-content-between px-3">
+      <div className="inner-area-header-container d-flex align-items-center justify-content-between px-2">
         <h4 className="inner-area-header-title flex-grow-1 text-center m-0">
-          MANAGE {(title ?? pluralMenuName).toUpperCase()}
+          {headerText}
         </h4>
-        <div style={{ flexShrink: 0 }}>
-          <button className="btn btn-success btn-md" onClick={handleAddClick}>
+        <div className="action-button-container">
+          <button className="btn btn-success btn-md" onClick={handleAddNew}>
             <i className="fa fa-plus me-2" />
             Add New {singularMenuName}
           </button>
         </div>
       </div>
-      {children}
+      <ListingComponent />
     </div>
   );
 };
 
-export default SharedListingPage;
+export default React.memo(SharedListingPage);

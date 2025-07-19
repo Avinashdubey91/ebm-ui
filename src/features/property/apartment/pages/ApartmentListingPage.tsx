@@ -1,13 +1,7 @@
-import React from "react";
+// features/property/apartment/pages/ApartmentListingPage.tsx
 import SharedListingPage from "../../../shared/SharedListingPage";
-import ApartmentListing from "../../../property/apartment/forms/ApartmentListing";
+import ApartmentListing from "../forms/ApartmentListing";
 
-const ApartmentListingPage: React.FC = () => {
-  return (
-    <SharedListingPage>
-      <ApartmentListing />
-    </SharedListingPage>
-  );
-};
-
-export default ApartmentListingPage;
+export default function ApartmentListingPage() {
+  return <SharedListingPage ListingComponent={ApartmentListing} />;
+}

@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { fetchAllEntities, deleteEntity } from "../../../../api/genericCrudApi";
 import type { SocietyDTO } from "../../../../types/SocietyDTO";
 import { safeValue } from "../../../../utils/format";
-import ListingTable from "../../../shared/ListingTable";
+import SharedListingTable from "../../../shared/SharedListingTable";
 import {
   showDeleteConfirmation,
   showDeleteResult,
@@ -85,7 +85,7 @@ const SocietyListing: React.FC = () => {
   };
 
   return (
-    <ListingTable
+    <SharedListingTable
       data={sortedSocieties}
       loading={loading}
       columns={[
@@ -117,12 +117,12 @@ const SocietyListing: React.FC = () => {
           <strong>Treasurer:</strong> {safeValue(s.treasurerName)} |{" "}
           <strong>Phone:</strong> {safeValue(s.treasurerPhone)} |{" "}
           <strong>Clubhouse:</strong> {s.hasClubhouse ? "Yes" : "No"} |{" "}
-          <strong>Swimming Pool:</strong> {s.hasSwimmingPool ? "Yes" : "No"}
-          <br />
+          <strong>Swimming Pool:</strong> {s.hasSwimmingPool ? "Yes" : "No"} |{" "}
           <strong>Registered:</strong> {safeValue(s.registrationNumber)} |{" "}
           <strong>Contact Person:</strong> {safeValue(s.contactPerson)} |{" "}
           <strong>Email:</strong> {safeValue(s.email)} |{" "}
-          <strong>Contact No.:</strong> {safeValue(s.contactNumber)} |{" "}
+          <br />
+          <strong>Contact No.:</strong> {safeValue(s.contactNumber)}
         </>
       )}
     />
