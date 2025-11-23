@@ -207,7 +207,7 @@ const AddEditFlat = forwardRef<AddEditFormHandle, Props>(
             />
           </div>
 
-          <div className="col-md-4 mb-3">
+          <div className="col-md-2 mb-3">
             <TextInputField
               label="Flat Number"
               name="flatNumber"
@@ -217,7 +217,7 @@ const AddEditFlat = forwardRef<AddEditFormHandle, Props>(
             />
           </div>
 
-          <div className="col-md-4 mb-3">
+          <div className="col-md-3 mb-3">
             <TextInputField
               label="Flat Type"
               name="flatType"
@@ -226,9 +226,9 @@ const AddEditFlat = forwardRef<AddEditFormHandle, Props>(
             />
           </div>
 
-          <div className="col-md-4 mb-3">
+          <div className="col-md-3 mb-3">
             <TextInputField
-              label="Facing"
+              label="Flat Facing"
               name="facingDirection"
               value={formData.facingDirection ?? ""}
               onChange={handleChange}
@@ -266,7 +266,7 @@ const AddEditFlat = forwardRef<AddEditFormHandle, Props>(
           </div>
 
           {/* Boolean fields in checkbox grid */}
-          <div className="col-md-6 mb-3 d-flex flex-wrap gap-3">
+          <div className="col-md-4 mb-3 gap-3">
             {[
               { name: "isRented", label: "Rented" },
               { name: "hasGasPipeline", label: "Gas Pipeline" },
@@ -288,7 +288,7 @@ const AddEditFlat = forwardRef<AddEditFormHandle, Props>(
             ))}
           </div>
 
-          <div className="col-md-6 mb-3">
+          <div className="col-md-3 mb-3">
             <TextInputField
               label="Registered Email"
               name="registeredEmail"

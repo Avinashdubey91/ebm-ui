@@ -75,7 +75,9 @@ const AddEditSociety = forwardRef<AddEditFormHandle, Props>(
       formData.countryId,
       formData.stateId
     );
-    const [submitMode, setSubmitMode] = useState<"save" | "saveAndNext">("save");
+    const [submitMode, setSubmitMode] = useState<"save" | "saveAndNext">(
+      "save"
+    );
     const formRef = useRef<HTMLFormElement>(null);
     const { parentListPath } = useCurrentMenu();
 
@@ -133,7 +135,13 @@ const AddEditSociety = forwardRef<AddEditFormHandle, Props>(
         const userId = parseInt(localStorage.getItem("userId") || "0", 10);
 
         if (societyId) {
-          await updateEntity(endpoints.update, societyId, formData, userId, false);
+          await updateEntity(
+            endpoints.update,
+            societyId,
+            formData,
+            userId,
+            false
+          );
           await showAddUpdateResult(true, "update", "society");
         } else {
           await createEntity(endpoints.add, formData, userId, false);
@@ -147,7 +155,7 @@ const AddEditSociety = forwardRef<AddEditFormHandle, Props>(
         }
       } catch (err) {
         console.error(err);
-        await showAddUpdateResult( true, "error", "society");
+        await showAddUpdateResult(true, "error", "society");
       } finally {
         setIsSubmitting(false);
       }
@@ -169,19 +177,17 @@ const AddEditSociety = forwardRef<AddEditFormHandle, Props>(
       }
     };
 
-
-   useImperativeHandle(ref, () => ({
-  submit: () => {
-    setSubmitMode("save");
-    formRef.current?.requestSubmit();
-  },
-  reset: handleReset,
-  saveAndNext: () => {
-    setSubmitMode("saveAndNext");
-    formRef.current?.requestSubmit();
-  },
-}));
-
+    useImperativeHandle(ref, () => ({
+      submit: () => {
+        setSubmitMode("save");
+        formRef.current?.requestSubmit();
+      },
+      reset: handleReset,
+      saveAndNext: () => {
+        setSubmitMode("saveAndNext");
+        formRef.current?.requestSubmit();
+      },
+    }));
 
     return (
       <SharedAddEditForm
@@ -191,7 +197,7 @@ const AddEditSociety = forwardRef<AddEditFormHandle, Props>(
         onReset={handleReset}
         onSaveAndNext={handleSaveAndNext}
         isEditMode={!!societyId}
-        formRef={formRef} 
+        formRef={formRef}
         className=""
       >
         <div className="row align-items-end">
@@ -383,21 +389,33 @@ const AddEditSociety = forwardRef<AddEditFormHandle, Props>(
               onChange={handleChange}
             />
           </div>
-          <div className="col-md-4 mt-3 d-flex flex-column">
-            <CheckBoxField
-              label="Has Clubhouse"
-              name="hasClubhouse"
-              checked={!!formData.hasClubhouse}
-              onChange={handleChange}
-              checkboxStyle={{ transform: "scale(1.1)", marginRight: "10px" }}
-            />
-            <CheckBoxField
-              label="Has Swimming Pool"
-              name="hasSwimmingPool"
-              checked={!!formData.hasSwimmingPool}
-              onChange={handleChange}
-              checkboxStyle={{ transform: "scale(1.1)", marginRight: "10px" }}
-            />
+          <div className="col-md-4 mb-4">
+            <div className="d-flex align-items-center flex-wrap">
+              <div className="me-5">
+                <CheckBoxField
+                  label="Has Clubhouse"
+                  name="hasClubhouse"
+                  checked={!!formData.hasClubhouse}
+                  onChange={handleChange}
+                  checkboxStyle={{
+                    transform: "scale(1.1)",
+                    marginRight: "10px",
+                  }}
+                />
+              </div>
+              <div className="ms-4">
+                <CheckBoxField
+                  label="Has Swimming Pool"
+                  name="hasSwimmingPool"
+                  checked={!!formData.hasSwimmingPool}
+                  onChange={handleChange}
+                  checkboxStyle={{
+                    transform: "scale(1.1)",
+                    marginRight: "10px",
+                  }}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </SharedAddEditForm>
