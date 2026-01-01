@@ -21,12 +21,10 @@ import type { SocietyDTO } from "../../../../types/SocietyDTO";
 
 import TextInputField from "../../../../components/common/TextInputField";
 import SelectField from "../../../../components/common/SelectField";
-import CheckBoxField from "../../../../components/common/CheckBoxField";
 import SharedAddEditForm from "../../../shared/SharedAddEditForm";
 import type { AddEditFormHandle } from "../../../shared/SharedAddEditForm";
 import { showAddUpdateResult } from "../../../../utils/alerts/showAddUpdateConfirmation";
 import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
-import Swal from "sweetalert2";
 
 export interface AddEditApartmentRef {
   submit: () => void;
@@ -45,7 +43,6 @@ const endpoints = {
   add: "/apartment/Add-New-Apartment",
   update: "/apartment/Update-Existing-Apartment",
 
-  /* helper for society dropdown */
   getAllSocieties: "/society/Get-All-Societies",
 };
 
@@ -68,10 +65,76 @@ const emptyApartment: ApartmentDTO = {
   emergencyContact: "",
 };
 
+function SectionCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="border rounded-3 p-3">
+      <div className="fw-bold mb-3">{title}</div>
+      {children}
+    </div>
+  );
+}
+
+function SwitchTile({
+  name,
+  label,
+  checked,
+  onChange,
+  disabled,
+}: {
+  name: string;
+  label: string;
+  checked: boolean;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  disabled?: boolean;
+}) {
+  const id = `switch-${name}`;
+
+  // Match your input/select control height
+  const controlMinHeight = 38;
+
+  return (
+    <div className="d-flex flex-column w-100">
+      <label htmlFor={id} className="form-label fw-semibold mb-2">
+        {label}
+      </label>
+
+      <div
+        className="border rounded-3 px-3 d-flex align-items-center justify-content-between w-100"
+        style={{ minHeight: controlMinHeight }}
+      >
+        <span className="text-muted">{checked ? "Yes" : "No"}</span>
+
+        <div className="form-check form-switch m-0">
+          <input
+            id={id}
+            className="form-check-input"
+            type="checkbox"
+            name={name}
+            checked={checked}
+            onChange={onChange}
+            disabled={disabled}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function keepDigitsOnly(value: string, maxLen?: number) {
+  const digits = value.replace(/\D/g, "");
+  return typeof maxLen === "number" ? digits.slice(0, maxLen) : digits;
+}
+
 const AddEditApartment = forwardRef<AddEditFormHandle, Props>(
   ({ apartmentId, onUnsavedChange }, ref) => {
     const [formData, setFormData] = useState<ApartmentDTO>(emptyApartment);
-    const [societies, setSocieties] = useState<SocietyDTO[]>([]); // dropdown
+    const [societies, setSocieties] = useState<SocietyDTO[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitMode, setSubmitMode] = useState<"save" | "saveAndNext">(
       "save"
@@ -79,14 +142,20 @@ const AddEditApartment = forwardRef<AddEditFormHandle, Props>(
 
     const navigate = useNavigate();
     const { parentListPath } = useCurrentMenu();
+
     const formRef = useRef<HTMLFormElement>(null);
     const initialRef = useRef<ApartmentDTO | null>(null);
+
+    const numericOptionalFields = useMemo(
+      () => new Set<string>(["constructionYear", "totalFloors", "totalFlats"]),
+      []
+    );
 
     /* ---------- fetch societies for dropdown ---------- */
     useEffect(() => {
       fetchAllEntities<SocietyDTO>(endpoints.getAllSocieties)
         .then(setSocieties)
-        .catch((err) => console.error("❌ Failed to fetch societies:", err));
+        .catch((err) => console.error("Failed to fetch societies:", err));
     }, []);
 
     /* ---------- fetch single apartment (edit mode) ---------- */
@@ -107,6 +176,7 @@ const AddEditApartment = forwardRef<AddEditFormHandle, Props>(
     /* ---------- unsaved-changes detection ---------- */
     const hasUnsavedChanges = useMemo(() => {
       if (!initialRef.current) return false;
+
       const keys = Object.keys(formData) as (keyof ApartmentDTO)[];
       return keys.some((k) => formData[k] !== initialRef.current![k]);
     }, [formData]);
@@ -115,22 +185,53 @@ const AddEditApartment = forwardRef<AddEditFormHandle, Props>(
       onUnsavedChange?.(hasUnsavedChanges);
     }, [hasUnsavedChanges, onUnsavedChange]);
 
+    const applyFormState = (next: ApartmentDTO) => {
+      setFormData(next);
+      initialRef.current = { ...next };
+    };
+
     /* ---------- field change handler ---------- */
     const handleChange = (
       e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
     ) => {
-      const { name, value, type } = e.target;
-      const val =
-        type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
-      setFormData((p) => ({ ...p, [name]: val }));
+      const el = e.currentTarget;
+      const name = el.name;
+
+      if (el instanceof HTMLInputElement && el.type === "checkbox") {
+        setFormData((p) => ({ ...p, [name]: el.checked }));
+        return;
+      }
+
+      const raw = el.value;
+
+      if (name === "societyId") {
+        setFormData((p) => ({ ...p, societyId: raw === "" ? 0 : Number(raw) }));
+        return;
+      }
+
+      if (numericOptionalFields.has(name)) {
+        setFormData((p) => ({
+          ...p,
+          [name]: raw === "" ? undefined : Number(raw),
+        }));
+        return;
+      }
+
+      setFormData((p) => ({ ...p, [name]: raw }));
     };
 
-    /* ---------- reset ---------- */
-    const handleReset = () => setFormData(initialRef.current ?? emptyApartment);
+    const handleReset = () =>
+      applyFormState(initialRef.current ?? emptyApartment);
 
-    /* ---------- submit ---------- */
+    const requestSubmit = (mode: "save" | "saveAndNext") => {
+      setSubmitMode(mode);
+      formRef.current?.requestSubmit();
+    };
+
+    /* ---------- submit (single validated flow) ---------- */
     const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
       if (e) e.preventDefault();
+
       if (formRef.current && !formRef.current.checkValidity()) {
         formRef.current.reportValidity();
         return;
@@ -149,211 +250,232 @@ const AddEditApartment = forwardRef<AddEditFormHandle, Props>(
             false
           );
           await showAddUpdateResult(true, "update", "apartment");
-        } else {
-          await createEntity(endpoints.add, formData, userId, false);
-          await showAddUpdateResult(true, "add", "apartment");
+          navigate(parentListPath);
+          return;
         }
 
-        /* post-submit */
+        await createEntity(endpoints.add, formData, userId, false);
+        await showAddUpdateResult(true, "add", "apartment");
+
         if (submitMode === "saveAndNext") {
-          handleReset();
+          // For faster bulk entry keep Society selected, clear rest
+          applyFormState({ ...emptyApartment, societyId: formData.societyId });
         } else {
           navigate(parentListPath);
         }
       } catch (err) {
         console.error(err);
-        await showAddUpdateResult(true, "error", "apartment");
+        await showAddUpdateResult(false, "error", "apartment");
       } finally {
         setIsSubmitting(false);
       }
     };
 
-    /* ---------- save-and-next for bulk entry ---------- */
-    const handleSaveAndNext = async () => {
-      const userId = parseInt(localStorage.getItem("userId") || "0", 10);
-      try {
-        await createEntity(endpoints.add, formData, userId, false);
-        await Swal.fire("Created!", "Apartment added successfully.", "success");
-        handleReset();
-      } catch (err) {
-        console.error(err);
-        Swal.fire("Error", "Failed to save apartment.", "error");
-      }
-    };
-
-    /* ---------- expose imperative API ---------- */
     useImperativeHandle(ref, () => ({
-      submit: () => {
-        setSubmitMode("save");
-        formRef.current?.requestSubmit();
-      },
-      reset: () => handleReset(),
-      saveAndNext: () => {
-        setSubmitMode("saveAndNext");
-        formRef.current?.requestSubmit();
-      },
+      submit: () => requestSubmit("save"),
+      reset: handleReset,
+      saveAndNext: () => requestSubmit("saveAndNext"),
     }));
 
-    /* ---------- dropdown options (never undefined) ---------- */
     const societyOptions = societies
-      .filter((s) => s.societyId !== undefined)
+      .filter(
+        (s): s is SocietyDTO & { societyId: number } =>
+          typeof s.societyId === "number"
+      )
       .map((s) => ({
         label: s.societyName,
-        value: s.societyId as number, // guaranteed number
+        value: s.societyId,
       }));
 
-    /* ---------- UI ---------- */
     return (
       <SharedAddEditForm
         isSubmitting={isSubmitting}
         hasUnsavedChanges={hasUnsavedChanges}
         onSubmit={handleSubmit}
         onReset={handleReset}
-        onSaveAndNext={handleSaveAndNext}
+        onSaveAndNext={() => requestSubmit("saveAndNext")}
         isEditMode={!!apartmentId}
         formRef={formRef}
       >
-        <div className="row align-items-end">
-          {/* ----- Society (dropdown) ----- */}
-          <div className="col-md-4 mb-3">
-            <SelectField
-              label="Society"
-              name="societyId"
-              value={formData.societyId}
-              onChange={handleChange}
-              required
-              options={societyOptions}
-            />
+        <div className="row g-4">
+          {/* Full width sections */}
+          <div className="col-12">
+            <SectionCard title="Property Selection">
+              <div className="row g-3">
+                <div className="col-md-6 col-lg-4">
+                  <SelectField
+                    label="Society"
+                    name="societyId"
+                    value={formData.societyId ? formData.societyId : ""}
+                    onChange={handleChange}
+                    required
+                    options={societyOptions}
+                  />
+                </div>
+
+                <div className="col-md-6 col-lg-4">
+                  <TextInputField
+                    label="Apartment Name"
+                    name="apartmentName"
+                    value={formData.apartmentName}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+
+                <div className="col-md-6 col-lg-4">
+                  <TextInputField
+                    label="Block"
+                    name="blockName"
+                    value={formData.blockName ?? ""}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+            </SectionCard>
           </div>
 
-          {/* ----- Basic Info ----- */}
-          <div className="col-md-4 mb-3">
-            <TextInputField
-              label="Apartment Name"
-              name="apartmentName"
-              value={formData.apartmentName}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          <div className="col-md-4 mb-3">
-            <TextInputField
-              label="Block"
-              name="blockName"
-              value={formData.blockName ?? ""}
-              onChange={handleChange}
-            />
-          </div>
-          <div className="col-md-4 mb-3">
-            <TextInputField
-              label="Construction Year"
-              name="constructionYear"
-              value={formData.constructionYear ?? ""}
-              onChange={handleChange}
-              pattern="^\d{4}$"
-              inputMode="numeric"
-              title="Year must be 4 digits"
-            />
-          </div>
-          <div className="col-md-4 mb-3">
-            <TextInputField
-              label="Building Type"
-              name="buildingType"
-              value={formData.buildingType ?? ""}
-              onChange={handleChange}
-            />
+          <div className="col-12">
+            <SectionCard title="Building Details">
+              <div className="row g-3">
+                <div className="col-md-4">
+                  <TextInputField
+                    label="Construction Year"
+                    name="constructionYear"
+                    value={formData.constructionYear ?? ""}
+                    onChange={handleChange}
+                    inputMode="numeric"
+                    maxLength={4}
+                    pattern="^\\d{4}$"
+                    title="Year must be 4 digits"
+                    onInput={(e: React.FormEvent<HTMLInputElement>) => {
+                      e.currentTarget.value = keepDigitsOnly(
+                        e.currentTarget.value,
+                        4
+                      );
+                    }}
+                  />
+                </div>
+
+                <div className="col-md-4">
+                  <TextInputField
+                    label="Building Type"
+                    name="buildingType"
+                    value={formData.buildingType ?? ""}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div className="col-md-4">
+                  <TextInputField
+                    label="Gate Facing"
+                    name="gateFacing"
+                    value={formData.gateFacing ?? ""}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div className="col-md-3">
+                  <TextInputField
+                    label="Total Floors"
+                    name="totalFloors"
+                    value={formData.totalFloors ?? ""}
+                    onChange={handleChange}
+                    inputMode="numeric"
+                    onInput={(e: React.FormEvent<HTMLInputElement>) => {
+                      e.currentTarget.value = keepDigitsOnly(
+                        e.currentTarget.value
+                      );
+                    }}
+                  />
+                </div>
+
+                <div className="col-md-3">
+                  <TextInputField
+                    label="Total Flats"
+                    name="totalFlats"
+                    value={formData.totalFlats ?? ""}
+                    onChange={handleChange}
+                    inputMode="numeric"
+                    onInput={(e: React.FormEvent<HTMLInputElement>) => {
+                      e.currentTarget.value = keepDigitsOnly(
+                        e.currentTarget.value
+                      );
+                    }}
+                  />
+                </div>
+
+                <div className="col-md-3">
+                  <SwitchTile
+                    name="hasLift"
+                    label="Lift Available"
+                    checked={!!formData.hasLift}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div className="col-md-3">
+                  <SwitchTile
+                    name="hasGenerator"
+                    label="Generator Available"
+                    checked={!!formData.hasGenerator}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+            </SectionCard>
           </div>
 
-          {/* ----- Stats ----- */}
-          <div className="col-md-2 mb-3">
-            <TextInputField
-              label="Total No. of Floors"
-              name="totalFloors"
-              value={formData.totalFloors ?? ""}
-              onChange={handleChange}
-              inputMode="numeric"
-            />
-          </div>
-          <div className="col-md-2 mb-3">
-            <TextInputField
-              label="Total No. of Flats"
-              name="totalFlats"
-              value={formData.totalFlats ?? ""}
-              onChange={handleChange}
-              inputMode="numeric"
-            />
-          </div>
-          <div className="col-md-4 mb-3">
-            <TextInputField
-              label="Caretaker Name"
-              name="caretakerName"
-              value={formData.caretakerName ?? ""}
-              onChange={handleChange}
-            />
-          </div>
-          <div className="col-md-2 mb-3">
-            <TextInputField
-              label="Caretaker Phone"
-              name="caretakerPhone"
-              value={formData.caretakerPhone ?? ""}
-              onChange={handleChange}
-              pattern="^\d{10}$"
-              maxLength={10}
-              inputMode="numeric"
-            />
-          </div>
-          <div className="col-md-2 mb-3">
-            <TextInputField
-              label="Gate Facing"
-              name="gateFacing"
-              value={formData.gateFacing ?? ""}
-              onChange={handleChange}
-            />
-          </div>
-          <div className="col-md-4 mb-3">
-            <TextInputField
-              label="Maintenance Lead"
-              name="maintenanceLead"
-              value={formData.maintenanceLead ?? ""}
-              onChange={handleChange}
-            />
-          </div>
-          <div className="col-md-4 mb-3">
-            <TextInputField
-              label="Emergency Contact"
-              name="emergencyContact"
-              value={formData.emergencyContact ?? ""}
-              onChange={handleChange}
-            />
-          </div>
-          {/* ----- Booleans ----- */}
-          <div className="col-md-4 mb-4">
-            <div className="d-flex align-items-center flex-wrap">
-              <div className="me-4">
-                <CheckBoxField
-                  label="Lift"
-                  name="hasLift"
-                  checked={formData.hasLift}
-                  onChange={handleChange}
-                  checkboxStyle={{
-                    transform: "scale(1.1)",
-                    marginRight: "10px",
-                  }}
-                />
+          <div className="col-12">
+            <SectionCard title="Caretaker & Contacts">
+              <div className="row g-3">
+                <div className="col-md-4">
+                  <TextInputField
+                    label="Caretaker Name"
+                    name="caretakerName"
+                    value={formData.caretakerName ?? ""}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div className="col-md-4">
+                  <TextInputField
+                    label="Caretaker Phone"
+                    name="caretakerPhone"
+                    value={formData.caretakerPhone ?? ""}
+                    onChange={handleChange}
+                    maxLength={10}
+                    inputMode="numeric"
+                    pattern="^\\d{10}$"
+                    title="Mobile number must be exactly 10 digits"
+                    onInput={(e: React.FormEvent<HTMLInputElement>) => {
+                      e.currentTarget.value = keepDigitsOnly(
+                        e.currentTarget.value,
+                        10
+                      );
+                    }}
+                  />
+                </div>
+
+                <div className="col-md-4">
+                  <TextInputField
+                    label="Emergency Contact"
+                    name="emergencyContact"
+                    value={formData.emergencyContact ?? ""}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div className="col-md-6">
+                  <TextInputField
+                    label="Maintenance Lead"
+                    name="maintenanceLead"
+                    value={formData.maintenanceLead ?? ""}
+                    onChange={handleChange}
+                  />
+                </div>
               </div>
-              <div className="ms-1">
-                <CheckBoxField
-                  label="Generator"
-                  name="hasGenerator"
-                  checked={formData.hasGenerator}
-                  onChange={handleChange}
-                  checkboxStyle={{
-                    transform: "scale(1.1)",
-                    marginRight: "10px",
-                  }}
-                />
-              </div>
-            </div>
+            </SectionCard>
           </div>
         </div>
       </SharedAddEditForm>

@@ -17,7 +17,7 @@ export const baseRoutes: RouteObject[] = [
             path: '',
             element: <div className="px-4 py-4 text-center fw-bold">Welcome to Dashboard</div>,
           }
-          // 🧠 Don't hardcode * here — dynamicRoutes will include it
+          //Don't hardcode * here — dynamicRoutes will include it
         ]
       }
     ]

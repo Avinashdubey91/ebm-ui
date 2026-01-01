@@ -4,6 +4,7 @@ import React, {
   useRef,
   useState,
   forwardRef,
+  useImperativeHandle,
 } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -28,16 +29,14 @@ import type { RenterDTO } from "../../../../types/RenterDTO";
 
 // ---- Endpoints used here ----
 const endpoints = {
-  // masters
   societies: "/society/Get-All-Societies",
   apartments: "/apartment/Get-All-Apartment",
   flats: "/flat/Get-All-Flats",
   rentersBasic: "/flatrenter/Get-Active-Renters-Basic",
 
-  // mapping
-  getById: "/flatrenter/Get-Renter-By-Id",     // /{flatRenterId}
+  getById: "/flatrenter/Get-Renter-By-Id", // /{flatRenterId}
   assign: "/flatrenter/Assign-Renter",
-  update: "/flatrenter/Update-Renter-By-Id",   // genericCrudApi will append /{id}
+  update: "/flatrenter/Update-Renter-By-Id", // genericCrudApi appends /{id}
 };
 
 type SelectOption = { label: string; value: string | number };
@@ -59,7 +58,7 @@ const toYmd = (d?: string | Date | null): string | undefined => {
   if (!d) return undefined;
   const date = typeof d === "string" ? new Date(d) : d;
   if (isNaN(date.getTime())) return undefined;
-  return date.toISOString().slice(0, 10); // "yyyy-MM-dd"
+  return date.toISOString().slice(0, 10);
 };
 const ymdToday = () => toYmd(new Date())!;
 
@@ -68,7 +67,6 @@ type FormState = FlatRenterDTO & {
   societyId?: number;
   apartmentId?: number;
 
-  // read-only convenience fields for display
   renterEmail?: string;
   renterAddress?: string;
   renterPIN?: string;
@@ -83,7 +81,6 @@ const emptyForm: FormState = {
   agreementNumber: "",
   notes: "",
 
-  // related renter (display)
   firstName: "",
   lastName: "",
   gender: "",
@@ -91,10 +88,8 @@ const emptyForm: FormState = {
   emailId: "",
   address: "",
 
-  // related flat (display)
   flatNumber: "",
 
-  // UI-only
   societyId: undefined,
   apartmentId: undefined,
   renterEmail: "",
@@ -105,6 +100,25 @@ const emptyForm: FormState = {
 interface Props {
   flatRenterId?: number;
   onUnsavedChange?: (changed: boolean) => void;
+}
+
+function SectionCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="card shadow-sm border-0">
+      <div className="card-body">
+        <div className="d-flex align-items-center justify-content-between mb-3">
+          <h5 className="mb-0">{title}</h5>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
 }
 
 const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
@@ -119,7 +133,6 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
     const formRef = useRef<HTMLFormElement>(null);
     const initialRef = useRef<FormState | null>(null);
 
-    // master data
     const [societies, setSocieties] = useState<SocietyDTO[]>([]);
     const [apartments, setApartments] = useState<ApartmentDTO[]>([]);
     const [flats, setFlats] = useState<FlatDTO[]>([]);
@@ -135,6 +148,7 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
             fetchAllEntities<FlatDTO>(endpoints.flats),
             fetchAllEntities<RenterDTO>(endpoints.rentersBasic),
           ]);
+
           setSocieties(soc ?? []);
           setApartments(apt ?? []);
           setFlats(flt ?? []);
@@ -153,6 +167,7 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
           initialRef.current = { ...emptyForm };
           return;
         }
+
         try {
           const data = await fetchEntityById<FlatRenterDTO>(
             endpoints.getById,
@@ -162,10 +177,11 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
           const next: FormState = {
             ...emptyForm,
             ...data,
-            rentFrom: toYmd(data.rentFrom)!,   // normalize
+            rentFrom: toYmd(data.rentFrom)!,
             rentTo: toYmd(data.rentTo),
             renterEmail: data.emailId ?? "",
             renterAddress: data.address ?? "",
+            renterPIN: (data as unknown as { pinCode?: string }).pinCode ?? "",
           };
 
           setFormData(next);
@@ -213,38 +229,61 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
       onUnsavedChange?.(hasUnsavedChanges);
     }, [hasUnsavedChanges, onUnsavedChange]);
 
+    // ---------- Derived lists ----------
+    const filteredApartments = useMemo(
+      () => apartments.filter((a) => Number(a.societyId) === Number(formData.societyId)),
+      [apartments, formData.societyId]
+    );
+
+    const filteredFlats = useMemo(
+      () => flats.filter((f) => Number(f.apartmentId) === Number(formData.apartmentId)),
+      [flats, formData.apartmentId]
+    );
+
+    const renterOptions = useMemo(
+      () =>
+        renters.map((r) => ({
+          label: `${r.firstName} ${r.lastName}${r.mobile ? ` (${r.mobile})` : ""}`,
+          value: r.renterId,
+        })),
+      [renters]
+    );
+
     // ---------- Handlers ----------
     const handleChange = (
       e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
     ) => {
-      const { name, value, type } = e.target;
-      const numericFields = new Set([
-        "societyId",
-        "apartmentId",
-        "flatId",
-        "renterId",
-      ]);
+      const target = e.currentTarget;
+      const { name } = target;
 
-      const finalValue =
-        type === "checkbox"
-          ? (e.target as HTMLInputElement).checked
+      const numericFields = new Set(["societyId", "apartmentId", "flatId", "renterId"]);
+
+      const isCheckbox =
+        target instanceof HTMLInputElement && target.type === "checkbox";
+
+      const finalValue: string | number | boolean | undefined =
+        isCheckbox
+          ? target.checked
           : numericFields.has(name)
-          ? value === "" ? undefined : Number(value)
-          : value;
+          ? target.value === ""
+            ? undefined
+            : Number(target.value)
+          : target.value;
 
       setFormData((prev) => {
-        const next = { ...prev, [name]: finalValue };
+        const next: FormState = { ...prev, [name]: finalValue };
 
-        // cascading resets
         if (name === "societyId") {
           next.apartmentId = undefined;
           next.flatId = 0;
-        }
-        if (name === "apartmentId") {
-          next.flatId = 0;
+          next.flatNumber = "";
         }
 
-        // when flat changes, fill flatNumber and infer parents if needed
+        if (name === "apartmentId") {
+          next.flatId = 0;
+          next.flatNumber = "";
+        }
+
         if (name === "flatId") {
           const f = flats.find((ff) => ff.flatId === Number(finalValue));
           next.flatNumber = f?.flatNumber ?? "";
@@ -255,7 +294,6 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
           }
         }
 
-        // when renter changes, fill display-only fields
         if (name === "renterId") {
           const r = renters.find((rr) => rr.renterId === Number(finalValue));
           next.firstName = r?.firstName ?? "";
@@ -275,6 +313,7 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
 
     const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
       if (e) e.preventDefault();
+
       if (formRef.current && !formRef.current.checkValidity()) {
         formRef.current.reportValidity();
         return;
@@ -284,12 +323,11 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
         flatRenterId: formData.flatRenterId ?? 0,
         flatId: Number(formData.flatId),
         renterId: Number(formData.renterId),
-        rentFrom: toYmd(formData.rentFrom)!,   // required
+        rentFrom: toYmd(formData.rentFrom)!,
         rentTo: toYmd(formData.rentTo),
         agreementNumber: formData.agreementNumber ?? "",
         notes: formData.notes ?? "",
 
-        // harmless extras for display (backend may ignore on save)
         firstName: formData.firstName,
         lastName: formData.lastName,
         gender: formData.gender,
@@ -312,7 +350,6 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
         }
 
         if (submitMode === "saveAndNext" && !isEdit) {
-          // Keep current context if desired
           setFormData((prev) => ({
             ...emptyForm,
             societyId: prev.societyId,
@@ -337,8 +374,7 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
       setFormData({ ...val });
     };
 
-    // expose imperative handlers (for SharedAddEditForm toolbar)
-    React.useImperativeHandle(ref, () => ({
+    useImperativeHandle(ref, () => ({
       submit: () => {
         setSubmitMode("save");
         formRef.current?.requestSubmit();
@@ -349,6 +385,8 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
         formRef.current?.requestSubmit();
       },
     }));
+
+    const noopReadOnlyChange: React.ChangeEventHandler<HTMLInputElement> = () => undefined;
 
     // ---------- UI ----------
     return (
@@ -364,141 +402,159 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
         isEditMode={!!flatRenterId}
         formRef={formRef}
       >
-        <div className="row align-items-end">
-          {/* Society */}
-          <div className="col-md-4 mb-3">
-            <SelectField
-              label="Society"
-              name="societyId"
-              value={formData.societyId ?? ""}
-              onChange={handleChange}
-              required
-              disabled={isEdit}
-              options={toOptions(
-                societies,
-                (s) => s.societyName,
-                (s) => s.societyId
-              )}
-            />
+        <div className="row g-4">
+          <div className="col-12">
+            <SectionCard title="Property Selection">
+              <div className="row g-3">
+                <div className="col-md-4">
+                  <SelectField
+                    label="Society"
+                    name="societyId"
+                    value={formData.societyId ?? ""}
+                    onChange={handleChange}
+                    required
+                    disabled={isEdit}
+                    options={toOptions(societies, (s) => s.societyName, (s) => s.societyId)}
+                  />
+                </div>
+
+                <div className="col-md-4">
+                  <SelectField
+                    label="Apartment"
+                    name="apartmentId"
+                    value={formData.apartmentId ?? ""}
+                    onChange={handleChange}
+                    required
+                    disabled={isEdit || !formData.societyId}
+                    options={toOptions(
+                      filteredApartments,
+                      (a) => a.apartmentName ?? `Apartment #${a.apartmentId}`,
+                      (a) => a.apartmentId
+                    )}
+                  />
+                </div>
+
+                <div className="col-md-4">
+                  <SelectField
+                    label="Flat"
+                    name="flatId"
+                    value={formData.flatId ? formData.flatId : ""}
+                    onChange={handleChange}
+                    required
+                    disabled={isEdit || !formData.apartmentId}
+                    options={toOptions(
+                      filteredFlats,
+                      (f) => f.flatNumber ?? `Flat #${f.flatId}`,
+                      (f) => f.flatId
+                    )}
+                  />
+                </div>
+              </div>
+            </SectionCard>
           </div>
 
-          {/* Apartment (filtered by Society) */}
-          <div className="col-md-4 mb-3">
-            <SelectField
-              label="Apartment"
-              name="apartmentId"
-              value={formData.apartmentId ?? ""}
-              onChange={handleChange}
-              required
-              disabled={isEdit || !formData.societyId}
-              options={toOptions(
-                apartments.filter((a) => a.societyId === formData.societyId),
-                (a) => a.apartmentName ?? `Apartment #${a.apartmentId}`,
-                (a) => a.apartmentId
-              )}
-            />
+          <div className="col-12">
+            <SectionCard title="Renter">
+              <div className="row g-3">
+                <div className="col-md-6">
+                  <SelectField
+                    label="Renter"
+                    name="renterId"
+                    value={formData.renterId ? formData.renterId : ""}
+                    onChange={handleChange}
+                    required
+                    options={renterOptions}
+                  />
+                </div>
+
+                <div className="col-md-3">
+                  <TextInputField
+                    label="Renter Mobile"
+                    name="mobile"
+                    value={formData.mobile ?? ""}
+                    onChange={noopReadOnlyChange}
+                    readOnly
+                  />
+                </div>
+
+                <div className="col-md-3">
+                  <TextInputField
+                    label="Renter Email"
+                    name="renterEmail"
+                    value={formData.renterEmail ?? ""}
+                    onChange={noopReadOnlyChange}
+                    readOnly
+                  />
+                </div>
+
+                <div className="col-md-9">
+                  <TextInputField
+                    label="Renter Address"
+                    name="renterAddress"
+                    value={formData.renterAddress ?? ""}
+                    onChange={noopReadOnlyChange}
+                    readOnly
+                  />
+                </div>
+
+                <div className="col-md-3">
+                  <TextInputField
+                    label="PIN Code"
+                    name="renterPIN"
+                    value={formData.renterPIN ?? ""}
+                    onChange={noopReadOnlyChange}
+                    readOnly
+                  />
+                </div>
+              </div>
+            </SectionCard>
           </div>
 
-          {/* Flat */}
-          <div className="col-md-4 mb-3">
-            <SelectField
-              label="Flat"
-              name="flatId"
-              value={formData.flatId ?? ""}
-              onChange={handleChange}
-              required
-              disabled={isEdit || !formData.apartmentId}
-              options={toOptions(
-                flats.filter((f) => f.apartmentId === formData.apartmentId),
-                (f) => f.flatNumber ?? `Flat #${f.flatId}`,
-                (f) => f.flatId
-              )}
-            />
-          </div>
+          <div className="col-12">
+            <SectionCard title="Rental Details">
+              <div className="row g-3">
+                <div className="col-md-3">
+                  <DateInput
+                    id="rentFrom"
+                    label="Rent From"
+                    value={formData.rentFrom ?? ""}
+                    onChange={(newDate) =>
+                      setFormData((prev) => ({ ...prev, rentFrom: newDate }))
+                    }
+                    required
+                  />
+                </div>
 
-          {/* Renter */}
-          <div className="col-md-4 mb-3">
-            <SelectField
-              label="Renter"
-              name="renterId"
-              value={formData.renterId || ""}
-              onChange={handleChange}
-              required
-              options={renters.map((r) => ({
-                label: `${r.firstName} ${r.lastName}${r.mobile ? ` (${r.mobile})` : ""}`,
-                value: r.renterId,
-              }))}
-            />
-          </div>
+                <div className="col-md-3">
+                  <DateInput
+                    id="rentTo"
+                    label="Rent To"
+                    value={formData.rentTo ?? ""}
+                    onChange={(newDate) =>
+                      setFormData((prev) => ({ ...prev, rentTo: newDate || undefined }))
+                    }
+                  />
+                </div>
 
-          {/* Auto-filled renter details (read-only) */}
-          <div className="col-md-4 mb-3">
-            <TextInputField
-              label="Renter Email"
-              name="renterEmail"
-              value={formData.renterEmail ?? ""}
-              onChange={() => {}}
-              readOnly
-            />
-          </div>
-          <div className="col-md-4 mb-3">
-            <TextInputField
-              label="Renter Address"
-              name="renterAddress"
-              value={formData.renterAddress ?? ""}
-              onChange={() => {}}
-              readOnly
-            />
-          </div>
-          {/* <div className="col-md-3 mb-3">
-            <TextInputField
-              label="PIN Code"
-              name="renterPIN"
-              value={formData.renterPIN ?? ""}
-              onChange={() => {}}
-              readOnly
-            />
-          </div> */}
+                <div className="col-md-6">
+                  <TextInputField
+                    label="Agreement Number"
+                    name="agreementNumber"
+                    value={formData.agreementNumber ?? ""}
+                    onChange={handleChange}
+                  />
+                </div>
 
-          {/* Dates */}
-          <div className="col-md-3 mb-3">
-            <DateInput
-              id="rentFrom"
-              label="Rent From"
-              value={formData.rentFrom ?? ""}
-              onChange={(newDate) =>
-                setFormData((prev) => ({ ...prev, rentFrom: newDate }))
-              }
-              required
-            />
-          </div>
-          <div className="col-md-3 mb-3">
-            <DateInput
-              id="rentTo"
-              label="Rent To"
-              value={formData.rentTo ?? ""}
-              onChange={(newDate) =>
-                setFormData((prev) => ({ ...prev, rentTo: newDate || undefined }))
-              }
-            />
-          </div>
-
-          {/* Agreement + Notes */}
-          <div className="col-md-3 mb-3">
-            <TextInputField
-              label="Agreement Number"
-              name="agreementNumber"
-              value={formData.agreementNumber ?? ""}
-              onChange={handleChange}
-            />
-          </div>
-          <div className="col-md-9 mb-3">
-            <TextInputField
-              label="Notes"
-              name="notes"
-              value={formData.notes ?? ""}
-              onChange={handleChange}
-            />
+                <div className="col-12">
+                  <TextInputField
+                    label="Notes"
+                    name="notes"
+                    value={formData.notes ?? ""}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+            </SectionCard>
           </div>
         </div>
       </SharedAddEditForm>
