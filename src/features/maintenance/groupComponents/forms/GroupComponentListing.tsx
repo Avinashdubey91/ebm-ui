@@ -128,7 +128,7 @@ const GroupComponentListing: React.FC = () => {
       const activeTag = g.isActive ? "" : " (Inactive)";
 
       m.set(g.maintenanceGroupId, {
-        label: `${aptName}${activeTag}`,
+        label: `${aptName} | Group ${g.maintenanceGroupId}${activeTag}`,
         effectiveFrom: effFrom,
       });
     });

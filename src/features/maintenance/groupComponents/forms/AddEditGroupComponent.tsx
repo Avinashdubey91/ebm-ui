@@ -1,5 +1,7 @@
 import React, { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import DateInput from "../../../../components/common/DateInput";
+import { normalizeToYmd } from "../../../../utils/format";
 
 import {
   createEntity,
@@ -35,52 +37,6 @@ const SectionCard = ({ title, children }: SectionCardProps) => (
     {children}
   </div>
 );
-
-type ReadOnlyTextFieldProps = {
-  label: string;
-  value: string;
-};
-
-const ReadOnlyTextField = ({ label, value }: ReadOnlyTextFieldProps) => {
-  const controlMinHeight = 38;
-
-  return (
-    <div className="d-flex flex-column w-100">
-      <label className="form-label fw-semibold mb-2">{label}</label>
-      <div
-        className="form-control rounded-3 bg-white"
-        style={{
-          minHeight: controlMinHeight,
-          display: "flex",
-          alignItems: "center",
-        }}
-      >
-        {value}
-      </div>
-    </div>
-  );
-};
-
-const toDmy = (value?: string | null): string => {
-  if (!value) return "-";
-
-  // If API string contains YYYY-MM-DD..., slice and reformat safely
-  if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
-    const y = value.slice(0, 4);
-    const m = value.slice(5, 7);
-    const d = value.slice(8, 10);
-    return `${d}-${m}-${y}`;
-  }
-
-  // Fallback: local date parts (still avoids UTC conversion)
-  const dt = new Date(value);
-  if (Number.isNaN(dt.getTime())) return "-";
-
-  const dd = String(dt.getDate()).padStart(2, "0");
-  const mm = String(dt.getMonth() + 1).padStart(2, "0");
-  const yyyy = dt.getFullYear();
-  return `${dd}-${mm}-${yyyy}`;
-};
 
 const sanitizeDecimal2 = (raw: string): string => {
   const cleaned = raw.replace(/[^\d.]/g, "");
@@ -239,7 +195,7 @@ const AddEditGroupComponent = forwardRef<AddEditFormHandle, Props>(
           const activeTag = g.isActive ? "" : " (Inactive)";
 
           return {
-            label: `${aptName}${activeTag}`,
+            label: `${aptName} | Group ${g.maintenanceGroupId}${activeTag}`,
             value: g.maintenanceGroupId,
           };
         });
@@ -269,12 +225,14 @@ const AddEditGroupComponent = forwardRef<AddEditFormHandle, Props>(
         });
     }, [components]);
 
-    const selectedGroupEffectiveFrom = useMemo(() => {
-      if (!formData.maintenanceGroupId) return "-";
+    const selectedGroupEffectiveFromYmd = useMemo(() => {
+      if (!formData.maintenanceGroupId) return "";
+
       const g = groups.find(
         (x) => x.maintenanceGroupId === formData.maintenanceGroupId
       );
-      return toDmy(g?.effectiveFrom ?? null);
+
+      return normalizeToYmd(g?.effectiveFrom ?? "");
     }, [formData.maintenanceGroupId, groups]);
 
     const handleChange = (
@@ -438,9 +396,11 @@ const AddEditGroupComponent = forwardRef<AddEditFormHandle, Props>(
                 </div>
 
                 <div className="col-md-6">
-                  <ReadOnlyTextField
+                  <DateInput
+                    id="maintenanceGroupEffectiveFrom"
                     label="Effective From"
-                    value={selectedGroupEffectiveFrom}
+                    value={selectedGroupEffectiveFromYmd}
+                    readOnly
                   />
                 </div>
 
