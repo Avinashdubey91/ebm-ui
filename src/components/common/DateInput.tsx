@@ -1,3 +1,4 @@
+// src/components/common/DateInput.tsx
 import React from "react";
 import { DatePicker } from "antd";
 import dayjs from "dayjs";
@@ -10,8 +11,12 @@ interface DateInputProps {
   id: string;
   label: string;
   value: string;
-  onChange: (date: string) => void;
+  onChange?: (date: string) => void;
   required?: boolean;
+
+  // Patch Start: allow a readonly display mode (not disabled-looking)
+  readOnly?: boolean;
+  // Patch End
 }
 
 const DateInput: React.FC<DateInputProps> = ({
@@ -20,6 +25,10 @@ const DateInput: React.FC<DateInputProps> = ({
   value,
   onChange,
   required,
+
+  // Patch Start
+  readOnly,
+  // Patch End
 }) => {
   const parsedDate = value ? dayjs(value, "YYYY-MM-DD") : null;
 
@@ -30,20 +39,28 @@ const DateInput: React.FC<DateInputProps> = ({
         id={id}
         value={parsedDate}
         onChange={(date) => {
+          // Patch Start: ignore changes in readOnly mode
+          if (readOnly) return;
+          // Patch End
+
           const formatted = date ? date.format("YYYY-MM-DD") : "";
-          onChange(formatted);
+          onChange?.(formatted);
         }}
         format="DD-MMMM-YYYY"
         allowClear={false}
-        style={{ width: "100%", height: "38px", fontSize: "14px" }} // match Bootstrap field height
+        // Patch Start: prevent typing + prevent opening calendar
+        inputReadOnly={!!readOnly}
+        open={readOnly ? false : undefined}
+        // Patch End
+        style={{ width: "100%", height: "38px", fontSize: "14px" }}
         styles={{
           popup: {
-            root: { zIndex: 9999 }, // ✅ replaces popupStyle
+            root: { zIndex: 9999 },
           },
         }}
         classNames={{
           popup: {
-            root: "custom-ant-datepicker-dropdown", // ✅ replaces dropdownClassName
+            root: "custom-ant-datepicker-dropdown",
           },
         }}
         placement="bottomLeft"

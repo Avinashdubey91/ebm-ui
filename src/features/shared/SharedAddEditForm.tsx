@@ -57,7 +57,7 @@ const SharedAddEditForm = forwardRef<AddEditFormHandle, SharedAddEditFormProps>(
     useImperativeHandle(ref, () => ({
       submit: () => formRefToUse.current?.requestSubmit(),
       reset: () => onReset?.(),
-      saveAndNext: () => formRefToUse.current?.requestSubmit(),
+      saveAndNext: () => onSaveAndNext?.(),
     }));
 
     return (
@@ -94,7 +94,7 @@ const SharedAddEditForm = forwardRef<AddEditFormHandle, SharedAddEditFormProps>(
                 <button
                   type="button"
                   className="btn btn-primary add-edit-action-button "
-                  onClick={() => formRefToUse.current?.requestSubmit()}
+                  onClick={() => onSaveAndNext()}
                 >
                   <i className="fa fa-plus me-2" />
                   Save & Next
