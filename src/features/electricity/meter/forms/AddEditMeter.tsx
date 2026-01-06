@@ -6,18 +6,18 @@ import {
   fetchAllEntities,
   fetchEntityById,
   updateEntity,
-} from "../../../api/genericCrudApi";
+} from "../../../../api/genericCrudApi";
 
-import SharedAddEditForm from "../../shared/SharedAddEditForm";
-import type { AddEditFormHandle } from "../../shared/SharedAddEditForm";
+import SharedAddEditForm from "../../../shared/SharedAddEditForm";
+import type { AddEditFormHandle } from "../../../shared/SharedAddEditForm";
 
-import SelectField from "../../../components/common/SelectField";
-import TextInputField from "../../../components/common/TextInputField";
-import DateInput from "../../../components/common/DateInput";
+import SelectField from "../../../../components/common/SelectField";
+import TextInputField from "../../../../components/common/TextInputField";
+import DateInput from "../../../../components/common/DateInput";
 
-import { showAddUpdateResult } from "../../../utils/alerts/showAddUpdateConfirmation";
-import { normalizeToYmd } from "../../../utils/format";
-import { useCurrentMenu } from "../../../hooks/useCurrentMenu";
+import { showAddUpdateResult } from "../../../../utils/alerts/showAddUpdateConfirmation";
+import { normalizeToYmd } from "../../../../utils/format";
+import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
 
 const SectionCard: React.FC<React.PropsWithChildren<{ title: string }>> = ({
   title,

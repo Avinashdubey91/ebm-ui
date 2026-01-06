@@ -1,5 +1,5 @@
 import React from "react";
-import SharedAddEditPage from "../../shared/SharedAddEditPage";
+import SharedAddEditPage from "../../../shared/SharedAddEditPage";
 import AddEditMeter from "../forms/AddEditMeter";
 
 const AddEditMeterPage: React.FC = () => {

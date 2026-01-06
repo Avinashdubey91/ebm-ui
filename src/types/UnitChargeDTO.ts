@@ -2,7 +2,7 @@ export type UnitChargeDTO = {
   unitChargeId: number;
 
   effectiveFrom: string;
-  effectiveTo?: string | null
+  effectiveTo: string;
   chargePerUnit: number | string;
 
   currencyId: number;

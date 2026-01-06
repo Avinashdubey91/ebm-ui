@@ -1,5 +1,5 @@
 import React from "react";
-import SharedListingPage from "../../shared/SharedListingPage";
+import SharedListingPage from "../../../shared/SharedListingPage";
 import UnitChargeListing from "../forms/UnitChargeListing";
 
 const UnitChargeListingPage: React.FC = () => {

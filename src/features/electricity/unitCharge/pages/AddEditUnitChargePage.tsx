@@ -1,5 +1,5 @@
 import React from "react";
-import SharedAddEditPage from "../../shared/SharedAddEditPage";
+import SharedAddEditPage from "../../../shared/SharedAddEditPage";
 import AddEditUnitCharge from "../../unitCharge/forms/AddEditUnitCharge";
 
 const AddEditUnitChargePage: React.FC = () => {

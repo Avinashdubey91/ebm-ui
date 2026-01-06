@@ -1,15 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { deleteEntity, fetchAllEntities } from "../../../api/genericCrudApi";
+import { deleteEntity, fetchAllEntities } from "../../../../api/genericCrudApi";
 
-import SharedListingTable from "../../shared/SharedListingTable";
-import { useCurrentMenu } from "../../../hooks/useCurrentMenu";
-import { safeValue, formatDateDmy } from "../../../utils/format";
+import SharedListingTable from "../../../shared/SharedListingTable";
+import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
+import { safeValue, formatDateDmy } from "../../../../utils/format";
 import {
   showDeleteConfirmation,
   showDeleteResult,
-} from "../../../utils/alerts/showDeleteConfirmation";
+} from "../../../../utils/alerts/showDeleteConfirmation";
 
 type MeterDTO = {
   meterId: number;

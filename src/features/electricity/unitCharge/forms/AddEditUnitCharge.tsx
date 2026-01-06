@@ -6,32 +6,32 @@ import {
   fetchAllEntities,
   fetchEntityById,
   updateEntity,
-} from "../../../api/genericCrudApi";
+} from "../../../../api/genericCrudApi";
 
-import SharedAddEditForm from "../../shared/SharedAddEditForm";
-import type { AddEditFormHandle } from "../../shared/SharedAddEditForm";
+import SharedAddEditForm from "../../../shared/SharedAddEditForm";
+import type { AddEditFormHandle } from "../../../shared/SharedAddEditForm";
 
-import SelectField from "../../../components/common/SelectField";
-import TextInputField from "../../../components/common/TextInputField";
-import DateInput from "../../../components/common/DateInput";
+import SelectField from "../../../../components/common/SelectField";
+import TextInputField from "../../../../components/common/TextInputField";
+import DateInput from "../../../../components/common/DateInput";
 
-import MonthPickerField from "../../../components/common/MonthPickerField";
-import TimePickerField from "../../../components/common/TimePickerField";
+import MonthPickerField from "../../../../components/common/MonthPickerField";
+import TimePickerField from "../../../../components/common/TimePickerField";
 
-import SectionCard from "../../../components/SectionCard";
-import SwitchTile from "../../../components/SwitchTile";
+import SectionCard from "../../../../components/SectionCard";
+import SwitchTile from "../../../../components/SwitchTile";
 
-import type { UnitChargeDTO } from "../../../types/UnitChargeDTO";
-import type { CurrencyDTO } from "../../../types/CurrencyDTO";
-import type { RateTypeDTO } from "../../../types/RateTypeDTO";
+import type { UnitChargeDTO } from "../../../../types/UnitChargeDTO";
+import type { CurrencyDTO } from "../../../../types/CurrencyDTO";
+import type { RateTypeDTO } from "../../../../types/RateTypeDTO";
 
-import { showAddUpdateResult } from "../../../utils/alerts/showAddUpdateConfirmation";
-import { normalizeToYmd } from "../../../utils/format";
+import { showAddUpdateResult } from "../../../../utils/alerts/showAddUpdateConfirmation";
+import { normalizeToYmd } from "../../../../utils/format";
 import {
   toNullableNumber,
   hhmmToTimeSpan,
-} from "../../../utils/formValueUtils";
-import { useCurrentMenu } from "../../../hooks/useCurrentMenu";
+} from "../../../../utils/formValueUtils";
+import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
 
 type SubmitMode = "save" | "saveAndNext";
 
@@ -196,6 +196,7 @@ const AddEditUnitCharge = forwardRef<AddEditFormHandle, Props>(
     const [rateTypes, setRateTypes] = useState<RateTypeDTO[]>([]);
 
     const formRef = useRef<HTMLFormElement>(null);
+
     const initialRef = useRef<FormState | null>(null);
 
     useEffect(() => {
@@ -344,18 +345,59 @@ const AddEditUnitCharge = forwardRef<AddEditFormHandle, Props>(
       return dec.length > 0 ? `${intPart}.${dec}` : `${intPart}.`;
     };
 
+    type ValidityEl =
+      | HTMLInputElement
+      | HTMLSelectElement
+      | HTMLTextAreaElement;
+
+    const isValidityEl = (el: Element | null): el is ValidityEl =>
+      el instanceof HTMLInputElement ||
+      el instanceof HTMLSelectElement ||
+      el instanceof HTMLTextAreaElement;
+
+    const getById = (id: string): ValidityEl | null => {
+      const el = document.getElementById(id);
+      return isValidityEl(el) ? el : null;
+    };
+
+    const getByName = (name: string): ValidityEl | null => {
+      const el = formRef.current?.querySelector(`[name="${name}"]`) ?? null;
+      return isValidityEl(el) ? el : null;
+    };
+
+    const clearValidity = (el: ValidityEl | null) => {
+      if (el) el.setCustomValidity("");
+    };
+
+    const showValidityError = (
+      el: ValidityEl | null,
+      message: string
+    ): boolean => {
+      if (!el) return false;
+      el.setCustomValidity(message);
+      el.reportValidity();
+      el.focus();
+      return true;
+    };
+
     const handleChange = (
       e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
     ) => {
       const target = e.currentTarget;
       const { name, value } = target;
 
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLSelectElement
+      ) {
+        target.setCustomValidity("");
+      }
+
       if (target instanceof HTMLInputElement && target.type === "checkbox") {
         setFormData((prev) => ({ ...prev, [name]: target.checked }));
         return;
       }
 
-      // ✅ Charge Per Unit: allow decimal up to 4 places
       if (name === "chargePerUnit") {
         setFormData((prev) => ({
           ...prev,
@@ -382,32 +424,44 @@ const AddEditUnitCharge = forwardRef<AddEditFormHandle, Props>(
     };
 
     const validate = (): boolean => {
+      clearValidity(getById("unitCharge-effectiveTo"));
+      clearValidity(getByName("chargePerUnit"));
+      clearValidity(getByName("maxUnit"));
+      clearValidity(getByName("applicableMonthTo"));
+      clearValidity(getByName("toHour"));
+
       if (!formData.effectiveFrom) {
-        window.alert("Please select Effective From.");
+        showValidityError(
+          getById("unitCharge-effectiveFrom"),
+          "Please fill out this field."
+        );
         return false;
       }
 
-      if (formData.effectiveTo) {
+
+      if (!formData.effectiveTo) {
+        showValidityError(
+          getById("unitCharge-effectiveTo"),
+          "Please fill out this field."
+        );
+        return false;
+      }
+
+      if (formData.effectiveFrom && formData.effectiveTo) {
         if (formData.effectiveTo < formData.effectiveFrom) {
-          window.alert(
-            "Effective To must be greater than or equal to Effective From."
+          showValidityError(
+            getById("unitCharge-effectiveTo"),
+            "Effective-To-Date must be greater than or equal to Effective From."
           );
           return false;
         }
       }
 
       if (toNullableNumber(formData.chargePerUnit) === null) {
-        window.alert("Please enter Charge Per Unit.");
-        return false;
-      }
-
-      if (!formData.currencyId) {
-        window.alert("Please select Currency.");
-        return false;
-      }
-
-      if (!formData.rateTypeId) {
-        window.alert("Please select Rate Type.");
+        showValidityError(
+          getByName("chargePerUnit"),
+          "Please enter Charge Per Unit."
+        );
         return false;
       }
 
@@ -416,7 +470,10 @@ const AddEditUnitCharge = forwardRef<AddEditFormHandle, Props>(
         formData.maxUnit != null &&
         formData.minUnit > formData.maxUnit
       ) {
-        window.alert("Min Unit cannot be greater than Max Unit.");
+        showValidityError(
+          getByName("maxUnit"),
+          "Min Unit cannot be greater than Max Unit."
+        );
         return false;
       }
 
@@ -426,7 +483,8 @@ const AddEditUnitCharge = forwardRef<AddEditFormHandle, Props>(
         const fromKey = fromM.year * 100 + fromM.month;
         const toKey = toM.year * 100 + toM.month;
         if (fromKey > toKey) {
-          window.alert(
+          showValidityError(
+            getByName("applicableMonthTo"),
             "Applicable Month From cannot be greater than Applicable Month To."
           );
           return false;
@@ -438,7 +496,10 @@ const AddEditUnitCharge = forwardRef<AddEditFormHandle, Props>(
         formData.toHour &&
         formData.fromHour >= formData.toHour
       ) {
-        window.alert("From Hour must be earlier than To Hour.");
+        showValidityError(
+          getByName("toHour"),
+          "From Hour must be earlier than To Hour."
+        );
         return false;
       }
 
@@ -448,7 +509,7 @@ const AddEditUnitCharge = forwardRef<AddEditFormHandle, Props>(
     const buildPayload = (): UnitChargeDTO => ({
       unitChargeId: formData.unitChargeId,
       effectiveFrom: formData.effectiveFrom,
-      effectiveTo: formData.effectiveTo ? formData.effectiveTo : null,
+      effectiveTo: formData.effectiveTo,
       chargePerUnit: toNullableNumber(formData.chargePerUnit) ?? 0,
 
       currencyId: formData.currencyId!,
@@ -566,15 +627,16 @@ const AddEditUnitCharge = forwardRef<AddEditFormHandle, Props>(
                     id="unitCharge-effectiveFrom"
                     label="Effective From"
                     value={formData.effectiveFrom}
-                    onChange={(v) =>
+                    onChange={(v) => {
+                      clearValidity(getById("unitCharge-effectiveFrom"));
                       setFormData((prev) => ({
                         ...prev,
                         effectiveFrom: v,
                         applicableMonthFrom: v
                           ? ymdToMonthInput(v)
                           : prev.applicableMonthFrom,
-                      }))
-                    }
+                      }));
+                    }}
                     required
                   />
                 </div>
@@ -584,15 +646,16 @@ const AddEditUnitCharge = forwardRef<AddEditFormHandle, Props>(
                     id="unitCharge-effectiveTo"
                     label="Effective To"
                     value={formData.effectiveTo}
-                    onChange={(v) =>
+                    onChange={(v) => {
+                      clearValidity(getById("unitCharge-effectiveTo"));
                       setFormData((prev) => ({
                         ...prev,
                         effectiveTo: v,
                         applicableMonthTo: v
                           ? ymdToMonthInput(v)
                           : prev.applicableMonthTo,
-                      }))
-                    }
+                      }));
+                    }}
                     required
                   />
                 </div>
