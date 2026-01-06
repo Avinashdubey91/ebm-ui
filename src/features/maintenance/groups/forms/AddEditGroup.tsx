@@ -454,6 +454,7 @@ const AddEditGroup = forwardRef<AddEditFormHandle, Props>(
                         effectiveTo: newDate || undefined,
                       }))
                     }
+                    required
                   />
                 </div>
 

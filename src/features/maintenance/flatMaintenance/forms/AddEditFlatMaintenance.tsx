@@ -527,6 +527,7 @@ const AddEditFlatMaintenance = forwardRef<AddEditFormHandle, Props>(
                   }));
                   setHasUnsavedChanges(true);
                 }}
+                required
               />
             </div>
           </div>

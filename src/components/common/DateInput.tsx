@@ -13,10 +13,9 @@ interface DateInputProps {
   value: string;
   onChange?: (date: string) => void;
   required?: boolean;
-
-  // Patch Start: allow a readonly display mode (not disabled-looking)
   readOnly?: boolean;
-  // Patch End
+  allowClear?: boolean;
+  disabled?: boolean;
 }
 
 const DateInput: React.FC<DateInputProps> = ({
@@ -25,12 +24,12 @@ const DateInput: React.FC<DateInputProps> = ({
   value,
   onChange,
   required,
-
-  // Patch Start
   readOnly,
-  // Patch End
+  allowClear = false,
+  disabled = false,
 }) => {
   const parsedDate = value ? dayjs(value, "YYYY-MM-DD") : null;
+  const effectiveDisabled = disabled && !readOnly;
 
   return (
     <div className="form-group w-100 mb-2">
@@ -39,19 +38,16 @@ const DateInput: React.FC<DateInputProps> = ({
         id={id}
         value={parsedDate}
         onChange={(date) => {
-          // Patch Start: ignore changes in readOnly mode
           if (readOnly) return;
-          // Patch End
 
           const formatted = date ? date.format("YYYY-MM-DD") : "";
           onChange?.(formatted);
         }}
         format="DD-MMMM-YYYY"
-        allowClear={false}
-        // Patch Start: prevent typing + prevent opening calendar
+        allowClear={allowClear}
+        disabled={effectiveDisabled}
         inputReadOnly={!!readOnly}
         open={readOnly ? false : undefined}
-        // Patch End
         style={{ width: "100%", height: "38px", fontSize: "14px" }}
         styles={{
           popup: {
