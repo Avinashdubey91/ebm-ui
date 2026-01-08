@@ -5,16 +5,33 @@ import { useCurrentMenu } from "../../hooks/useCurrentMenu";
 interface SharedListingPageProps {
   title?: string;
   ListingComponent: React.FC;
+
+  /**
+   * Custom actions on the right side of the header.
+   * If provided, it replaces the default "Add New" button.
+   */
+  headerActions?: React.ReactNode;
+
+  /**
+   * Changing this value forces the listing component to remount.
+   * Useful when you need a clean reload (e.g. after modal save).
+   */
+  listingKey?: React.Key;
+
+  /** Optional className applied to the listing content wrapper. */
+  contentClassName?: string;
 }
 
 const SharedListingPage: React.FC<SharedListingPageProps> = ({
   title,
   ListingComponent,
+  headerActions,
+  listingKey,
+  contentClassName,
 }) => {
   const navigate = useNavigate();
   const { singularMenuName, pluralMenuName, createRoutePath } = useCurrentMenu();
 
-  // 🧠 Memoize handler so it doesn't recreate every render
   const handleAddNew = useCallback(() => {
     if (createRoutePath) {
       navigate(createRoutePath);
@@ -23,7 +40,6 @@ const SharedListingPage: React.FC<SharedListingPageProps> = ({
     }
   }, [createRoutePath, navigate]);
 
-  // ✨ Memoize expensive text processing (if needed)
   const headerText = useMemo(() => {
     return title || `MANAGE ${pluralMenuName.toUpperCase()}`;
   }, [title, pluralMenuName]);
@@ -34,14 +50,20 @@ const SharedListingPage: React.FC<SharedListingPageProps> = ({
         <h4 className="inner-area-header-title flex-grow-1 text-center m-0">
           {headerText}
         </h4>
+
         <div className="action-button-container">
-          <button className="btn btn-success btn-md" onClick={handleAddNew}>
-            <i className="fa fa-plus me-2" />
-            Add New {singularMenuName}
-          </button>
+          {headerActions ?? (
+            <button className="btn btn-success btn-md" onClick={handleAddNew}>
+              <i className="fa fa-plus me-2" />
+              Add New {singularMenuName}
+            </button>
+          )}
         </div>
       </div>
-      <ListingComponent />
+
+      <div className={contentClassName ?? ""}>
+        <ListingComponent key={listingKey} />
+      </div>
     </div>
   );
 };

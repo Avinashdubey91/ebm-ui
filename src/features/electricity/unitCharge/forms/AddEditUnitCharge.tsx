@@ -451,7 +451,7 @@ const AddEditUnitCharge = forwardRef<AddEditFormHandle, Props>(
         if (formData.effectiveTo < formData.effectiveFrom) {
           showValidityError(
             getById("unitCharge-effectiveTo"),
-            "Effective-To-Date must be greater than or equal to Effective From."
+            "Effective-To-Date must be greater than or equal to Effective-From-Date."
           );
           return false;
         }

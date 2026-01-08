@@ -24,26 +24,33 @@ const SelectField: React.FC<SelectFieldProps> = ({
   onChange,
   required = false,
   disabled = false,
-}) => (
-  <div className="mb-2">
-    <FormLabel label={label} htmlFor={name} required={required} />
-    <select
-      id={name}
-      name={name}
-      className="form-select"
-      value={value ?? ""}
-      onChange={onChange}
-      required={required}
-      disabled={disabled}
-    >
-      <option value="">-- Select --</option>
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
-  </div>
-);
+}) => {
+  const hasLabel = Boolean(label && label.trim().length > 0);
+
+  return (
+    <div className="mb-2">
+      {hasLabel ? (
+        <FormLabel label={label} htmlFor={name} required={required} />
+      ) : null}
+
+      <select
+        id={name}
+        name={name}
+        className="form-select"
+        value={value ?? ""}
+        onChange={onChange}
+        required={required}
+        disabled={disabled}
+      >
+        <option value="">-- Select --</option>
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+};
 
 export default SelectField;

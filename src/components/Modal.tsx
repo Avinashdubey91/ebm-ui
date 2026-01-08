@@ -2,7 +2,7 @@ import React from 'react';
 import './Modal.css';
 
 interface ModalProps {
-  type: 'success' | 'error' | 'info'; // ✅ Add "info" here
+  type: 'success' | 'error' | 'info';
   message?: string;
   title?: string;
   onClose: () => void;

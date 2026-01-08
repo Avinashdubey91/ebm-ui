@@ -95,7 +95,7 @@ const UnitChargeListing: React.FC = () => {
           setRateTypes([]);
         }
       } catch (err) {
-        console.error("❌ Failed to load unit charges:", err);
+        console.error("Failed to load unit charges:", err);
         setRows([]);
       } finally {
         setLoading(false);
