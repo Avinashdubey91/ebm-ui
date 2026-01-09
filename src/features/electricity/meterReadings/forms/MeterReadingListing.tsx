@@ -1,5 +1,3 @@
-// Patch Start: src/features/electricity/meterReadings/forms/MeterReadingListing.tsx
-
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -20,9 +18,12 @@ import {
 import type { MeterReadingDTO } from "../../../../types/MeterReadingDTO";
 import type { ReadingTypeDTO } from "../../../../types/ReadingTypeDTO";
 
-type MeterLookup = {
+type MeterFlatOwnerLookup = {
   meterId: number;
   meterNumber?: string | null;
+  flatId?: number | null;
+  flatNumber?: string | null;
+  ownerName?: string | null;
   isActive?: boolean;
 };
 
@@ -48,6 +49,46 @@ function buildIdLabelMap<T extends object, K extends keyof T>(
 
 const DEFAULT_PAGE_SIZE = 8;
 
+const parseSortableDate = (v: unknown): number | null => {
+  if (v == null) return null;
+
+  if (v instanceof Date) {
+    const t = v.getTime();
+    return Number.isNaN(t) ? null : t;
+  }
+
+  const s = String(v).trim();
+  if (!s) return null;
+
+  // supports "YYYY-MM-DD..." and many ISO variants
+  const iso = Date.parse(s);
+  if (!Number.isNaN(iso)) return iso;
+
+  // supports "dd-MM-yyyy"
+  const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(s);
+  if (m) {
+    const dd = Number(m[1]);
+    const mm = Number(m[2]);
+    const yy = Number(m[3]);
+    if (
+      Number.isFinite(dd) &&
+      Number.isFinite(mm) &&
+      Number.isFinite(yy) &&
+      yy >= 1900 &&
+      yy <= 2099 &&
+      mm >= 1 &&
+      mm <= 12 &&
+      dd >= 1 &&
+      dd <= 31
+    ) {
+      const t = Date.parse(`${yy}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`);
+      return Number.isNaN(t) ? null : t;
+    }
+  }
+
+  return null;
+};
+
 const MeterReadingListing: React.FC = () => {
   const navigate = useNavigate();
   const { createRoutePath } = useCurrentMenu();
@@ -55,7 +96,7 @@ const MeterReadingListing: React.FC = () => {
   const [rows, setRows] = useState<MeterReadingDTO[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
-  const [meters, setMeters] = useState<MeterLookup[]>([]);
+  const [meterLookups, setMeterLookups] = useState<MeterFlatOwnerLookup[]>([]);
   const [readingTypes, setReadingTypes] = useState<ReadingTypeDTO[]>([]);
 
   const [sortField, setSortField] = useState<SortField>("readingDate");
@@ -72,7 +113,7 @@ const MeterReadingListing: React.FC = () => {
     () => ({
       listPaged: "/meterreading/Get-All-MeterReadings-Paged",
       delete: "/meterreading/Delete-MeterReading",
-      meters: "/meter/Get-All-Meters",
+      meterFlatOwnerLookup: "/meterreading/Get-Meter-FlatOwner-Lookup",
       readingTypes: "/meterreading/Get-All-ReadingTypes",
     }),
     []
@@ -100,10 +141,12 @@ const MeterReadingListing: React.FC = () => {
 
     const loadLookups = async () => {
       try {
-        const m = await fetchAllEntities<MeterLookup>(ENDPOINTS.meters);
-        setMeters(Array.isArray(m) ? m : []);
+        const m = await fetchAllEntities<MeterFlatOwnerLookup>(
+          ENDPOINTS.meterFlatOwnerLookup
+        );
+        setMeterLookups(Array.isArray(m) ? m : []);
       } catch {
-        setMeters([]);
+        setMeterLookups([]);
       }
 
       try {
@@ -116,22 +159,27 @@ const MeterReadingListing: React.FC = () => {
       }
     };
 
-    load();
-    loadLookups();
+    void load();
+    void loadLookups();
   }, [
     ENDPOINTS.listPaged,
-    ENDPOINTS.meters,
+    ENDPOINTS.meterFlatOwnerLookup,
     ENDPOINTS.readingTypes,
     pageNumber,
     pageSize,
   ]);
 
-  const meterLabelById = useMemo(() => {
-    return buildIdLabelMap(meters, "meterId", (m) => {
-      const label = String(m.meterNumber ?? "").trim();
-      return label || `Meter #${m.meterId}`;
+  const flatOwnerLabelByMeterId = useMemo(() => {
+    return buildIdLabelMap(meterLookups, "meterId", (m) => {
+      const flatNumber = String(m.flatNumber ?? "").trim();
+      const ownerName = String(m.ownerName ?? "").trim();
+
+      if (!flatNumber && !ownerName) return "N/A";
+      if (!flatNumber) return ownerName || "N/A";
+      if (!ownerName) return `${flatNumber} - N/A`;
+      return `${flatNumber} - ${ownerName}`;
     });
-  }, [meters]);
+  }, [meterLookups]);
 
   const readingTypeLabelById = useMemo(() => {
     return buildIdLabelMap(readingTypes, "readingTypeId", (t) =>
@@ -141,16 +189,32 @@ const MeterReadingListing: React.FC = () => {
 
   const sortedRows = useMemo(() => {
     const copy = [...rows];
+
+    const sortFieldName = String(sortField).toLowerCase();
+    const isDateField = sortFieldName.includes("date");
+
+    const compare = (va: unknown, vb: unknown): number => {
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+
+      if (isDateField) {
+        const ta = parseSortableDate(va);
+        const tb = parseSortableDate(vb);
+        if (ta != null && tb != null) return ta - tb;
+      }
+
+      if (typeof va === "number" && typeof vb === "number") return va - vb;
+
+      return String(va).toLowerCase().localeCompare(String(vb).toLowerCase());
+    };
+
     copy.sort((a, b) => {
       const va = a[sortField];
       const vb = b[sortField];
-
-      const sa = va == null ? "" : String(va);
-      const sb = vb == null ? "" : String(vb);
-
-      if (sa === sb) return 0;
-      return sortAsc ? (sa > sb ? 1 : -1) : sa < sb ? 1 : -1;
+      return sortAsc ? compare(va, vb) : compare(vb, va);
     });
+
     return copy;
   }, [rows, sortAsc, sortField]);
 
@@ -226,20 +290,21 @@ const MeterReadingListing: React.FC = () => {
       columns={[
         {
           key: "meterId",
-          label: "Meter",
-          width: "150px",
-          renderCell: (x) => meterLabelById[x.meterId] ?? `Meter #${x.meterId}`,
+          label: "Flat Owner",
+          width: "220px",
+          renderCell: (x) =>
+            flatOwnerLabelByMeterId[x.meterId] ?? "N/A",
         },
         {
           key: "readingDate",
           label: "Reading Date",
-          width: "100px",
+          width: "110px",
           renderCell: (x) => formatDateDmy(x.readingDate),
         },
         {
           key: "readingValue",
           label: "Reading Value",
-          width: "100px",
+          width: "110px",
           renderCell: (x) => safeValue(x.readingValue),
         },
         {
@@ -255,7 +320,7 @@ const MeterReadingListing: React.FC = () => {
         {
           key: "isEstimated",
           label: "Estimated",
-          width: "70px",
+          width: "80px",
           renderCell: (x) => (x.isEstimated ? "Yes" : "No"),
         },
         {
@@ -279,5 +344,3 @@ const MeterReadingListing: React.FC = () => {
 };
 
 export default MeterReadingListing;
-
-// Patch End: src/features/electricity/meterReadings/forms/MeterReadingListing.tsx

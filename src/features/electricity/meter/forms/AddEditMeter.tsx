@@ -86,7 +86,20 @@ const SwitchTile = ({ id, name, label, checked, onChange }: SwitchTileProps) => 
 type SubmitMode = "save" | "saveAndNext";
 
 type ApartmentDTO = { apartmentId: number; apartmentName?: string | null };
-type FlatDTO = { flatId: number; flatNo?: string | null };
+
+type FlatDTO = {
+  flatId: number;
+  flatNumber?: string | null;
+  flatNo?: string | null;
+  flatName?: string | null;
+  flatDisplayName?: string | null;
+};
+
+type FlatOwnerNameLookupDTO = {
+  flatId: number;
+  firstName?: string | null;
+  lastName?: string | null;
+};
 
 type MeterDTO = {
   meterId: number;
@@ -154,6 +167,7 @@ const endpoints = {
 
   apartments: "/apartment/Get-All-Apartment",
   flats: "/flat/Get-All-Flats",
+  flatOwnerLookup: "/meter/Get-FlatOwnerLookup",
 };
 
 const emptyForm: FormState = {
@@ -191,6 +205,20 @@ interface Props {
   onUnsavedChange?: (changed: boolean) => void;
 }
 
+const pickText = (v: string | null | undefined): string | null => {
+  const t = (v ?? "").trim();
+  return t.length > 0 ? t : null;
+};
+
+const getFlatNumberText = (f: FlatDTO): string | null => {
+  return (
+    pickText(f.flatNumber) ??
+    pickText(f.flatNo) ??
+    pickText(f.flatDisplayName) ??
+    pickText(f.flatName)
+  );
+};
+
 const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
   ({ meterId, onUnsavedChange }, ref) => {
     const navigate = useNavigate();
@@ -204,6 +232,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
 
     const [apartments, setApartments] = useState<ApartmentDTO[]>([]);
     const [flats, setFlats] = useState<FlatDTO[]>([]);
+    const [flatOwners, setFlatOwners] = useState<FlatOwnerNameLookupDTO[]>([]);
 
     const formRef = useRef<HTMLFormElement>(null);
     const initialRef = useRef<FormState | null>(null);
@@ -292,6 +321,28 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
       void load();
     }, [meterId]);
 
+    useEffect(() => {
+      const aptId = formData.apartmentId;
+      if (!aptId) {
+        setFlatOwners([]);
+        return;
+      }
+
+      const loadOwners = async () => {
+        try {
+          const res = await fetchAllEntities<FlatOwnerNameLookupDTO>(
+            `${endpoints.flatOwnerLookup}/${aptId}`
+          );
+          setFlatOwners(Array.isArray(res) ? res : []);
+        } catch (err) {
+          console.error("❌ Failed to load flat owner lookup:", err);
+          setFlatOwners([]);
+        }
+      };
+
+      void loadOwners();
+    }, [formData.apartmentId]);
+
     const hasUnsavedChanges = useMemo(() => {
       if (!initialRef.current) return false;
       return (Object.keys(formData) as (keyof FormState)[]).some(
@@ -312,14 +363,39 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
       [apartments]
     );
 
-    const flatOptions = useMemo(
-      () =>
-        flats.map((f) => ({
-          value: f.flatId,
-          label: f.flatNo ?? `Flat #${f.flatId}`,
-        })),
-      [flats]
-    );
+    const flatNumberById = useMemo(() => {
+      const m = new Map<number, string>();
+      flats.forEach((f) => {
+        const txt = getFlatNumberText(f);
+        m.set(f.flatId, txt ?? `Flat #${f.flatId}`);
+      });
+      return m;
+    }, [flats]);
+
+    const flatOwnerOptions = useMemo(() => {
+      const options = flatOwners.map((o) => {
+        const flatNumber = flatNumberById.get(o.flatId) ?? `Flat #${o.flatId}`;
+
+        const first = (o.firstName ?? "").trim();
+        const last = (o.lastName ?? "").trim();
+        const fullName = [first, last].filter((x) => x.length > 0).join(" ");
+
+        return {
+          value: o.flatId,
+          label: fullName ? `${flatNumber} (${fullName})` : flatNumber,
+        };
+      });
+
+      const currentId = formData.flatId;
+      if (currentId && !options.some((x) => x.value === currentId)) {
+        options.unshift({
+          value: currentId,
+          label: flatNumberById.get(currentId) ?? `Flat #${currentId}`,
+        });
+      }
+
+      return options;
+    }, [flatOwners, flatNumberById, formData.flatId]);
 
     const utilityOptions = useMemo(
       () => [
@@ -363,7 +439,6 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
       []
     );
 
-    // ✅ Fixed TS narrowing + matches AddEditComponent pattern
     const handleChange = (
       e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
     ) => {
@@ -378,9 +453,19 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
         return;
       }
 
-      if (name === "apartmentId" || name === "flatId") {
+      if (name === "apartmentId") {
         const num = value ? Number(value) : undefined;
-        setFormData((prev) => ({ ...prev, [name]: num }));
+        setFormData((prev) => ({
+          ...prev,
+          apartmentId: num,
+          flatId: undefined,
+        }));
+        return;
+      }
+
+      if (name === "flatId") {
+        const num = value ? Number(value) : undefined;
+        setFormData((prev) => ({ ...prev, flatId: num }));
         return;
       }
 
@@ -450,12 +535,8 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
           utilityType: formData.utilityType,
           meterScope: formData.meterScope,
 
-          installationDate: formData.installationDate
-            ? formData.installationDate
-            : null,
-          lastVerifiedDate: formData.lastVerifiedDate
-            ? formData.lastVerifiedDate
-            : null,
+          installationDate: formData.installationDate ? formData.installationDate : null,
+          lastVerifiedDate: formData.lastVerifiedDate ? formData.lastVerifiedDate : null,
 
           isActive: formData.isActive,
           isSmartMeter: formData.isSmartMeter,
@@ -548,6 +629,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
                     value={formData.apartmentId ?? ""}
                     onChange={handleChange}
                     required
+                    disabled={isEdit}
                     options={apartmentOptions}
                   />
                 </div>
@@ -587,19 +669,18 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
 
                 <div className="col-md-6">
                   <SelectField
-                    label="Flat"
+                    label="Flat No. & Owner"
                     name="flatId"
                     value={formData.flatId ?? ""}
                     onChange={handleChange}
-                    disabled={formData.meterScope !== "Personal"}
-                    options={flatOptions}
+                    disabled={isEdit || formData.meterScope !== "Personal"}
+                    options={flatOwnerOptions}
                   />
                 </div>
               </div>
             </SectionCard>
           </div>
 
-          {/* ✅ Status section exactly like AddEditComponent (Active/Deprecated) */}
           <div className="col-12">
             <SectionCard title="Status">
               <div className="row g-3">
@@ -692,7 +773,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
                     name="readingUnit"
                     value={formData.readingUnit}
                     onChange={handleChange}
-                    placeholder="e.g., kWh"
+                    placeholder="e.g. kWh"
                   />
                 </div>
 

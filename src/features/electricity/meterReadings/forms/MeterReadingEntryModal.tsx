@@ -12,7 +12,7 @@ import {
   safeValue,
 } from "../../../../utils/format";
 import { showAddUpdateResult } from "../../../../utils/alerts/showAddUpdateConfirmation";
-import { showActionConfirmation } from "../../../../utils/alerts/showDeleteConfirmation"; // ✅ added
+import { showActionConfirmation } from "../../../../utils/alerts/showDeleteConfirmation";
 
 import type { ReadingTypeDTO } from "../../../../types/ReadingTypeDTO";
 import type {
@@ -119,6 +119,7 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
     () => normalizeToYmd(new Date()) || ""
   );
 
+  const [readingDateError, setReadingDateError] = useState<string>("");
   const [rows, setRows] = useState<EntryRowState[]>([]);
   const [step, setStep] = useState<"select" | "table">("select");
   const [topError, setTopError] = useState<string>("");
@@ -164,6 +165,23 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (!isOpen) return;
 
+    if (!readingDate) {
+      setReadingDateError("");
+      return;
+    }
+
+    const todayYmd = normalizeToYmd(new Date()) || "";
+    if (todayYmd && readingDate > todayYmd) {
+      setReadingDateError("Future reading date is not allowed.");
+      return;
+    }
+
+    setReadingDateError("");
+  }, [isOpen, readingDate]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
     const load = async () => {
       setLoadingLookups(true);
       try {
@@ -197,6 +215,15 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
     return () => window.removeEventListener("keydown", onKey);
   }, [isOpen, onClose]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    document.body.classList.add("mr-entry-modal-open");
+    return () => {
+      document.body.classList.remove("mr-entry-modal-open");
+    };
+  }, [isOpen]);
+
   const setRowValue = (meterId: number, next: Partial<EntryRowState>) => {
     setRows((prev) =>
       prev.map((r) => (r.meterId === meterId ? { ...r, ...next } : r))
@@ -216,11 +243,14 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
       return;
     }
 
+    if (readingDateError) return;
+
     setLoadingRows(true);
     try {
       const query = `${
         ENDPOINTS.entryRows
       }/${apartmentId}?readingDate=${encodeURIComponent(readingDate)}`;
+
       const res = await fetchAllEntities<MeterReadingEntryRowDTO>(query);
       const list = Array.isArray(res) ? res : [];
 
@@ -250,14 +280,9 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
     setRows((prev) =>
       prev.map((r) => {
         const value = r.readingValueText.trim();
-
-        // ✅ Current Reading is optional:
-        // If blank, ignore the row (no validation error).
         if (!value) {
           return { ...r, error: undefined };
         }
-
-        // If user entered something, then validate it
         if (!/^\d+$/.test(value)) {
           ok = false;
           return { ...r, error: "Only numbers allowed." };
@@ -268,7 +293,6 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
           return { ...r, error: "Max 12 digits allowed." };
         }
 
-        // ✅ Reading Type is mandatory for submitted rows
         if (!r.readingTypeId) {
           ok = false;
           return { ...r, error: "Reading Type is required." };
@@ -303,7 +327,6 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
       return;
     }
 
-    // ✅ Custom confirmation (same UI as delete confirmation, but with finalize message/buttons)
     const confirmed = await showActionConfirmation({
       title: "Confirm Finalize",
       text: "Are you sure to Finalize these Meter Reading Entries ?",
@@ -352,7 +375,7 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="user-modal-overlay">
+    <div className="user-modal-overlay mr-entry-overlay">
       <div
         className="user-modal-dialog mr-entry-dialog"
         onClick={(e) => e.stopPropagation()}
@@ -373,7 +396,6 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
               <div className="alert alert-danger py-2">{topError}</div>
             ) : null}
 
-            {/* Row 1: Apartment + Reading Date */}
             <div className="row g-3 align-items-end">
               <div className="col-md-6">
                 <SelectField
@@ -389,6 +411,12 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
                   }}
                   disabled={loadingLookups || loadingRows || saving}
                 />
+                <div
+                  className="mr-entry-field-help"
+                  style={{ visibility: "hidden" }}
+                >
+                  placeholder
+                </div>
               </div>
 
               <div className="col-md-6">
@@ -401,6 +429,12 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
                     if (step === "table") resetState();
                   }}
                 />
+                <div
+                  className="mr-entry-field-help text-danger"
+                  style={{ visibility: readingDateError ? "visible" : "hidden" }}
+                >
+                  {readingDateError || "placeholder"}
+                </div>
               </div>
             </div>
 
@@ -413,7 +447,8 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
                   loadingRows ||
                   saving ||
                   !apartmentId ||
-                  !readingDate
+                  !readingDate ||
+                  !!readingDateError
                 }
                 onClick={handleProceed}
               >
@@ -514,6 +549,7 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
                       </tbody>
                     </table>
                   </div>
+
                   {rows.length === 0 ? (
                     <div className="alert alert-warning text-center">
                       No active meters found for this apartment.

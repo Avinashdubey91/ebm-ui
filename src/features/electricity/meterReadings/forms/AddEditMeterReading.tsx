@@ -28,13 +28,12 @@ import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
 
 type SubmitMode = "save" | "saveAndNext";
 
-/**
- * Keep lookup type local so we don't depend on MeterDTO shape.
- * Only what we need for dropdown.
- */
-type MeterLookup = {
+type MeterFlatOwnerLookup = {
   meterId: number;
   meterNumber?: string | null;
+  flatId?: number | null;
+  flatNumber?: string | null;
+  ownerName?: string | null;
   isActive?: boolean;
 };
 
@@ -95,23 +94,24 @@ const normalizeYmdSafe = (raw: unknown): string => {
   return "";
 };
 
-//Billing period auto-derive helpers (ReadingDate -> BillingFrom/BillingTo)
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
-const getBillingPeriodFromReadingDate = (readingYmd: string): { from: string; to: string } => {
+const getBillingPeriodFromReadingDate = (
+  readingYmd: string
+): { from: string; to: string } => {
   if (!readingYmd || readingYmd.length < 10) return { from: "", to: "" };
 
   const y = Number(readingYmd.slice(0, 4));
   const m = Number(readingYmd.slice(5, 7));
   const d = Number(readingYmd.slice(8, 10));
 
-  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return { from: "", to: "" };
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d))
+    return { from: "", to: "" };
   if (m < 1 || m > 12 || d < 1 || d > 31) return { from: "", to: "" };
 
   let billYear = y;
   let billMonth = m;
 
-  // If reading is done 1st week of month => treat as previous month
   if (d <= 7) {
     billMonth -= 1;
     if (billMonth === 0) {
@@ -122,8 +122,7 @@ const getBillingPeriodFromReadingDate = (readingYmd: string): { from: string; to
 
   const from = `${billYear}-${pad2(billMonth)}-01`;
 
-  // last day of billMonth
-  const lastDay = new Date(billYear, billMonth, 0).getDate(); // month param is 1-based here intentionally
+  const lastDay = new Date(billYear, billMonth, 0).getDate();
   const to = `${billYear}-${pad2(billMonth)}-${pad2(lastDay)}`;
 
   return { from, to };
@@ -142,8 +141,8 @@ const AddEditMeterReading = forwardRef<AddEditFormHandle, Props>(
         add: "/meterreading/Add-New-MeterReading",
         update: "/meterreading/Update-MeterReading-By-Id",
 
-        // ✅ update these two only if your actual endpoints differ
-        meters: "/meter/Get-All-Meters",
+        // ✅ new lookup used for Flat+Owner select and Meter readonly display
+        meterFlatOwnerLookup: "/meterreading/Get-Meter-FlatOwner-Lookup",
         readingTypes: "/meterreading/Get-All-ReadingTypes",
       }),
       []
@@ -157,7 +156,7 @@ const AddEditMeterReading = forwardRef<AddEditFormHandle, Props>(
       submitModeRef.current = mode;
     };
 
-    const [meters, setMeters] = useState<MeterLookup[]>([]);
+    const [meterLookups, setMeterLookups] = useState<MeterFlatOwnerLookup[]>([]);
     const [readingTypes, setReadingTypes] = useState<ReadingTypeDTO[]>([]);
 
     const formRef = useRef<HTMLFormElement>(null);
@@ -166,14 +165,18 @@ const AddEditMeterReading = forwardRef<AddEditFormHandle, Props>(
     useEffect(() => {
       const loadLookups = async () => {
         try {
-          const m = await fetchAllEntities<MeterLookup>(ENDPOINTS.meters);
-          setMeters(Array.isArray(m) ? m : []);
+          const m = await fetchAllEntities<MeterFlatOwnerLookup>(
+            ENDPOINTS.meterFlatOwnerLookup
+          );
+          setMeterLookups(Array.isArray(m) ? m : []);
         } catch {
-          setMeters([]);
+          setMeterLookups([]);
         }
 
         try {
-          const rt = await fetchAllEntities<ReadingTypeDTO>(ENDPOINTS.readingTypes);
+          const rt = await fetchAllEntities<ReadingTypeDTO>(
+            ENDPOINTS.readingTypes
+          );
           setReadingTypes(Array.isArray(rt) ? rt : []);
         } catch {
           setReadingTypes([]);
@@ -181,7 +184,7 @@ const AddEditMeterReading = forwardRef<AddEditFormHandle, Props>(
       };
 
       void loadLookups();
-    }, [ENDPOINTS.meters, ENDPOINTS.readingTypes]);
+    }, [ENDPOINTS.meterFlatOwnerLookup, ENDPOINTS.readingTypes]);
 
     useEffect(() => {
       const load = async () => {
@@ -192,11 +195,12 @@ const AddEditMeterReading = forwardRef<AddEditFormHandle, Props>(
           return;
         }
 
-        const data = await fetchEntityById<MeterReadingDTO>(ENDPOINTS.getById, meterReadingId);
+        const data = await fetchEntityById<MeterReadingDTO>(
+          ENDPOINTS.getById,
+          meterReadingId
+        );
 
         const readingDate = normalizeYmdSafe(data.readingDate);
-
-        // Always derive billing period from reading date (readonly UI)
         const derived = getBillingPeriodFromReadingDate(readingDate);
 
         const mapped: FormState = {
@@ -210,7 +214,6 @@ const AddEditMeterReading = forwardRef<AddEditFormHandle, Props>(
           isEstimated: Boolean(data.isEstimated),
           readingTypeId: data.readingTypeId ?? undefined,
 
-          // use derived billing dates
           billingFromDate: derived.from,
           billingToDate: derived.to,
 
@@ -237,15 +240,34 @@ const AddEditMeterReading = forwardRef<AddEditFormHandle, Props>(
       onUnsavedChange?.(hasUnsavedChanges);
     }, [hasUnsavedChanges, onUnsavedChange]);
 
+    const flatOwnerOptions = useMemo(
+      () =>
+        meterLookups
+          .filter((x) => x.isActive !== false)
+          .map((m) => {
+            const flatNumber = String(m.flatNumber ?? "").trim();
+            const ownerName = String(m.ownerName ?? "").trim();
+
+            let label = "N/A";
+            if (flatNumber && ownerName) label = `${flatNumber} (${ownerName})`;
+            else if (flatNumber) label = `${flatNumber}`;
+            else if (ownerName) label = `${ownerName}`;
+
+            return { value: m.meterId, label };
+          }),
+      [meterLookups]
+    );
+
     const meterOptions = useMemo(
       () =>
-        meters
+        meterLookups
           .filter((x) => x.isActive !== false)
           .map((m) => ({
             value: m.meterId,
-            label: String(m.meterNumber ?? "").trim() || `Meter #${m.meterId}`,
+            label:
+              String(m.meterNumber ?? "").trim() || `Meter #${m.meterId}`,
           })),
-      [meters]
+      [meterLookups]
     );
 
     const readingTypeOptions = useMemo(
@@ -269,7 +291,10 @@ const AddEditMeterReading = forwardRef<AddEditFormHandle, Props>(
       return dec.length > 0 ? `${intPart}.${dec}` : `${intPart}.`;
     };
 
-    type ValidityEl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+    type ValidityEl =
+      | HTMLInputElement
+      | HTMLSelectElement
+      | HTMLTextAreaElement;
 
     const isValidityEl = (el: Element | null): el is ValidityEl =>
       el instanceof HTMLInputElement ||
@@ -290,7 +315,10 @@ const AddEditMeterReading = forwardRef<AddEditFormHandle, Props>(
       if (el) el.setCustomValidity("");
     };
 
-    const showValidityError = (el: ValidityEl | null, message: string): boolean => {
+    const showValidityError = (
+      el: ValidityEl | null,
+      message: string
+    ): boolean => {
       if (!el) return false;
       el.setCustomValidity(message);
       el.reportValidity();
@@ -298,7 +326,9 @@ const AddEditMeterReading = forwardRef<AddEditFormHandle, Props>(
       return true;
     };
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const handleChange = (
+      e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    ) => {
       const target = e.currentTarget;
       const { name, value } = target;
 
@@ -331,6 +361,8 @@ const AddEditMeterReading = forwardRef<AddEditFormHandle, Props>(
       setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
+    const today = normalizeToYmd(new Date()) || "";
+
     const validate = (): boolean => {
       clearValidity(getByName("meterId"));
       clearValidity(getById("meterReading-readingDate"));
@@ -342,12 +374,23 @@ const AddEditMeterReading = forwardRef<AddEditFormHandle, Props>(
       clearValidity(getByName("notes"));
 
       if (!formData.meterId) {
-        showValidityError(getByName("meterId"), "Please select Meter.");
+        showValidityError(getByName("meterId"), "Please select Flat No. & Owner.");
         return false;
       }
 
       if (!formData.readingDate) {
-        showValidityError(getById("meterReading-readingDate"), "Please fill out this field.");
+        showValidityError(
+          getById("meterReading-readingDate"),
+          "Please fill out this field."
+        );
+        return false;
+      }
+
+      if (today && formData.readingDate > today) {
+        showValidityError(
+          getById("meterReading-readingDate"),
+          "Future reading date is not allowed."
+        );
         return false;
       }
 
@@ -367,14 +410,19 @@ const AddEditMeterReading = forwardRef<AddEditFormHandle, Props>(
         return false;
       }
 
-      // Billing period should always be derived, but keep guard anyway
       if (!formData.billingFromDate) {
-        showValidityError(getById("meterReading-billingFromDate"), "Please fill out this field.");
+        showValidityError(
+          getById("meterReading-billingFromDate"),
+          "Please fill out this field."
+        );
         return false;
       }
 
       if (!formData.billingToDate) {
-        showValidityError(getById("meterReading-billingToDate"), "Please fill out this field.");
+        showValidityError(
+          getById("meterReading-billingToDate"),
+          "Please fill out this field."
+        );
         return false;
       }
 
@@ -415,8 +463,6 @@ const AddEditMeterReading = forwardRef<AddEditFormHandle, Props>(
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-
-      // remove native browser validity (we use custom validity everywhere)
       if (!validate()) return;
 
       setIsSubmitting(true);
@@ -425,7 +471,13 @@ const AddEditMeterReading = forwardRef<AddEditFormHandle, Props>(
         const payload = buildPayload();
 
         if (isEdit && meterReadingId) {
-          await updateEntity(ENDPOINTS.update, meterReadingId, payload, userId, false);
+          await updateEntity(
+            ENDPOINTS.update,
+            meterReadingId,
+            payload,
+            userId,
+            false
+          );
           await showAddUpdateResult(true, "update", "meter reading");
           navigate(parentListPath);
           return;
@@ -493,12 +545,23 @@ const AddEditMeterReading = forwardRef<AddEditFormHandle, Props>(
               <div className="row g-3">
                 <div className="col-md-6">
                   <SelectField
-                    label="Meter"
+                    label="Flat No. & Owner"
                     name="meterId"
                     value={formData.meterId ?? ""}
                     onChange={handleChange}
                     required
+                    options={flatOwnerOptions}
+                  />
+                </div>
+
+                <div className="col-md-6">
+                  <SelectField
+                    label="Meter"
+                    name="meterIdReadonly"
+                    value={formData.meterId ?? ""}
+                    onChange={() => undefined}
                     options={meterOptions}
+                    disabled
                   />
                 </div>
 
@@ -508,7 +571,6 @@ const AddEditMeterReading = forwardRef<AddEditFormHandle, Props>(
                     label="Reading Date"
                     value={formData.readingDate}
                     onChange={(v) => {
-                      // Derive billing period from reading date
                       clearValidity(getById("meterReading-readingDate"));
                       clearValidity(getById("meterReading-billingFromDate"));
                       clearValidity(getById("meterReading-billingToDate"));
@@ -527,7 +589,7 @@ const AddEditMeterReading = forwardRef<AddEditFormHandle, Props>(
 
                 <div className="col-md-6">
                   <TextInputField
-                    label="Reading Value"
+                    label="Current Reading Unit"
                     name="readingValue"
                     value={formData.readingValue}
                     onChange={handleChange}
@@ -538,11 +600,12 @@ const AddEditMeterReading = forwardRef<AddEditFormHandle, Props>(
 
                 <div className="col-md-6">
                   <SelectField
-                    label="Reading Type (Optional)"
+                    label="Reading Type"
                     name="readingTypeId"
                     value={formData.readingTypeId ?? ""}
                     onChange={handleChange}
                     options={readingTypeOptions}
+                    required
                   />
                 </div>
 

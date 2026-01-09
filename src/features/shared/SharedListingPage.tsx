@@ -5,19 +5,26 @@ import { useCurrentMenu } from "../../hooks/useCurrentMenu";
 interface SharedListingPageProps {
   title?: string;
   ListingComponent: React.FC;
-
   /**
    * Custom actions on the right side of the header.
    * If provided, it replaces the default "Add New" button.
    */
   headerActions?: React.ReactNode;
-
+  /**
+   * Extra actions rendered BEFORE the default "Add New" button.
+   * This does NOT replace the default button.
+   */
+  extraHeaderActions?: React.ReactNode;
+  /**
+   * Optional className for the default "Add New" button.
+   * Useful when you need conditional spacing (e.g., scrollbar appears).
+   */
+  addButtonClassName?: string;
   /**
    * Changing this value forces the listing component to remount.
    * Useful when you need a clean reload (e.g. after modal save).
    */
   listingKey?: React.Key;
-
   /** Optional className applied to the listing content wrapper. */
   contentClassName?: string;
 }
@@ -26,6 +33,8 @@ const SharedListingPage: React.FC<SharedListingPageProps> = ({
   title,
   ListingComponent,
   headerActions,
+  extraHeaderActions,
+  addButtonClassName,
   listingKey,
   contentClassName,
 }) => {
@@ -36,13 +45,15 @@ const SharedListingPage: React.FC<SharedListingPageProps> = ({
     if (createRoutePath) {
       navigate(createRoutePath);
     } else {
-      console.warn("⚠️ No dynamic create route path.");
+      console.warn("No dynamic create route path.");
     }
   }, [createRoutePath, navigate]);
 
   const headerText = useMemo(() => {
     return title || `MANAGE ${pluralMenuName.toUpperCase()}`;
   }, [title, pluralMenuName]);
+
+  const addBtnClass = addButtonClassName ?? "btn btn-success btn-md";
 
   return (
     <div className="page-listing">
@@ -53,10 +64,13 @@ const SharedListingPage: React.FC<SharedListingPageProps> = ({
 
         <div className="action-button-container">
           {headerActions ?? (
-            <button className="btn btn-success btn-md" onClick={handleAddNew}>
-              <i className="fa fa-plus me-2" />
-              Add New {singularMenuName}
-            </button>
+            <>
+              {extraHeaderActions}
+              <button className={addBtnClass} onClick={handleAddNew}>
+                <i className="fa fa-plus me-2" />
+                Add New {singularMenuName}
+              </button>
+            </>
           )}
         </div>
       </div>

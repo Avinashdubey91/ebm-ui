@@ -1,7 +1,4 @@
-// Patch Start: src/features/electricity/meterReadings/MeterReadingListingPage.tsx
-
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import SharedListingPage from "../../../shared/SharedListingPage";
 import MeterReadingListing from "../forms/MeterReadingListing";
@@ -13,7 +10,6 @@ const useHasWindowVerticalScrollbar = (): boolean => {
   useEffect(() => {
     const update = () => {
       const docEl = document.documentElement;
-      // When vertical scrollbar is present, clientWidth becomes smaller than innerWidth
       setHasScrollbar(window.innerWidth > docEl.clientWidth);
     };
 
@@ -25,7 +21,6 @@ const useHasWindowVerticalScrollbar = (): boolean => {
       update();
     });
 
-    // body resize covers most content changes (pagination/page size/expanded rows)
     ro.observe(document.body);
 
     return () => {
@@ -38,7 +33,6 @@ const useHasWindowVerticalScrollbar = (): boolean => {
 };
 
 const MeterReadingListingPage: React.FC = () => {
-  const navigate = useNavigate();
   const [isEntryOpen, setIsEntryOpen] = useState(false);
   const [listingKey, setListingKey] = useState(0);
 
@@ -52,35 +46,25 @@ const MeterReadingListingPage: React.FC = () => {
 
   const contentClassName = hasWindowScrollbar ? "me-3" : "";
 
-  const addBtnClassName = useMemo(() => {
-    const classes = ["btn", "btn-success", "btn-md", "ms-2"];
+  // Apply "me-3" ONLY when scrollbar is visible (your requirement)
+  const addButtonClassName = useMemo(() => {
+    const classes = ["btn", "btn-success", "btn-md"];
     if (hasWindowScrollbar) classes.push("me-3");
     return classes.join(" ");
   }, [hasWindowScrollbar]);
 
-  const headerActions = useMemo(
+  const extraHeaderActions = useMemo(
     () => (
-      <>
-        <button
-          type="button"
-          className="btn btn-primary btn-md meter-reading-entry-btn"
-          onClick={() => setIsEntryOpen(true)}
-        >
-          <i className="fa fa-bolt me-2" />
-          Bulk Meter Reading Entry
-        </button>
-
-        <button
-          type="button"
-          className={addBtnClassName}
-          onClick={() => navigate("add")}
-        >
-          <i className="fa fa-plus me-2" />
-          Add New Meter Reading
-        </button>
-      </>
+      <button
+        type="button"
+        className="btn btn-primary btn-md meter-reading-entry-btn me-2"
+        onClick={() => setIsEntryOpen(true)}
+      >
+        <i className="fa fa-bolt me-2" />
+        Bulk Meter Reading Entry
+      </button>
     ),
-    [navigate, addBtnClassName]
+    []
   );
 
   return (
@@ -88,9 +72,10 @@ const MeterReadingListingPage: React.FC = () => {
       <SharedListingPage
         title="MANAGE METER READINGS"
         ListingComponent={MeterReadingListing}
-        headerActions={headerActions}
         listingKey={listingKey}
         contentClassName={contentClassName}
+        extraHeaderActions={extraHeaderActions}
+        addButtonClassName={addButtonClassName}
       />
 
       <MeterReadingEntryModal

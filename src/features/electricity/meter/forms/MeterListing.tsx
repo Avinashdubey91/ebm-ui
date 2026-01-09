@@ -49,6 +49,11 @@ type FlatDTO = {
   flatDisplayName?: string | null;
 };
 
+type MeterListingProps = {
+  selectedApartmentId?: number;
+  onApartmentsLoaded?: (apartments: ApartmentDTO[]) => void;
+};
+
 const ENTITY_NAME = "Meter";
 
 const endpoints = {
@@ -111,7 +116,10 @@ const prettyPhase = (v: string | number | null | undefined): string => {
   return v;
 };
 
-const MeterListing: React.FC = () => {
+const MeterListing: React.FC<MeterListingProps> = ({
+  selectedApartmentId,
+  onApartmentsLoaded,
+}) => {
   const navigate = useNavigate();
   const { createRoutePath } = useCurrentMenu();
 
@@ -135,21 +143,30 @@ const MeterListing: React.FC = () => {
           fetchAllEntities<FlatDTO>(endpoints.flats),
         ]);
 
+        const aptList = Array.isArray(aptRes) ? aptRes : [];
+
         setMeters(Array.isArray(metersRes) ? metersRes : []);
-        setApartments(Array.isArray(aptRes) ? aptRes : []);
+        setApartments(aptList);
         setFlats(Array.isArray(flatsRes) ? flatsRes : []);
+
+        onApartmentsLoaded?.(aptList);
       } catch (err) {
         console.error("❌ Failed to load meters:", err);
         setMeters([]);
         setApartments([]);
         setFlats([]);
+        onApartmentsLoaded?.([]);
       } finally {
         setLoading(false);
       }
     };
 
     void load();
-  }, []);
+  }, [onApartmentsLoaded]);
+
+  useEffect(() => {
+    setExpandedRowId(null);
+  }, [selectedApartmentId]);
 
   const apartmentNameById = useMemo(() => {
     const m = new Map<number, string>();
@@ -167,8 +184,13 @@ const MeterListing: React.FC = () => {
     return m;
   }, [flats]);
 
+  const visibleMeters = useMemo(() => {
+    if (!selectedApartmentId) return meters;
+    return meters.filter((m) => m.apartmentId === selectedApartmentId);
+  }, [meters, selectedApartmentId]);
+
   const sortedMeters = useMemo(() => {
-    const copy = [...meters];
+    const copy = [...visibleMeters];
     copy.sort((a, b) => {
       const va = a[sortField];
       const vb = b[sortField];
@@ -179,7 +201,7 @@ const MeterListing: React.FC = () => {
       return sortAsc ? sa.localeCompare(sb) : sb.localeCompare(sa);
     });
     return copy;
-  }, [meters, sortAsc, sortField]);
+  }, [visibleMeters, sortAsc, sortField]);
 
   const handleEdit = (id?: number) => {
     if (!id || !createRoutePath) return;
@@ -266,13 +288,12 @@ const MeterListing: React.FC = () => {
       renderExpandedRow={(m) => (
         <>
           <strong>Meter ID:</strong> {safeValue(m.meterId)} |{" "}
-          <strong>Installation Date:</strong>{" "}
-          {formatDateDmy(m.installationDate)} | <strong>Last Verified:</strong>{" "}
-          {formatDateDmy(m.lastVerifiedDate)} | <strong>Phase:</strong>{" "}
-          {prettyPhase(m.phaseType)} | <strong>Verification Status:</strong>{" "}
-          {toLabel(m.verificationStatus)} | <strong>Manufacturer:</strong>{" "}
-          {safeValue(m.manufacturer)} | <strong>Model:</strong>{" "}
-          {safeValue(m.model)} | <strong>Serial:</strong>{" "}
+          <strong>Installation Date:</strong> {formatDateDmy(m.installationDate)} |{" "}
+          <strong>Last Verified:</strong> {formatDateDmy(m.lastVerifiedDate)} |{" "}
+          <strong>Phase:</strong> {prettyPhase(m.phaseType)} |{" "}
+          <strong>Verification Status:</strong> {toLabel(m.verificationStatus)} |{" "}
+          <strong>Manufacturer:</strong> {safeValue(m.manufacturer)} |{" "}
+          <strong>Model:</strong> {safeValue(m.model)} | <strong>Serial:</strong>{" "}
           {safeValue(m.serialNumber)} | <strong>Reading Unit:</strong>{" "}
           {safeValue(m.readingUnit)} | <strong>Location:</strong>{" "}
           {safeValue(m.locationDescription)}

@@ -63,16 +63,15 @@
 
 .mr-entry-dialog {
   width: 100%;
-  max-width: 1150px; /* closer to your screenshot */
+  max-width: 1150px;
 }
 
 .mr-entry-content {
-  position: relative; /* required for close circle positioning */
+  position: relative;
   border-radius: 18px;
   overflow: hidden;
 }
 
-/* Simple top header bar like UserProfileModal */
 .mr-entry-topbar {
   background: #e6e0e0;
   padding: 18px 22px;
@@ -115,11 +114,42 @@
 
 .mr-entry-table-wrap {
   border-radius: 12px;
-  overflow: hidden;              /* clips the table corners */
-  border: 1px solid #cfd8ea;     /* single outer border */
+  overflow: hidden;
+  border: 1px solid #cfd8ea;
 }
 
 .mr-entry-table.table-bordered {
-  border: 0;                     /* avoid double outer border */
-  margin-bottom: 0;              /* no extra spacing inside wrapper */
+  border: 0;
+  margin-bottom: 0;
+}
+
+.user-modal-overlay.mr-entry-overlay {
+  align-items: flex-start;
+  padding-top: 70px;
+  padding-bottom: 24px;
+}
+
+@media (max-width: 768px) {
+  .user-modal-overlay.mr-entry-overlay {
+    padding-top: 36px;
+  }
+}
+
+/*
+  Optional: if you ever want the calendar popup to open more towards the LEFT,
+  just change the value below (example: -360px). Keep 0px for default.
+*/
+.mr-entry-modal-open {
+  --mr-entry-datepicker-shift-x: -360px;
+}
+
+.mr-entry-modal-open .custom-ant-datepicker-dropdown {
+  transform: translateX(var(--mr-entry-datepicker-shift-x)) !important;
+}
+
+.mr-entry-field-help {
+  min-height: 18px;
+  margin-top: 6px;
+  font-size: 0.875rem;
+  line-height: 1.1;
 }
