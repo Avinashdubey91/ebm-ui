@@ -1,3 +1,5 @@
+/*--START----Meter-Reading Entry Modal CSS Classes----*/
+
 .mr-entry-backdrop {
   position: fixed;
   inset: 0;
@@ -153,3 +155,56 @@
   font-size: 0.875rem;
   line-height: 1.1;
 }
+
+/*--END - Meter-Reading Entry Modal CSS Classes----*/
+
+/*--START----Meter-Reading Listing Page CSS Classes----*/
+
+/* Make header a true single row: Title + controls + buttons */
+.meter-reading-listing-page .inner-area-header-container {
+  gap: 20px;
+}
+
+/* Title on the left, with a clear gap before filters */
+.meter-reading-listing-page .inner-area-header-title {
+  text-align: left !important;
+}
+
+/* Force action container to be a single flex row (prevents Add button dropping) */
+.meter-reading-listing-page .action-button-container {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: 10px;
+}
+
+/* Controls row inside extraHeaderActions */
+.meter-reading-listing-page .meter-reading-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+
+/* Remove label space inside SelectField & MonthPickerField */
+.meter-reading-listing-page .meter-reading-controls .mb-2 {
+  margin-bottom: 0 !important;
+}
+.meter-reading-listing-page .meter-reading-controls label {
+  display: none !important;
+}
+
+/* Match heights */
+.meter-reading-listing-page .meter-reading-controls .form-select,
+.meter-reading-listing-page .meter-reading-controls .form-control {
+  height: 38px;
+}
+
+/* MonthPickerField uses flex-column wrapper; flatten it for header use */
+.meter-reading-listing-page .meter-reading-controls .d-flex.flex-column {
+  flex-direction: row !important;
+  align-items: center !important;
+}
+
+/*--END----Meter-Reading Listing Page CSS Classes----*/

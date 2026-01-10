@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-import "./MeterReadingEntryModal.css";
+import "./MeterReading.css";
 import "../../../../styles/_forms.scss";
 import { createEntity, fetchAllEntities } from "../../../../api/genericCrudApi";
 import SelectField from "../../../../components/common/SelectField";

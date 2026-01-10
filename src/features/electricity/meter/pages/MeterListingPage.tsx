@@ -15,7 +15,7 @@ const headerSelectCss = `
 
   /* Select visual size */
   .meter-apartment-filter .form-select {
-    height: 38px;
+    height: 36px;
     padding-top: 0.375rem;
     padding-bottom: 0.375rem;
   }

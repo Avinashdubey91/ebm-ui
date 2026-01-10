@@ -645,7 +645,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
                   />
                 </div>
 
-                <div className="col-md-6">
+                <div className="col-md-4">
                   <SelectField
                     label="Utility Type"
                     name="utilityType"
@@ -656,7 +656,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
                   />
                 </div>
 
-                <div className="col-md-6">
+                <div className="col-md-4">
                   <SelectField
                     label="Meter Scope"
                     name="meterScope"
@@ -667,7 +667,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
                   />
                 </div>
 
-                <div className="col-md-6">
+                <div className="col-md-4">
                   <SelectField
                     label="Flat No. & Owner"
                     name="flatId"
@@ -815,7 +815,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
                   />
                 </div>
 
-                <div className="col-md-12">
+                <div className="col-md-6">
                   <TextInputField
                     label="Location Description"
                     name="locationDescription"
@@ -824,7 +824,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
                   />
                 </div>
 
-                <div className="col-md-12">
+                <div className="col-md-6">
                   <TextInputField
                     label="Verification Remarks"
                     name="verificationRemarks"

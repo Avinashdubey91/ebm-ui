@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -31,6 +31,17 @@ type SortField = keyof MeterReadingDTO;
 
 const ENTITY_NAME = "Meter Reading";
 
+// eslint-disable-next-line react-refresh/only-export-components
+export const DEFAULT_METER_READING_APARTMENT_ID: number | undefined = undefined;
+
+type MeterReadingListingProps = {
+  selectedApartmentId?: number;
+  entryMonth?: string; // "yyyy-MM"
+  autoDefaultEnabled?: boolean;
+  onAutoDefaultResolved?: () => void;
+  onAutoFallbackToPreviousMonth?: () => void;
+};
+
 function buildIdLabelMap<T extends object, K extends keyof T>(
   items: T[],
   idKey: K,
@@ -49,18 +60,15 @@ function buildIdLabelMap<T extends object, K extends keyof T>(
 
 const DEFAULT_PAGE_SIZE = 8;
 
-const parseSortableDate = (v: unknown): number | null => {
-  if (v == null) return null;
+const parseSortableDate = (value: unknown): number | null => {
+  if (value == null) return null;
 
-  if (v instanceof Date) {
-    const t = v.getTime();
-    return Number.isNaN(t) ? null : t;
-  }
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
 
-  const s = String(v).trim();
+  const s = String(value).trim();
   if (!s) return null;
 
-  // supports "YYYY-MM-DD..." and many ISO variants
+  // supports "yyyy-MM-dd"
   const iso = Date.parse(s);
   if (!Number.isNaN(iso)) return iso;
 
@@ -81,7 +89,9 @@ const parseSortableDate = (v: unknown): number | null => {
       dd >= 1 &&
       dd <= 31
     ) {
-      const t = Date.parse(`${yy}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`);
+      const t = Date.parse(
+        `${yy}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`
+      );
       return Number.isNaN(t) ? null : t;
     }
   }
@@ -89,12 +99,25 @@ const parseSortableDate = (v: unknown): number | null => {
   return null;
 };
 
-const MeterReadingListing: React.FC = () => {
+function getCurrentYearMonth(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
+const MeterReadingListing: React.FC<MeterReadingListingProps> = ({
+  selectedApartmentId,
+  entryMonth,
+  autoDefaultEnabled = false,
+  onAutoDefaultResolved,
+  onAutoFallbackToPreviousMonth,
+}) => {
   const navigate = useNavigate();
   const { createRoutePath } = useCurrentMenu();
 
   const [rows, setRows] = useState<MeterReadingDTO[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
 
   const [meterLookups, setMeterLookups] = useState<MeterFlatOwnerLookup[]>([]);
   const [readingTypes, setReadingTypes] = useState<ReadingTypeDTO[]>([]);
@@ -119,26 +142,14 @@ const MeterReadingListing: React.FC = () => {
     []
   );
 
+  // Reset pagination when filters change (relevant when page passes filters)
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const query = `${ENDPOINTS.listPaged}?pageNumber=${pageNumber}&pageSize=${pageSize}`;
-        const res = await fetchPagedResult<MeterReadingDTO>(query);
+    setPageNumber(1);
+    setExpandedRowId(null);
+  }, [selectedApartmentId, entryMonth]);
 
-        setRows(res.items);
-        setTotalCount(res.totalCount);
-        setTotalPages(res.totalPages);
-      } catch (err) {
-        console.error("Failed to load meter readings:", err);
-        setRows([]);
-        setTotalCount(0);
-        setTotalPages(0);
-      } finally {
-        setLoading(false);
-      }
-    };
-
+  // Lookups load once
+  useEffect(() => {
     const loadLookups = async () => {
       try {
         const m = await fetchAllEntities<MeterFlatOwnerLookup>(
@@ -150,23 +161,104 @@ const MeterReadingListing: React.FC = () => {
       }
 
       try {
-        const rt = await fetchAllEntities<ReadingTypeDTO>(
-          ENDPOINTS.readingTypes
-        );
+        const rt = await fetchAllEntities<ReadingTypeDTO>(ENDPOINTS.readingTypes);
         setReadingTypes(Array.isArray(rt) ? rt : []);
       } catch {
         setReadingTypes([]);
       }
     };
 
-    void load();
     void loadLookups();
+  }, [ENDPOINTS.meterFlatOwnerLookup, ENDPOINTS.readingTypes]);
+
+  const buildListQuery = useCallback(
+    (pn: number, ps: number): string => {
+      const base = `${ENDPOINTS.listPaged}?pageNumber=${pn}&pageSize=${ps}`;
+
+      const hasApartment =
+        typeof selectedApartmentId === "number" && selectedApartmentId > 0;
+      const hasMonth =
+        typeof entryMonth === "string" && entryMonth.trim().length > 0;
+
+      if (!hasApartment && !hasMonth) return base;
+
+      const parts: string[] = [base];
+
+      if (hasApartment) parts.push(`apartmentId=${selectedApartmentId}`);
+      if (hasMonth)
+        parts.push(`entryMonth=${encodeURIComponent(entryMonth!.trim())}`);
+
+      return parts.join("&");
+    },
+    [ENDPOINTS.listPaged, entryMonth, selectedApartmentId]
+  );
+
+  // Load listing whenever page/filter changes
+  useEffect(() => {
+    const currentYearMonth = getCurrentYearMonth();
+    const hasMonth = typeof entryMonth === "string" && entryMonth.trim().length > 0;
+    const isFutureMonth = hasMonth && entryMonth!.trim() > currentYearMonth;
+
+    const hasApartment =
+      typeof selectedApartmentId === "number" && selectedApartmentId > 0;
+
+    const shouldUseFilters = hasApartment && hasMonth;
+
+    const load = async () => {
+      // Filter mode + future month => no API call, show empty list
+      if (shouldUseFilters && isFutureMonth) {
+        setRows([]);
+        setTotalCount(0);
+        setTotalPages(0);
+        setLoading(false);
+        if (autoDefaultEnabled) onAutoDefaultResolved?.();
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const query = buildListQuery(pageNumber, pageSize);
+        const res = await fetchPagedResult<MeterReadingDTO>(query);
+
+        setRows(res.items);
+        setTotalCount(res.totalCount);
+        setTotalPages(res.totalPages);
+
+        // Auto-default: if current month has no entries, ask page to fallback once
+        if (
+          autoDefaultEnabled &&
+          hasMonth &&
+          entryMonth!.trim() === currentYearMonth &&
+          pageNumber === 1
+        ) {
+          onAutoDefaultResolved?.();
+          if (res.totalCount === 0) {
+            onAutoFallbackToPreviousMonth?.();
+          }
+        } else if (autoDefaultEnabled) {
+          onAutoDefaultResolved?.();
+        }
+      } catch (err) {
+        console.error("Failed to load meter readings:", err);
+        setRows([]);
+        setTotalCount(0);
+        setTotalPages(0);
+        if (autoDefaultEnabled) onAutoDefaultResolved?.();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void load();
   }, [
-    ENDPOINTS.listPaged,
-    ENDPOINTS.meterFlatOwnerLookup,
-    ENDPOINTS.readingTypes,
+    autoDefaultEnabled,
+    buildListQuery,
+    entryMonth,
+    onAutoDefaultResolved,
+    onAutoFallbackToPreviousMonth,
     pageNumber,
     pageSize,
+    selectedApartmentId,
   ]);
 
   const flatOwnerLabelByMeterId = useMemo(() => {
@@ -226,7 +318,7 @@ const MeterReadingListing: React.FC = () => {
 
   const reloadCurrentPage = async () => {
     try {
-      const query = `${ENDPOINTS.listPaged}?pageNumber=${pageNumber}&pageSize=${pageSize}`;
+      const query = buildListQuery(pageNumber, pageSize);
       const res = await fetchPagedResult<MeterReadingDTO>(query);
 
       setRows(res.items);
@@ -248,9 +340,7 @@ const MeterReadingListing: React.FC = () => {
 
     try {
       await deleteEntity(ENDPOINTS.delete, id, deletedBy);
-      setExpandedRowId(null);
       await showDeleteResult(true, ENTITY_NAME);
-
       await reloadCurrentPage();
     } catch (err) {
       console.error("Failed to delete meter reading:", err);
@@ -292,8 +382,7 @@ const MeterReadingListing: React.FC = () => {
           key: "meterId",
           label: "Flat Owner",
           width: "220px",
-          renderCell: (x) =>
-            flatOwnerLabelByMeterId[x.meterId] ?? "N/A",
+          renderCell: (x) => flatOwnerLabelByMeterId[x.meterId] ?? "N/A",
         },
         {
           key: "readingDate",
@@ -313,8 +402,7 @@ const MeterReadingListing: React.FC = () => {
           width: "170px",
           renderCell: (x) =>
             x.readingTypeId
-              ? readingTypeLabelById[x.readingTypeId] ??
-                `Type #${x.readingTypeId}`
+              ? readingTypeLabelById[x.readingTypeId] ?? `Type #${x.readingTypeId}`
               : "-",
         },
         {
