@@ -1,9 +1,12 @@
+// Patch Start: src/features/electricity/meter/forms/AddEditMeter.tsx
+
 import React, { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
   createEntity,
   fetchAllEntities,
+  fetchEntity,
   fetchEntityById,
   updateEntity,
 } from "../../../../api/genericCrudApi";
@@ -16,7 +19,6 @@ import TextInputField from "../../../../components/common/TextInputField";
 import DateInput from "../../../../components/common/DateInput";
 
 import { showAddUpdateResult } from "../../../../utils/alerts/showAddUpdateConfirmation";
-import { normalizeToYmd } from "../../../../utils/format";
 import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
 
 const SectionCard: React.FC<React.PropsWithChildren<{ title: string }>> = ({
@@ -39,7 +41,13 @@ type SwitchTileProps = {
   onChange: React.ChangeEventHandler<HTMLInputElement>;
 };
 
-const SwitchTile = ({ id, name, label, checked, onChange }: SwitchTileProps) => {
+const SwitchTile = ({
+  id,
+  name,
+  label,
+  checked,
+  onChange,
+}: SwitchTileProps) => {
   const controlMinHeight = 38;
 
   return (
@@ -86,11 +94,10 @@ const SwitchTile = ({ id, name, label, checked, onChange }: SwitchTileProps) => 
 type SubmitMode = "save" | "saveAndNext";
 
 type ApartmentDTO = { apartmentId: number; apartmentName?: string | null };
-
 type FlatDTO = {
   flatId: number;
-  flatNumber?: string | null;
   flatNo?: string | null;
+  flatNumber?: string | null;
   flatName?: string | null;
   flatDisplayName?: string | null;
 };
@@ -136,8 +143,10 @@ type FormState = {
   flatId?: number;
 
   meterNumber: string;
-  utilityType: string;
-  meterScope: string;
+
+  // send numeric enums to backend (safe even if backend also accepts strings)
+  utilityType: number;
+  meterScope: number;
 
   installationDate: string;
   lastVerifiedDate: string;
@@ -170,14 +179,31 @@ const endpoints = {
   flatOwnerLookup: "/meter/Get-FlatOwnerLookup",
 };
 
+const UTILITY = {
+  Electricity: 0,
+  Water: 1,
+  Gas: 2,
+  Heat: 3,
+} as const;
+
+const SCOPE = {
+  Apartment: 0,
+  Personal: 1,
+  Society: 2,
+  Block: 3,
+  Commercial: 4,
+  CommonArea: 5,
+  Temporary: 6,
+} as const;
+
 const emptyForm: FormState = {
   meterId: 0,
   apartmentId: undefined,
   flatId: undefined,
 
   meterNumber: "",
-  utilityType: "Electricity",
-  meterScope: "Personal",
+  utilityType: UTILITY.Electricity,
+  meterScope: SCOPE.Personal,
 
   installationDate: "",
   lastVerifiedDate: "",
@@ -205,18 +231,57 @@ interface Props {
   onUnsavedChange?: (changed: boolean) => void;
 }
 
-const pickText = (v: string | null | undefined): string | null => {
-  const t = (v ?? "").trim();
-  return t.length > 0 ? t : null;
+const toFlatLabel = (f: FlatDTO): string => {
+  const label =
+    f.flatNo ?? f.flatNumber ?? f.flatName ?? f.flatDisplayName ?? null;
+  return label && label.trim().length > 0 ? label : `Flat #${f.flatId}`;
 };
 
-const getFlatNumberText = (f: FlatDTO): string | null => {
-  return (
-    pickText(f.flatNumber) ??
-    pickText(f.flatNo) ??
-    pickText(f.flatDisplayName) ??
-    pickText(f.flatName)
+const toFullName = (
+  first?: string | null,
+  last?: string | null
+): string | null => {
+  const name = `${first ?? ""} ${last ?? ""}`.trim();
+  return name.length > 0 ? name : null;
+};
+
+const normalizeApartmentName = (name?: string | null): string =>
+  (name ?? "").trim().toLowerCase();
+
+const resolveDefaultApartmentId = (
+  items: ApartmentDTO[]
+): number | undefined => {
+  if (items.length === 0) return undefined;
+
+  const preferred = items.find((a) =>
+    normalizeApartmentName(a.apartmentName).includes("mittal parkview")
   );
+  return preferred?.apartmentId ?? items[0]?.apartmentId;
+};
+
+const mapUtilityToNumber = (v: string | number): number => {
+  if (typeof v === "number") return v;
+  if (v === "Electricity") return UTILITY.Electricity;
+  if (v === "Water") return UTILITY.Water;
+  if (v === "Gas") return UTILITY.Gas;
+  if (v === "Heat") return UTILITY.Heat;
+
+  const n = Number(v);
+  return Number.isFinite(n) ? n : UTILITY.Electricity;
+};
+
+const mapScopeToNumber = (v: string | number): number => {
+  if (typeof v === "number") return v;
+  if (v === "Apartment") return SCOPE.Apartment;
+  if (v === "Personal") return SCOPE.Personal;
+  if (v === "Society") return SCOPE.Society;
+  if (v === "Block") return SCOPE.Block;
+  if (v === "Commercial") return SCOPE.Commercial;
+  if (v === "CommonArea") return SCOPE.CommonArea;
+  if (v === "Temporary") return SCOPE.Temporary;
+
+  const n = Number(v);
+  return Number.isFinite(n) ? n : SCOPE.Personal;
 };
 
 const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
@@ -244,8 +309,23 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
             fetchAllEntities<ApartmentDTO>(endpoints.apartments),
             fetchAllEntities<FlatDTO>(endpoints.flats),
           ]);
-          setApartments(Array.isArray(aptRes) ? aptRes : []);
-          setFlats(Array.isArray(flatsRes) ? flatsRes : []);
+
+          const aptList = Array.isArray(aptRes) ? aptRes : [];
+          const flatList = Array.isArray(flatsRes) ? flatsRes : [];
+
+          setApartments(aptList);
+          setFlats(flatList);
+
+          if (!isEdit) {
+            const defaultApartmentId = resolveDefaultApartmentId(aptList);
+            if (defaultApartmentId !== undefined) {
+              setFormData((prev) =>
+                prev.apartmentId
+                  ? prev
+                  : { ...prev, apartmentId: defaultApartmentId }
+              );
+            }
+          }
         } catch (err) {
           console.error("❌ Failed to load master data:", err);
           setApartments([]);
@@ -254,7 +334,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
       };
 
       void loadMasters();
-    }, []);
+    }, [isEdit]);
 
     useEffect(() => {
       const load = async () => {
@@ -264,7 +344,10 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
           return;
         }
 
-        const data = await fetchEntityById<MeterDTO>(endpoints.getById, meterId);
+        const data = await fetchEntityById<MeterDTO>(
+          endpoints.getById,
+          meterId
+        );
 
         const mapped: FormState = {
           ...emptyForm,
@@ -273,17 +356,11 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
           flatId: data.flatId ?? undefined,
 
           meterNumber: data.meterNumber ?? "",
-          utilityType:
-            typeof data.utilityType === "string"
-              ? data.utilityType
-              : String(data.utilityType),
-          meterScope:
-            typeof data.meterScope === "string"
-              ? data.meterScope
-              : String(data.meterScope),
+          utilityType: mapUtilityToNumber(data.utilityType),
+          meterScope: mapScopeToNumber(data.meterScope),
 
-          installationDate: normalizeToYmd(data.installationDate),
-          lastVerifiedDate: normalizeToYmd(data.lastVerifiedDate),
+          installationDate: data.installationDate ?? "",
+          lastVerifiedDate: data.lastVerifiedDate ?? "",
 
           isActive: Boolean(data.isActive),
           isSmartMeter: Boolean(data.isSmartMeter),
@@ -297,7 +374,8 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
           installationBy: data.installationBy ?? "",
           verifiedBy: data.verifiedBy ?? "",
           verificationStatus:
-            data.verificationStatus === null || data.verificationStatus === undefined
+            data.verificationStatus === null ||
+            data.verificationStatus === undefined
               ? ""
               : typeof data.verificationStatus === "string"
               ? data.verificationStatus
@@ -321,28 +399,6 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
       void load();
     }, [meterId]);
 
-    useEffect(() => {
-      const aptId = formData.apartmentId;
-      if (!aptId) {
-        setFlatOwners([]);
-        return;
-      }
-
-      const loadOwners = async () => {
-        try {
-          const res = await fetchAllEntities<FlatOwnerNameLookupDTO>(
-            `${endpoints.flatOwnerLookup}/${aptId}`
-          );
-          setFlatOwners(Array.isArray(res) ? res : []);
-        } catch (err) {
-          console.error("❌ Failed to load flat owner lookup:", err);
-          setFlatOwners([]);
-        }
-      };
-
-      void loadOwners();
-    }, [formData.apartmentId]);
-
     const hasUnsavedChanges = useMemo(() => {
       if (!initialRef.current) return false;
       return (Object.keys(formData) as (keyof FormState)[]).some(
@@ -354,6 +410,28 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
       onUnsavedChange?.(hasUnsavedChanges);
     }, [hasUnsavedChanges, onUnsavedChange]);
 
+    useEffect(() => {
+      const aptId = formData.apartmentId;
+      if (!aptId) {
+        setFlatOwners([]);
+        return;
+      }
+
+      const loadOwners = async () => {
+        try {
+          const res = await fetchEntity<FlatOwnerNameLookupDTO[]>(
+            `${endpoints.flatOwnerLookup}/${aptId}`
+          );
+          setFlatOwners(Array.isArray(res) ? res : []);
+        } catch (err) {
+          console.error("❌ Failed to load flat owners:", err);
+          setFlatOwners([]);
+        }
+      };
+
+      void loadOwners();
+    }, [formData.apartmentId]);
+
     const apartmentOptions = useMemo(
       () =>
         apartments.map((a) => ({
@@ -363,59 +441,41 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
       [apartments]
     );
 
-    const flatNumberById = useMemo(() => {
+    const flatLabelById = useMemo(() => {
       const m = new Map<number, string>();
-      flats.forEach((f) => {
-        const txt = getFlatNumberText(f);
-        m.set(f.flatId, txt ?? `Flat #${f.flatId}`);
-      });
+      flats.forEach((f) => m.set(f.flatId, toFlatLabel(f)));
       return m;
     }, [flats]);
 
     const flatOwnerOptions = useMemo(() => {
-      const options = flatOwners.map((o) => {
-        const flatNumber = flatNumberById.get(o.flatId) ?? `Flat #${o.flatId}`;
+      return flatOwners.map((o) => {
+        const flatLabel = flatLabelById.get(o.flatId) ?? `Flat #${o.flatId}`;
+        const ownerName = toFullName(o.firstName, o.lastName);
+        const label = ownerName ? `${flatLabel} (${ownerName})` : flatLabel;
 
-        const first = (o.firstName ?? "").trim();
-        const last = (o.lastName ?? "").trim();
-        const fullName = [first, last].filter((x) => x.length > 0).join(" ");
-
-        return {
-          value: o.flatId,
-          label: fullName ? `${flatNumber} (${fullName})` : flatNumber,
-        };
+        return { value: o.flatId, label };
       });
-
-      const currentId = formData.flatId;
-      if (currentId && !options.some((x) => x.value === currentId)) {
-        options.unshift({
-          value: currentId,
-          label: flatNumberById.get(currentId) ?? `Flat #${currentId}`,
-        });
-      }
-
-      return options;
-    }, [flatOwners, flatNumberById, formData.flatId]);
+    }, [flatOwners, flatLabelById]);
 
     const utilityOptions = useMemo(
       () => [
-        { value: "Electricity", label: "Electricity" },
-        { value: "Water", label: "Water" },
-        { value: "Gas", label: "Gas" },
-        { value: "Heat", label: "Heat" },
+        { value: UTILITY.Electricity, label: "Electricity" },
+        { value: UTILITY.Water, label: "Water" },
+        { value: UTILITY.Gas, label: "Gas" },
+        { value: UTILITY.Heat, label: "Heat" },
       ],
       []
     );
 
     const scopeOptions = useMemo(
       () => [
-        { value: "Personal", label: "Personal" },
-        { value: "Apartment", label: "Apartment" },
-        { value: "Society", label: "Society" },
-        { value: "Block", label: "Block" },
-        { value: "Commercial", label: "Commercial" },
-        { value: "CommonArea", label: "Common Area" },
-        { value: "Temporary", label: "Temporary" },
+        { value: SCOPE.Personal, label: "Personal" },
+        { value: SCOPE.Apartment, label: "Apartment" },
+        { value: SCOPE.Society, label: "Society" },
+        { value: SCOPE.Block, label: "Block" },
+        { value: SCOPE.Commercial, label: "Commercial" },
+        { value: SCOPE.CommonArea, label: "Common Area" },
+        { value: SCOPE.Temporary, label: "Temporary" },
       ],
       []
     );
@@ -442,38 +502,43 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
     const handleChange = (
       e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
     ) => {
-      const { name, value } = e.currentTarget;
+      const target = e.currentTarget;
+      const { name, value } = target;
 
-      if (
-        e.currentTarget instanceof HTMLInputElement &&
-        e.currentTarget.type === "checkbox"
-      ) {
-        const checked = e.currentTarget.checked;
+      if (target instanceof HTMLInputElement && target.type === "checkbox") {
+        const checked = target.checked;
         setFormData((prev) => ({ ...prev, [name]: checked }));
         return;
       }
 
       if (name === "apartmentId") {
-        const num = value ? Number(value) : undefined;
+        const nextId = value ? Number(value) : undefined;
         setFormData((prev) => ({
           ...prev,
-          apartmentId: num,
+          apartmentId: nextId,
           flatId: undefined,
         }));
         return;
       }
 
       if (name === "flatId") {
-        const num = value ? Number(value) : undefined;
-        setFormData((prev) => ({ ...prev, flatId: num }));
+        const nextId = value ? Number(value) : undefined;
+        setFormData((prev) => ({ ...prev, flatId: nextId }));
+        return;
+      }
+
+      if (name === "utilityType") {
+        const next = value === "" ? UTILITY.Electricity : Number(value);
+        setFormData((prev) => ({ ...prev, utilityType: next }));
         return;
       }
 
       if (name === "meterScope") {
+        const next = value === "" ? SCOPE.Personal : Number(value);
         setFormData((prev) => ({
           ...prev,
-          meterScope: value,
-          flatId: value === "Personal" ? prev.flatId : undefined,
+          meterScope: next,
+          flatId: next === SCOPE.Personal ? prev.flatId : undefined,
         }));
         return;
       }
@@ -490,22 +555,16 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
         window.alert("Please enter Meter Number.");
         return false;
       }
-      if (!formData.utilityType) {
-        window.alert("Please select Utility Type.");
-        return false;
-      }
-      if (!formData.meterScope) {
-        window.alert("Please select Meter Scope.");
-        return false;
-      }
 
-      if (formData.meterScope === "Personal" && !formData.flatId) {
-        window.alert("Please select Flat for Personal meter scope.");
+      if (formData.meterScope === SCOPE.Personal && !formData.flatId) {
+        window.alert("Please select Flat Owner for Personal meter scope.");
         return false;
       }
 
       if (!formData.isActive && !formData.deactivationReason.trim()) {
-        window.alert("Please provide Deactivation Reason when meter is inactive.");
+        window.alert(
+          "Please provide Deactivation Reason when meter is inactive."
+        );
         return false;
       }
 
@@ -524,7 +583,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
 
       setIsSubmitting(true);
       try {
-        const userId = parseInt(localStorage.getItem("userId") || "0", 10);
+        const userId = parseInt(localStorage.getItem("userId") ?? "0", 10);
 
         const payload = {
           meterId: formData.meterId,
@@ -535,8 +594,12 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
           utilityType: formData.utilityType,
           meterScope: formData.meterScope,
 
-          installationDate: formData.installationDate ? formData.installationDate : null,
-          lastVerifiedDate: formData.lastVerifiedDate ? formData.lastVerifiedDate : null,
+          installationDate: formData.installationDate
+            ? formData.installationDate
+            : null,
+          lastVerifiedDate: formData.lastVerifiedDate
+            ? formData.lastVerifiedDate
+            : null,
 
           isActive: formData.isActive,
           isSmartMeter: formData.isSmartMeter,
@@ -608,6 +671,9 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
       saveAndNext: handleSaveAndNext,
     }));
 
+    const disableApartment = isEdit;
+    const disableFlatOwner = isEdit || formData.meterScope !== SCOPE.Personal;
+
     return (
       <SharedAddEditForm
         isSubmitting={isSubmitting}
@@ -629,7 +695,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
                     value={formData.apartmentId ?? ""}
                     onChange={handleChange}
                     required
-                    disabled={isEdit}
+                    disabled={disableApartment}
                     options={apartmentOptions}
                   />
                 </div>
@@ -645,7 +711,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
                   />
                 </div>
 
-                <div className="col-md-4">
+                <div className="col-md-6">
                   <SelectField
                     label="Utility Type"
                     name="utilityType"
@@ -656,7 +722,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
                   />
                 </div>
 
-                <div className="col-md-4">
+                <div className="col-md-6">
                   <SelectField
                     label="Meter Scope"
                     name="meterScope"
@@ -667,13 +733,13 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
                   />
                 </div>
 
-                <div className="col-md-4">
+                <div className="col-md-6">
                   <SelectField
-                    label="Flat No. & Owner"
+                    label="Select Flat Owner"
                     name="flatId"
                     value={formData.flatId ?? ""}
                     onChange={handleChange}
-                    disabled={isEdit || formData.meterScope !== "Personal"}
+                    disabled={disableFlatOwner}
                     options={flatOwnerOptions}
                   />
                 </div>
@@ -773,7 +839,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
                     name="readingUnit"
                     value={formData.readingUnit}
                     onChange={handleChange}
-                    placeholder="e.g. kWh"
+                    placeholder="e.g., kWh"
                   />
                 </div>
 
@@ -815,7 +881,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
                   />
                 </div>
 
-                <div className="col-md-6">
+                <div className="col-md-12">
                   <TextInputField
                     label="Location Description"
                     name="locationDescription"
@@ -824,7 +890,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
                   />
                 </div>
 
-                <div className="col-md-6">
+                <div className="col-md-12">
                   <TextInputField
                     label="Verification Remarks"
                     name="verificationRemarks"
