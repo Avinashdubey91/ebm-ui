@@ -342,11 +342,11 @@ const AddEditApartment = forwardRef<AddEditFormHandle, Props>(
                   <TextInputField
                     label="Construction Year"
                     name="constructionYear"
-                    value={formData.constructionYear ?? ""}
+                    value={formData.constructionYear?.toString() ?? ""}
                     onChange={handleChange}
                     inputMode="numeric"
                     maxLength={4}
-                    pattern="^\\d{4}$"
+                    pattern="^[0-9]{4}$"
                     title="Year must be 4 digits"
                     onInput={(e: React.FormEvent<HTMLInputElement>) => {
                       e.currentTarget.value = keepDigitsOnly(
@@ -446,7 +446,7 @@ const AddEditApartment = forwardRef<AddEditFormHandle, Props>(
                     onChange={handleChange}
                     maxLength={10}
                     inputMode="numeric"
-                    pattern="^\\d{10}$"
+                    pattern="^[0-9]{10}$"
                     title="Mobile number must be exactly 10 digits"
                     onInput={(e: React.FormEvent<HTMLInputElement>) => {
                       e.currentTarget.value = keepDigitsOnly(

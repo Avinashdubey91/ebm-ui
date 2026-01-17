@@ -1,5 +1,3 @@
-// Patch Start: src/features/electricity/meter/forms/AddEditMeter.tsx
-
 import React, { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -21,130 +19,21 @@ import DateInput from "../../../../components/common/DateInput";
 import { showAddUpdateResult } from "../../../../utils/alerts/showAddUpdateConfirmation";
 import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
 
-const SectionCard: React.FC<React.PropsWithChildren<{ title: string }>> = ({
-  title,
-  children,
-}) => {
-  return (
-    <div className="border rounded-3 p-3">
-      <div className="fw-bold mb-3">{title}</div>
-      {children}
-    </div>
-  );
-};
+import SectionCard from "../../../../components/SectionCard";
+import SwitchTile from "../../../../components/SwitchTile";
 
-type SwitchTileProps = {
-  id: string;
-  name: "isActive" | "isSmartMeter";
-  label: string;
-  checked: boolean;
-  onChange: React.ChangeEventHandler<HTMLInputElement>;
-};
-
-const SwitchTile = ({
-  id,
-  name,
-  label,
-  checked,
-  onChange,
-}: SwitchTileProps) => {
-  const controlMinHeight = 38;
-
-  return (
-    <div className="d-flex flex-column w-100">
-      <label className="form-label fw-semibold mb-2" htmlFor={id}>
-        {label}
-      </label>
-
-      <div
-        className="border rounded-3 d-flex align-items-center justify-content-between px-3 w-100"
-        style={{ minHeight: controlMinHeight, cursor: "pointer" }}
-        onClick={() => {
-          const el = document.getElementById(id);
-          if (el instanceof HTMLInputElement) el.click();
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            const el = document.getElementById(id);
-            if (el instanceof HTMLInputElement) el.click();
-          }
-        }}
-        role="button"
-        tabIndex={0}
-        aria-controls={id}
-      >
-        <span className="text-muted">{checked ? "Yes" : "No"}</span>
-
-        <div className="form-check form-switch m-0">
-          <input
-            id={id}
-            className="form-check-input"
-            type="checkbox"
-            name={name}
-            checked={checked}
-            onChange={onChange}
-          />
-        </div>
-      </div>
-    </div>
-  );
-};
+import type { ApartmentDTO } from "../../../../types/ApartmentDTO";
+import type { FlatDTO } from "../../../../types/FlatDTO";
+import type { MeterDTO } from "../../../../types/MeterDTO";
+import type { FlatOwnerNameLookupDTO } from "../../../../types/FlatOwnerNameLookupDTO";
 
 type SubmitMode = "save" | "saveAndNext";
-
-type ApartmentDTO = { apartmentId: number; apartmentName?: string | null };
-type FlatDTO = {
-  flatId: number;
-  flatNo?: string | null;
-  flatNumber?: string | null;
-  flatName?: string | null;
-  flatDisplayName?: string | null;
-};
-
-type FlatOwnerNameLookupDTO = {
-  flatId: number;
-  firstName?: string | null;
-  lastName?: string | null;
-};
-
-type MeterDTO = {
-  meterId: number;
-  utilityType: string | number;
-  meterScope: string | number;
-  flatId?: number | null;
-  apartmentId: number;
-  meterNumber: string;
-
-  installationDate?: string | null;
-  lastVerifiedDate?: string | null;
-
-  isActive: boolean;
-  isSmartMeter: boolean;
-
-  manufacturer?: string | null;
-  model?: string | null;
-  serialNumber?: string | null;
-  readingUnit?: string | null;
-  locationDescription?: string | null;
-
-  installationBy?: string | null;
-  verifiedBy?: string | null;
-  verificationStatus?: string | number | null;
-  verificationRemarks?: string | null;
-
-  deactivationReason?: string | null;
-  phaseType?: string | number | null;
-};
 
 type FormState = {
   meterId: number;
   apartmentId?: number;
   flatId?: number;
-
   meterNumber: string;
-
-  // send numeric enums to backend (safe even if backend also accepts strings)
   utilityType: number;
   meterScope: number;
 
@@ -173,10 +62,9 @@ const endpoints = {
   getById: "/meter/Get-Meter-By-Id",
   add: "/meter/Create-New-Meter",
   update: "/meter/Update-Meter-By-Id",
-
   apartments: "/apartment/Get-All-Apartment",
   flats: "/flat/Get-All-Flats",
-  flatOwnerLookup: "/meter/Get-FlatOwnerLookup",
+  flatOwnerLookup: "/extraexpense/Get-FlatOwnerLookup",
 };
 
 const UTILITY = {
@@ -231,10 +119,31 @@ interface Props {
   onUnsavedChange?: (changed: boolean) => void;
 }
 
+const getOptionalString = (obj: unknown, key: string): string | null => {
+  if (!obj || typeof obj !== "object") return null;
+  const record = obj as unknown as Record<string, unknown>;
+  const v = record[key];
+  return typeof v === "string" ? v : null;
+};
+
 const toFlatLabel = (f: FlatDTO): string => {
   const label =
-    f.flatNo ?? f.flatNumber ?? f.flatName ?? f.flatDisplayName ?? null;
-  return label && label.trim().length > 0 ? label : `Flat #${f.flatId}`;
+    getOptionalString(f, "flatNo") ??
+    getOptionalString(f, "flatNumber") ??
+    getOptionalString(f, "flatName") ??
+    getOptionalString(f, "flatDisplayName") ??
+    null;
+
+  const trimmed = (label ?? "").trim();
+
+  const id =
+    typeof f.flatId === "number"
+      ? f.flatId
+      : typeof (f as unknown as Record<string, unknown>)["flatId"] === "number"
+      ? ((f as unknown as Record<string, unknown>)["flatId"] as number)
+      : undefined;
+
+  return trimmed.length > 0 ? trimmed : id !== undefined ? `Flat #${id}` : "Flat";
 };
 
 const toFullName = (
@@ -256,7 +165,12 @@ const resolveDefaultApartmentId = (
   const preferred = items.find((a) =>
     normalizeApartmentName(a.apartmentName).includes("mittal parkview")
   );
-  return preferred?.apartmentId ?? items[0]?.apartmentId;
+
+  const preferredId = preferred?.apartmentId;
+  if (typeof preferredId === "number") return preferredId;
+
+  const firstId = items[0]?.apartmentId;
+  return typeof firstId === "number" ? firstId : undefined;
 };
 
 const mapUtilityToNumber = (v: string | number): number => {
@@ -434,16 +348,21 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
 
     const apartmentOptions = useMemo(
       () =>
-        apartments.map((a) => ({
-          value: a.apartmentId,
-          label: a.apartmentName ?? `Apartment #${a.apartmentId}`,
-        })),
+        apartments
+          .filter((a) => typeof a.apartmentId === "number")
+          .map((a) => ({
+            value: a.apartmentId as number,
+            label: a.apartmentName ?? `Apartment #${a.apartmentId as number}`,
+          })),
       [apartments]
     );
 
     const flatLabelById = useMemo(() => {
       const m = new Map<number, string>();
-      flats.forEach((f) => m.set(f.flatId, toFlatLabel(f)));
+      flats.forEach((f) => {
+        const id = typeof f.flatId === "number" ? f.flatId : undefined;
+        if (id !== undefined) m.set(id, toFlatLabel(f));
+      });
       return m;
     }, [flats]);
 

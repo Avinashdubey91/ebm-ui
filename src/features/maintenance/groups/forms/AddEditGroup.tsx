@@ -1,4 +1,3 @@
-// src/features/maintenance/groups/forms/AddEditGroup.tsx
 import React, { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -9,6 +8,9 @@ import {
 } from "../../../../api/genericCrudApi";
 import SelectField from "../../../../components/common/SelectField";
 import DateInput from "../../../../components/common/DateInput";
+import SectionCard from "../../../../components/SectionCard";
+import SwitchTile from "../../../../components/SwitchTile";
+
 import SharedAddEditForm from "../../../shared/SharedAddEditForm";
 import type { AddEditFormHandle } from "../../../shared/SharedAddEditForm";
 import { showAddUpdateResult } from "../../../../utils/alerts/showAddUpdateConfirmation";
@@ -24,75 +26,6 @@ const endpoints = {
 };
 
 type SubmitMode = "save" | "saveAndNext";
-
-type SectionCardProps = {
-  title: string;
-  children: React.ReactNode;
-};
-
-const SectionCard = ({ title, children }: SectionCardProps) => (
-  <div className="border rounded-3 p-3">
-    <div className="fw-bold mb-3">{title}</div>
-    {children}
-  </div>
-);
-
-type SwitchTileProps = {
-  id: string;
-  name: "isActive";
-  label: string;
-  checked: boolean;
-  onChange: React.ChangeEventHandler<HTMLInputElement>;
-};
-
-const SwitchTile = ({
-  id,
-  name,
-  label,
-  checked,
-  onChange,
-}: SwitchTileProps) => {
-  const controlMinHeight = 38;
-
-  return (
-    <div className="d-flex flex-column w-100">
-      <label className="form-label fw-semibold mb-2" htmlFor={id}>
-        {label}
-      </label>
-      <div
-        className="border rounded-3 d-flex align-items-center justify-content-between px-3 w-100"
-        style={{ minHeight: controlMinHeight, cursor: "pointer" }}
-        onClick={() => {
-          const el = document.getElementById(id);
-          if (el instanceof HTMLInputElement) el.click();
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            const el = document.getElementById(id);
-            if (el instanceof HTMLInputElement) el.click();
-          }
-        }}
-        role="button"
-        tabIndex={0}
-        aria-controls={id}
-      >
-        <span className="text-muted">{checked ? "Yes" : "No"}</span>
-
-        <div className="form-check form-switch m-0">
-          <input
-            id={id}
-            className="form-check-input"
-            type="checkbox"
-            name={name}
-            checked={checked}
-            onChange={onChange}
-          />
-        </div>
-      </div>
-    </div>
-  );
-};
 
 type ReadOnlyTextFieldProps = {
   label: string;
@@ -189,7 +122,7 @@ const AddEditGroup = forwardRef<AddEditFormHandle, Props>(
       fetchAllEntities<ApartmentDTO>(endpoints.apartments)
         .then((res) => setApartments(Array.isArray(res) ? res : []))
         .catch((err) => {
-          console.error("❌ Failed to load apartments:", err);
+          console.error("Failed to load apartments:", err);
           setApartments([]);
         });
     }, []);
@@ -419,12 +352,21 @@ const AddEditGroup = forwardRef<AddEditFormHandle, Props>(
                 </div>
 
                 <div className="col-md-6">
+                  {/* Patch - Replaced: SwitchTile binding matches UnitCharge pattern (explicit boolean handler) */}
                   <SwitchTile
                     id="maintenancegroup-switch-isActive"
                     name="isActive"
                     label="Active"
                     checked={!!formData.isActive}
-                    onChange={handleChange}
+                    onChange={(e) => {
+                      const t = e.currentTarget;
+                      if (t instanceof HTMLInputElement) {
+                        setFormData((prev) => ({
+                          ...prev,
+                          isActive: t.checked,
+                        }));
+                      }
+                    }}
                   />
                 </div>
 
