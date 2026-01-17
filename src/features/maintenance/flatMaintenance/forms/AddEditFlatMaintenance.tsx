@@ -1,5 +1,11 @@
-// src/features/maintenance/flatMaintenance/forms/AddEditFlatMaintenance.tsx
-import React, { forwardRef, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import MultiSelectField from "../../../../components/common/MultiSelectField";
 
@@ -17,6 +23,8 @@ import SharedAddEditForm, {
 } from "../../../shared/SharedAddEditForm";
 import { showAddUpdateResult } from "../../../../utils/alerts/showAddUpdateConfirmation";
 import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
+
+import SectionCard from "../../../../components/SectionCard";
 
 import { normalizeToYmd } from "../../../../utils/format";
 
@@ -45,6 +53,8 @@ type Props = {
   flatMaintenanceId?: number;
 };
 
+type SubmitMode = "save" | "saveAndNext";
+
 const endpoints = {
   getById: "/flatmaintenance/Get-FlatMaintenance-By-Id",
   add: "/flatmaintenance/Add-New-FlatMaintenance",
@@ -53,14 +63,6 @@ const endpoints = {
   groups: "/maintenancegroup/Get-All-MaintenanceGroups",
   flats: "/flat/Get-All-Flats",
 };
-
-type SectionCardProps = { title: string; children: React.ReactNode };
-const SectionCard = ({ title, children }: SectionCardProps) => (
-  <div className="border rounded-3 p-3">
-    <div className="fw-bold mb-3">{title}</div>
-    {children}
-  </div>
-);
 
 const toSelectValue = (id?: number): string =>
   typeof id === "number" ? String(id) : "";
@@ -76,9 +78,6 @@ const AddEditFlatMaintenance = forwardRef<AddEditFormHandle, Props>(
     const formRef = useRef<HTMLFormElement | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-    const [submitMode, setSubmitMode] = useState<"save" | "saveAndNext">(
-      "save"
-    );
 
     const emptyForm: FormState = useMemo(
       () => ({
@@ -99,25 +98,43 @@ const AddEditFlatMaintenance = forwardRef<AddEditFormHandle, Props>(
     const [flats, setFlats] = useState<FlatLite[]>([]);
 
     useEffect(() => {
-      const loadMasters = async () => {
-        const [apartmentsRes, groupsRes, flatsRes] = await Promise.all([
-          fetchAllEntities<ApartmentDTO>(endpoints.apartments),
-          fetchAllEntities<MaintenanceGroupDTO>(endpoints.groups),
-          fetchAllEntities<FlatLite>(endpoints.flats),
-        ]);
+      let isComponentMounted = true;
 
-        setApartments(apartmentsRes ?? []);
-        setGroups(groupsRes ?? []);
-        setFlats(flatsRes ?? []);
+      const loadMasters = async () => {
+        try {
+          const [apartmentsRes, groupsRes, flatsRes] = await Promise.all([
+            fetchAllEntities<ApartmentDTO>(endpoints.apartments),
+            fetchAllEntities<MaintenanceGroupDTO>(endpoints.groups),
+            fetchAllEntities<FlatLite>(endpoints.flats),
+          ]);
+
+          if (!isComponentMounted) return;
+
+          setApartments(apartmentsRes ?? []);
+          setGroups(groupsRes ?? []);
+          setFlats(flatsRes ?? []);
+        } catch (err) {
+          console.error("❌ Failed to load flat maintenance lookups:", err);
+          if (!isComponentMounted) return;
+          setApartments([]);
+          setGroups([]);
+          setFlats([]);
+        }
       };
 
       void loadMasters();
+
+      return () => {
+        isComponentMounted = false;
+      };
     }, []);
 
     useEffect(() => {
-      const loadEdit = async () => {
-        if (!isEdit || !flatMaintenanceId) return;
+      if (!isEdit || !flatMaintenanceId) return;
 
+      let isComponentMounted = true;
+
+      (async () => {
         setIsSubmitting(true);
         try {
           const dto = await fetchEntityById<FlatMaintenanceDTO>(
@@ -125,8 +142,10 @@ const AddEditFlatMaintenance = forwardRef<AddEditFormHandle, Props>(
             flatMaintenanceId
           );
 
+          if (!isComponentMounted || !dto) return;
+
           const next: FormState = {
-            apartmentId: undefined, // will be derived from selected group once masters load
+            apartmentId: undefined, // derived from selected group once masters load
             maintenanceGroupId: dto.maintenanceGroupId,
             flatIds: [dto.flatId],
             effectiveFrom: normalizeToYmd(dto.effectiveFrom),
@@ -141,9 +160,11 @@ const AddEditFlatMaintenance = forwardRef<AddEditFormHandle, Props>(
         } finally {
           setIsSubmitting(false);
         }
-      };
+      })();
 
-      void loadEdit();
+      return () => {
+        isComponentMounted = false;
+      };
     }, [flatMaintenanceId, isEdit]);
 
     const apartmentNameById = useMemo(() => {
@@ -156,10 +177,7 @@ const AddEditFlatMaintenance = forwardRef<AddEditFormHandle, Props>(
     }, [apartments]);
 
     const flatMetaById = useMemo(() => {
-      const m = new Map<
-        number,
-        { label: string; apartmentId?: number | null }
-      >();
+      const m = new Map<number, { label: string; apartmentId?: number | null }>();
       flats.forEach((f) => {
         if (typeof f.flatId !== "number") return;
         const flatNo = f.flatNumber ?? `Flat #${f.flatId}`;
@@ -175,9 +193,8 @@ const AddEditFlatMaintenance = forwardRef<AddEditFormHandle, Props>(
     const selectedGroup = useMemo(() => {
       if (typeof formData.maintenanceGroupId !== "number") return null;
       return (
-        groups.find(
-          (g) => g.maintenanceGroupId === formData.maintenanceGroupId
-        ) ?? null
+        groups.find((g) => g.maintenanceGroupId === formData.maintenanceGroupId) ??
+        null
       );
     }, [formData.maintenanceGroupId, groups]);
 
@@ -195,16 +212,14 @@ const AddEditFlatMaintenance = forwardRef<AddEditFormHandle, Props>(
     const selectedGroupEffectiveFromYmd = useMemo(() => {
       if (!formData.maintenanceGroupId) return "";
 
-      const g = groups.find(
-        (x) => x.maintenanceGroupId === formData.maintenanceGroupId
-      );
+      const g = groups.find((x) => x.maintenanceGroupId === formData.maintenanceGroupId);
       return normalizeToYmd(g?.effectiveFrom ?? "");
     }, [formData.maintenanceGroupId, groups]);
 
-    // Apartments that actually have Maintenance Groups
     const apartmentOptions = useMemo((): SelectOption[] => {
       const seen = new Set<number>();
       const aptIds: number[] = [];
+
       groups.forEach((g) => {
         if (typeof g.apartmentId !== "number") return;
         if (seen.has(g.apartmentId)) return;
@@ -233,13 +248,11 @@ const AddEditFlatMaintenance = forwardRef<AddEditFormHandle, Props>(
       return filtered
         .filter(
           (g) =>
-            typeof g.maintenanceGroupId === "number" &&
-            typeof g.apartmentId === "number"
+            typeof g.maintenanceGroupId === "number" && typeof g.apartmentId === "number"
         )
         .map((g) => {
           const aptName =
-            apartmentNameById.get(g.apartmentId) ??
-            `Apartment #${g.apartmentId}`;
+            apartmentNameById.get(g.apartmentId) ?? `Apartment #${g.apartmentId}`;
           const activeTag = g.isActive ? "" : " (Inactive)";
           return {
             label: `${aptName} | Group ${g.maintenanceGroupId}${activeTag}`,
@@ -262,7 +275,11 @@ const AddEditFlatMaintenance = forwardRef<AddEditFormHandle, Props>(
         }));
     }, [effectiveApartmentId, flatMetaById, flats]);
 
-    const validateDates = (): boolean => {
+    const markDirty = useCallback(() => {
+      setHasUnsavedChanges(true);
+    }, []);
+
+    const validateDates = useCallback((): boolean => {
       const from = normalizeToYmd(formData.effectiveFrom ?? null);
       const to = normalizeToYmd(formData.effectiveTo ?? null);
 
@@ -277,146 +294,200 @@ const AddEditFlatMaintenance = forwardRef<AddEditFormHandle, Props>(
         return false;
       }
       return true;
-    };
+    }, [formData.effectiveFrom, formData.effectiveTo]);
 
-    const handleChange: React.ChangeEventHandler<
-      HTMLInputElement | HTMLSelectElement
-    > = (e) => {
-      const { name, value } = e.currentTarget;
+    const handleChange = useCallback<
+      React.ChangeEventHandler<HTMLInputElement | HTMLSelectElement>
+    >(
+      (e) => {
+        const { name, value } = e.currentTarget;
 
-      setFormData((prev) => {
-        const next: FormState = { ...prev };
+        setFormData((prev) => {
+          const next: FormState = { ...prev };
 
-        if (name === "apartmentId") {
-          next.apartmentId = value ? Number(value) : undefined;
-          next.maintenanceGroupId = undefined;
-          next.flatIds = [];
-        }
+          if (name === "apartmentId") {
+            next.apartmentId = value ? Number(value) : undefined;
+            next.maintenanceGroupId = undefined;
+            next.flatIds = [];
+          }
 
-        if (name === "maintenanceGroupId") {
-          next.maintenanceGroupId = value ? Number(value) : undefined;
-          next.flatIds = [];
-        }
+          if (name === "maintenanceGroupId") {
+            next.maintenanceGroupId = value ? Number(value) : undefined;
+            next.flatIds = [];
+          }
 
-        return next;
-      });
+          return next;
+        });
 
-      setHasUnsavedChanges(true);
-    };
+        markDirty();
+      },
+      [markDirty]
+    );
 
-    const handleReset = () => {
+    const handleFlatIdsChange = useCallback(
+      (values: string[]) => {
+        const ids = values
+          .map((v) => Number(v))
+          .filter((n) => Number.isFinite(n));
+
+        setFormData((prev) => ({ ...prev, flatIds: ids }));
+        markDirty();
+      },
+      [markDirty]
+    );
+
+    const handleEffectiveFromChange = useCallback(
+      (newDate: string | Date) => {
+        setFormData((prev) => ({
+          ...prev,
+          effectiveFrom: normalizeToYmd(newDate),
+        }));
+        markDirty();
+      },
+      [markDirty]
+    );
+
+    const handleEffectiveToChange = useCallback(
+      (newDate: string | Date) => {
+        const normalized = normalizeToYmd(newDate);
+        setFormData((prev) => ({
+          ...prev,
+          effectiveTo: normalized || undefined,
+        }));
+        markDirty();
+      },
+      [markDirty]
+    );
+
+    const handleReset = useCallback(() => {
       const val = initialRef.current ?? emptyForm;
       setFormData({ ...val });
       setHasUnsavedChanges(false);
-    };
+    }, [emptyForm]);
 
-    const handleSaveAndNext = () => {
-      setSubmitMode("saveAndNext");
-      formRef.current?.requestSubmit();
-    };
+    const doSubmit = useCallback(
+      async (mode: SubmitMode) => {
+        if (formRef.current && !formRef.current.checkValidity()) {
+          formRef.current.reportValidity();
+          return;
+        }
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-      e.preventDefault();
+        if (!validateDates()) return;
 
-      if (formRef.current && !formRef.current.checkValidity()) {
-        formRef.current.reportValidity();
-        return;
-      }
+        if (typeof effectiveApartmentId !== "number") {
+          window.alert("Apartment is required.");
+          return;
+        }
 
-      if (!validateDates()) return;
+        if (typeof formData.maintenanceGroupId !== "number") {
+          window.alert("Maintenance Group is required.");
+          return;
+        }
 
-      if (typeof effectiveApartmentId !== "number") {
-        window.alert("Apartment is required.");
-        return;
-      }
+        if (!formData.flatIds.length) {
+          window.alert("At least one Flat is required.");
+          return;
+        }
 
-      if (typeof formData.maintenanceGroupId !== "number") {
-        window.alert("Maintenance Group is required.");
-        return;
-      }
+        const userId = parseInt(localStorage.getItem("userId") ?? "0", 10);
+        if (!userId) return;
 
-      if (!formData.flatIds.length) {
-        window.alert("At least one Flat is required.");
-        return;
-      }
+        const basePayload = {
+          maintenanceGroupId: formData.maintenanceGroupId,
+          effectiveFrom:
+            normalizeToYmd(formData.effectiveFrom) || normalizeToYmd(new Date()),
+          effectiveTo: formData.effectiveTo
+            ? normalizeToYmd(formData.effectiveTo)
+            : null,
+        };
 
-      const userId = parseInt(localStorage.getItem("userId") ?? "0", 10);
-      if (!userId) return;
+        setIsSubmitting(true);
+        try {
+          if (isEdit && flatMaintenanceId) {
+            const flatId = formData.flatIds[0];
+            if (typeof flatId !== "number") {
+              window.alert("Flat is required.");
+              return;
+            }
 
-      const basePayload = {
-        maintenanceGroupId: formData.maintenanceGroupId,
-        effectiveFrom:
-          normalizeToYmd(formData.effectiveFrom) || normalizeToYmd(new Date()),
-        effectiveTo: formData.effectiveTo
-          ? normalizeToYmd(formData.effectiveTo)
-          : null,
-      };
+            const payload: Omit<FlatMaintenanceDTO, "flatMaintenanceId"> = {
+              flatId,
+              ...basePayload,
+            };
 
-      setIsSubmitting(true);
-      try {
-        if (isEdit && flatMaintenanceId) {
-          const flatId = formData.flatIds[0];
-          if (typeof flatId !== "number") {
-            window.alert("Flat is required.");
+            await updateEntity(
+              endpoints.update,
+              flatMaintenanceId,
+              payload,
+              userId,
+              false
+            );
+            await showAddUpdateResult(true, "update", "flat maintenance mapping");
+            setHasUnsavedChanges(false);
+
+            if (parentListPath) navigate(parentListPath);
             return;
           }
 
-          const payload: Omit<FlatMaintenanceDTO, "flatMaintenanceId"> = {
-            flatId,
-            ...basePayload,
-          };
-
-          await updateEntity(
-            endpoints.update,
-            flatMaintenanceId,
-            payload,
-            userId,
-            false
-          );
-          await showAddUpdateResult(true, "update", "flat maintenance mapping");
-        } else {
           for (const flatId of formData.flatIds) {
             const payload: Omit<FlatMaintenanceDTO, "flatMaintenanceId"> = {
               flatId,
               ...basePayload,
             };
-            // sequential to keep failures clear and avoid server bursts
             await createEntity(endpoints.add, payload, userId, false);
           }
+
           await showAddUpdateResult(true, "add", "flat maintenance mapping");
-        }
-
-        setHasUnsavedChanges(false);
-
-        if (!isEdit && submitMode === "saveAndNext") {
-          setFormData((prev) => ({
-            ...prev,
-            flatIds: [],
-            effectiveFrom: normalizeToYmd(new Date()),
-            effectiveTo: undefined,
-          }));
           setHasUnsavedChanges(false);
-          return;
+
+          if (!isEdit && mode === "saveAndNext") {
+            setFormData((prev) => ({
+              ...prev,
+              flatIds: [],
+              effectiveFrom: normalizeToYmd(new Date()),
+              effectiveTo: undefined,
+            }));
+            setHasUnsavedChanges(false);
+            return;
+          }
+
+          if (parentListPath) navigate(parentListPath);
+        } catch (err) {
+          console.error(err);
+          await showAddUpdateResult(false, "error", "flat maintenance mapping");
+        } finally {
+          setIsSubmitting(false);
         }
-
-        if (parentListPath) navigate(parentListPath);
-      } finally {
-        setIsSubmitting(false);
-        setSubmitMode("save");
-      }
-    };
-
-    React.useImperativeHandle(ref, () => ({
-      submit: () => {
-        setSubmitMode("save");
-        formRef.current?.requestSubmit();
       },
-      reset: handleReset,
-      saveAndNext: handleSaveAndNext,
-    }));
+      [
+        effectiveApartmentId,
+        flatMaintenanceId,
+        formData.effectiveFrom,
+        formData.effectiveTo,
+        formData.flatIds,
+        formData.maintenanceGroupId,
+        isEdit,
+        navigate,
+        parentListPath,
+        validateDates,
+      ]
+    );
+
+    const handleSubmit = useCallback(
+      (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        void doSubmit("save");
+      },
+      [doSubmit]
+    );
+
+    const handleSaveAndNext = useCallback(() => {
+      void doSubmit("saveAndNext");
+    }, [doSubmit]);
 
     return (
       <SharedAddEditForm
+        ref={ref}
         isSubmitting={isSubmitting}
         hasUnsavedChanges={hasUnsavedChanges}
         onSubmit={handleSubmit}
@@ -485,14 +556,7 @@ const AddEditFlatMaintenance = forwardRef<AddEditFormHandle, Props>(
                     options={flatOptions}
                     required
                     disabled={typeof effectiveApartmentId !== "number"}
-                    onChange={(values: string[]) => {
-                      const ids = values
-                        .map((v) => Number(v))
-                        .filter((n) => Number.isFinite(n));
-
-                      setFormData((prev) => ({ ...prev, flatIds: ids }));
-                      setHasUnsavedChanges(true);
-                    }}
+                    onChange={handleFlatIdsChange}
                   />
                 </div>
               )}
@@ -503,13 +567,7 @@ const AddEditFlatMaintenance = forwardRef<AddEditFormHandle, Props>(
                 id="effectiveFrom"
                 label="Effective From"
                 value={formData.effectiveFrom}
-                onChange={(newDate) => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    effectiveFrom: normalizeToYmd(newDate),
-                  }));
-                  setHasUnsavedChanges(true);
-                }}
+                onChange={handleEffectiveFromChange}
                 required
               />
             </div>
@@ -519,14 +577,7 @@ const AddEditFlatMaintenance = forwardRef<AddEditFormHandle, Props>(
                 id="effectiveTo"
                 label="Effective To"
                 value={formData.effectiveTo ?? ""}
-                onChange={(newDate) => {
-                  const normalized = normalizeToYmd(newDate);
-                  setFormData((prev) => ({
-                    ...prev,
-                    effectiveTo: normalized || undefined,
-                  }));
-                  setHasUnsavedChanges(true);
-                }}
+                onChange={handleEffectiveToChange}
                 required
               />
             </div>
@@ -537,5 +588,4 @@ const AddEditFlatMaintenance = forwardRef<AddEditFormHandle, Props>(
   }
 );
 
-AddEditFlatMaintenance.displayName = "AddEditFlatMaintenance";
 export default AddEditFlatMaintenance;
