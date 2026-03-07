@@ -2,12 +2,10 @@ import React, { lazy } from "react";
 import type { SideNavigationMenuDTO } from "../types/menuTypes";
 import type { RouteObject } from "react-router-dom";
 
-// ✅ Glob import to preload all .tsx pages
 const lazyModules = import.meta.glob(
   "../features/**/{pages,forms,shared}/**/*.tsx"
 );
 
-// ✅ Map DB ComponentName to actual relative paths
 const componentMap: Record<string, string> = {};
 
 for (const path in lazyModules) {
@@ -42,7 +40,6 @@ export const generateRoutes = (
           )
         : lazy(() => import("../components/NotFoundPlaceholder"));
 
-      // Normal Route
       children.push({
         path: submenu.routePath,
         element: React.createElement(LazyComponent),

@@ -21,6 +21,7 @@ interface MultiSelectFieldProps {
   onChange: (values: string[]) => void;
   required?: boolean;
   disabled?: boolean;
+  showCountOnly?: boolean;
 }
 
 type RsOption = { label: string; value: string };
@@ -36,6 +37,7 @@ const MultiSelectField: React.FC<MultiSelectFieldProps> = ({
   onChange,
   required,
   disabled,
+  showCountOnly,
 }) => {
   const rsOptions = useMemo(() => toRsOptions(options), [options]);
 
@@ -57,16 +59,26 @@ const MultiSelectField: React.FC<MultiSelectFieldProps> = ({
     onChange([]);
   };
 
+  const placeholderText = useMemo(() => {
+    if (showCountOnly && selected.length > 0) return `${selected.length} selected`;
+    return "-- Select --";
+  }, [selected.length, showCountOnly]);
+
+  const menuPortalTarget = useMemo(() => {
+    if (typeof document === "undefined") return undefined;
+    return document.body;
+  }, []);
+
   const styles: StylesConfig<RsOption, true> = {
     control: (base, state) => ({
       ...base,
-      minHeight: "38px",
+      minHeight: "34px",
       borderRadius: "0.375rem",
       borderColor: state.isFocused
         ? "var(--bs-primary)"
         : "var(--bs-border-color)",
       boxShadow: state.isFocused
-        ? "0 0 0 .25rem rgba(var(--bs-primary-rgb), .25)"
+        ? "0 0 0 .2rem rgba(var(--bs-primary-rgb), .20)"
         : "none",
       backgroundColor: disabled
         ? "var(--bs-secondary-bg)"
@@ -80,8 +92,23 @@ const MultiSelectField: React.FC<MultiSelectFieldProps> = ({
 
     valueContainer: (base) => ({
       ...base,
-      padding: "2px 8px",
+      padding: "0 8px",
       gap: "6px",
+    }),
+
+    indicatorsContainer: (base) => ({
+      ...base,
+      paddingRight: 4,
+    }),
+
+    dropdownIndicator: (base) => ({
+      ...base,
+      padding: 4,
+    }),
+
+    clearIndicator: (base) => ({
+      ...base,
+      padding: 4,
     }),
 
     multiValue: (base) => ({
@@ -95,15 +122,23 @@ const MultiSelectField: React.FC<MultiSelectFieldProps> = ({
       ...base,
       color: "var(--bs-body-color)",
       fontSize: "0.95rem",
+      padding: "0 6px",
     }),
 
+    // ✅ X/remove should be red
     multiValueRemove: (base) => ({
       ...base,
       cursor: "pointer",
+      color: "var(--bs-danger)",
+      ":hover": {
+        color: "var(--bs-danger)",
+        backgroundColor: "rgba(220, 53, 69, 0.12)",
+      },
     }),
 
     option: (base, state) => ({
       ...base,
+      cursor: "pointer",
       backgroundColor: state.isFocused
         ? "var(--bs-tertiary-bg)"
         : "transparent",
@@ -116,12 +151,18 @@ const MultiSelectField: React.FC<MultiSelectFieldProps> = ({
 
     menu: (base) => ({
       ...base,
-      zIndex: 10,
+      zIndex: 9999,
+      marginTop: 0,
+    }),
+
+    menuPortal: (base) => ({
+      ...base,
+      zIndex: 9999,
     }),
 
     menuList: (base) => ({
       ...base,
-      paddingTop: 0,
+      padding: 0,
     }),
   };
 
@@ -132,21 +173,28 @@ const MultiSelectField: React.FC<MultiSelectFieldProps> = ({
   const CheckboxOption = (props: OptionProps<RsOption, true>) => {
     return (
       <components.Option {...props}>
-        <div className="d-flex align-items-center gap-2">
+        <div className="d-flex align-items-center gap-2" style={{ cursor: "pointer" }}>
           <input
             type="checkbox"
             className="form-check-input"
             checked={props.isSelected}
             readOnly
-            style={{ pointerEvents: "none" }}
+            style={{ cursor: "pointer" }}
           />
-          <span>{props.label}</span>
+          <span style={{ cursor: "pointer" }}>{props.label}</span>
         </div>
       </components.Option>
     );
   };
 
   const MenuList = (props: MenuListProps<RsOption, true>) => {
+    const actionBtnStyle = (isDisabled: boolean): React.CSSProperties => ({
+      cursor: isDisabled ? "not-allowed" : "pointer",
+    });
+
+    const isSelectAllDisabled = disabled || rsOptions.length === 0 || isAllSelected;
+    const isClearDisabled = disabled || selected.length === 0;
+
     return (
       <components.MenuList {...props}>
         <div
@@ -160,17 +208,14 @@ const MultiSelectField: React.FC<MultiSelectFieldProps> = ({
         >
           <small className="text-muted">Options</small>
 
-          <div
-            className="btn-group btn-group-sm"
-            role="group"
-            aria-label="Bulk actions"
-          >
+          <div className="btn-group btn-group-sm" role="group">
             <button
               type="button"
               className="btn btn-outline-primary"
               onMouseDown={(e) => e.preventDefault()}
               onClick={selectAll}
-              disabled={disabled || rsOptions.length === 0 || isAllSelected}
+              disabled={isSelectAllDisabled}
+              style={actionBtnStyle(isSelectAllDisabled)}
             >
               Select all
             </button>
@@ -180,7 +225,8 @@ const MultiSelectField: React.FC<MultiSelectFieldProps> = ({
               className="btn btn-outline-secondary"
               onMouseDown={(e) => e.preventDefault()}
               onClick={clearAll}
-              disabled={disabled || selected.length === 0}
+              disabled={isClearDisabled}
+              style={actionBtnStyle(isClearDisabled)}
             >
               Clear
             </button>
@@ -208,8 +254,13 @@ const MultiSelectField: React.FC<MultiSelectFieldProps> = ({
         value={selected}
         onChange={handleChange}
         styles={styles}
-        placeholder="-- Select --"
+        placeholder={placeholderText}
+        controlShouldRenderValue={!showCountOnly}
         components={{ Option: CheckboxOption, MenuList }}
+        classNamePrefix="react-select"
+        menuPortalTarget={menuPortalTarget}
+        menuPosition="fixed"
+        menuShouldScrollIntoView={false}
       />
     </div>
   );

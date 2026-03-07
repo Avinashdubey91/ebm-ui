@@ -1,0 +1,220 @@
+/* ===============================
+   Maintenance Bill - Page Header
+   (headerActions uses MeterReading-like structure)
+   =============================== */
+
+.maintenance-bill-listing-page .meter-reading-header-actions {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.maintenance-bill-listing-page .meter-reading-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+
+/* Remove label spacing inside header controls */
+.maintenance-bill-listing-page .meter-reading-controls .mb-2 {
+  margin-bottom: 0 !important;
+}
+
+.maintenance-bill-listing-page .meter-reading-controls label {
+  display: none !important;
+}
+
+/* Match control heights inside header */
+.maintenance-bill-listing-page .meter-reading-controls .form-select,
+.maintenance-bill-listing-page .meter-reading-controls .form-control {
+  height: 38px;
+}
+
+/* MonthPickerField wrapper fix for header row */
+.maintenance-bill-listing-page .meter-reading-controls .d-flex.flex-column {
+  flex-direction: row !important;
+  align-items: center !important;
+}
+
+/* SharedListingPage header alignment tweaks */
+.maintenance-bill-listing-page .inner-area-header-container {
+  gap: 20px;
+}
+
+.maintenance-bill-listing-page .inner-area-header-title {
+  text-align: left !important;
+}
+
+.maintenance-bill-listing-page .action-button-container {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: 10px;
+}
+
+/* In some layouts, tables are wrapped in .table-responsive which can clip dropdowns */
+.maintenance-bill-listing-page .table-responsive {
+  overflow: visible !important;
+}
+
+/* ===============================
+   Month Summary Table
+   =============================== */
+
+.mb-listing-table-wrap {
+  overflow: visible !important;
+}
+
+.mb-listing-table-overlay {
+  inset: 0;
+  z-index: 5;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.mb-maintenance-table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.mb-maintenance-table th.mb-th,
+.mb-maintenance-table td.mb-td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mb-th {
+  white-space: nowrap;
+}
+
+.mb-td {
+  vertical-align: middle;
+}
+
+.mb-th-center,
+.mb-td-center {
+  text-align: center;
+}
+
+.mb-nowrap {
+  white-space: nowrap;
+}
+
+.mb-row-clickable {
+  cursor: pointer;
+}
+
+/* Column sizing (percent based to avoid table overflow) */
+.mb-col-billing-month {
+  width: 10%;
+}
+
+.mb-col-total-amount {
+  width: 10%;
+}
+
+.mb-col-individual-amount {
+  width: 10%;
+}
+
+.mb-col-payment-status {
+  width: 10%;
+}
+
+.mb-col-update-payment {
+  width: 20%;
+}
+
+.mb-col-bill-status {
+  width: 10%;
+}
+
+.mb-col-bill-paid {
+  width: 6%;
+}
+
+.mb-col-lock {
+  width: 3%;
+}
+
+.mb-col-action {
+  width: 3%;
+}
+
+/* ===============================
+   Update Payment - MultiSelect
+   (keeps dropdown visible above table rows)
+   =============================== */
+
+.maintenance-bill-multiselect-width {
+  max-width: 260px;
+  width: 100%;
+}
+
+/* Count-only UX (hide chips) */
+.maintenance-bill-multiselect-width .react-select__multi-value,
+.maintenance-bill-multiselect-width .react-select__multi-value__remove {
+  display: none !important;
+}
+
+/* Selected option should not be fully blue */
+.maintenance-bill-multiselect-width .react-select__option--is-selected {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+.maintenance-bill-multiselect-width .react-select__option--is-focused {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Ensure Update Payment cell never clips the dropdown */
+.mb-update-payment-td {
+  overflow: visible !important;
+  position: relative;
+}
+
+.mb-update-payment-cell {
+  position: relative;
+  z-index: 9999;
+}
+
+/* React-select portal/menu stacking */
+.maintenance-bill-listing-page .react-select__menu-portal {
+  z-index: 9999 !important;
+}
+
+.mb-update-payment-cell .react-select__menu,
+.mb-update-payment-cell .react-select__menu-portal {
+  z-index: 9999 !important;
+}
+
+/* ===============================
+   Paid checkbox + Expanded row
+   =============================== */
+
+.mb-billpaid-checkbox {
+  width: 18px;
+  height: 18px;
+}
+
+.mb-expanded-details {
+  font-weight: 600;
+}
+
+.mb-expanded-label {
+  font-weight: 600;
+}
+
+.mb-expanded-value {
+  font-weight: 400;
+}
+
+.mb-expanded-sep {
+  color: #8a8a8a;
+}
+
+.mb-update-payment-cell {
+  margin-top: -4px;
+  padding-bottom: 4px;
+}
