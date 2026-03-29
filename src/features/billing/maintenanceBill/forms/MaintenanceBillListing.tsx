@@ -14,7 +14,6 @@ import type {
   MaintenanceBillMonthStatusUpdateDTO,
   MaintenanceBillMonthSummaryDTO,
   MonthKey,
-  MonthlyBillApartmentGenerateRequestDTO,
 } from "../../../../types/MaintenanceBillingDTOs";
 import MaintenanceBillMonthSummaryTable from "../components/MaintenanceBillMonthSummaryTable";
 
@@ -22,8 +21,7 @@ type Props = {
   apartmentId?: number;
   apartmentName?: string;
   year: number;
-  monthYear: string;
-  generateRequestId: number;
+  refreshKey: number;
 };
 
 // Minimal local Flat type (keeps TS strict + avoids guessing repo DTO shape)
@@ -39,9 +37,6 @@ const endpoints = {
   paidFlatIds: "/MonthlyBilling/Get-MaintenanceBill-PaidFlatIds",
   updateFlatPayment: "/MonthlyBilling/Update-FlatPaymentStatus",
   updateBillStatus: "/MonthlyBilling/Update-Bill-Status-For-Apartment",
-  generateForApartment: "/MonthlyBilling/Generate-Monthly-Bills-For-Apartment",
-
-  // ExtraExpense pattern: use /flat/Get-All-Flats and map flatId->flatNumber locally
   flats: "/flat/Get-All-Flats",
 };
 
@@ -64,23 +59,17 @@ function getYearNumberFromBillingMonth(billingMonthIso: string): number {
   return new Date(billingMonthIso).getFullYear();
 }
 
-function isSameYearMonth(aIso: string, b: Date): boolean {
-  const a = new Date(aIso);
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+function toMonthStartIso(year: number, month: number): string {
+  return new Date(year, month - 1, 1).toISOString();
 }
 
-function isFutureMonth(billingMonthIso: string, now: Date): boolean {
-  const d = new Date(billingMonthIso);
-  const a = d.getFullYear() * 12 + d.getMonth();
-  const n = now.getFullYear() * 12 + now.getMonth();
-  return a > n;
-}
+function getLastVisibleMonth(year: number, now: Date): number {
+  const currentYear = now.getFullYear();
 
-function isPastMonth(billingMonthIso: string, now: Date): boolean {
-  const d = new Date(billingMonthIso);
-  const a = d.getFullYear() * 12 + d.getMonth();
-  const n = now.getFullYear() * 12 + now.getMonth();
-  return a < n;
+  if (year < currentYear) return 12;
+  if (year > currentYear) return 0;
+
+  return now.getMonth() + 1;
 }
 
 function formatMonthLabel(billingMonthIso: string): string {
@@ -103,7 +92,6 @@ function formatAmount(amount: number, symbol?: string | null): string {
   return `${s} ${formatted}`;
 }
 
-// ExtraExpense pattern: unwrap arrays coming either as [] or {data:[]} / {Data:[]}
 function normalizeLookupArray<T>(value: unknown): T[] {
   if (Array.isArray(value)) return value as T[];
 
@@ -125,19 +113,14 @@ function buildOwnerDisplayName(x: FlatOwnerNameLookupDTO): string {
   return `${first} ${last}`.trim();
 }
 
-function toFlatLabel(flatNumber?: string | null, flatId?: number | null): string {
+function toFlatLabel(
+  flatNumber?: string | null,
+  flatId?: number | null,
+): string {
   const label = (flatNumber ?? "").trim();
   if (label.length > 0) return label;
   if (typeof flatId === "number" && flatId > 0) return `Flat #${flatId}`;
   return "";
-}
-
-function parseMonthFromMonthYear(monthYear: string): number | null {
-  const parts = monthYear.split("-");
-  if (parts.length !== 2) return null;
-  const m = Number(parts[1]);
-  if (!Number.isFinite(m) || m < 1 || m > 12) return null;
-  return m;
 }
 
 type RowVM = {
@@ -161,8 +144,7 @@ const MaintenanceBillListing: React.FC<Props> = ({
   apartmentId,
   apartmentName,
   year,
-  monthYear,
-  generateRequestId,
+  refreshKey,
 }) => {
   const [loading, setLoading] = useState(false);
   const [monthSummary, setMonthSummary] = useState<
@@ -224,39 +206,38 @@ const MaintenanceBillListing: React.FC<Props> = ({
   }, [paidIdsByMonthKey]);
 
   const now = useMemo(() => new Date(), []);
-  const currentMonthIso = useMemo(() => {
-    const d = new Date();
-    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString();
-  }, []);
 
   const visibleRows: RowVM[] = useMemo(() => {
     if (!apartmentId) return [];
 
-    const currentYear = now.getFullYear();
-    const yearRows = monthSummary.filter(
-      (r) => getYearNumberFromBillingMonth(r.billingMonth) === year,
-    );
+    const lastVisibleMonth = getLastVisibleMonth(year, now);
+    if (lastVisibleMonth <= 0) return [];
 
-    const filtered = yearRows.filter((r) => {
-      if (isFutureMonth(r.billingMonth, now)) return false;
+    const summaryByMonthKey = new Map<
+      MonthKey,
+      MaintenanceBillMonthSummaryDTO
+    >();
 
-      if (year === currentYear) {
-        if (isSameYearMonth(r.billingMonth, now)) return true;
-        if (isPastMonth(r.billingMonth, now)) return r.isBillGenerated;
-        return false;
-      }
+    for (const item of monthSummary) {
+      const itemYear = getYearNumberFromBillingMonth(item.billingMonth);
+      if (itemYear !== year) continue;
 
-      return r.isBillGenerated;
-    });
+      const key = toMonthKeyFromBillingMonth(item.billingMonth);
+      summaryByMonthKey.set(key, item);
+    }
 
-    if (year === currentYear) {
-      const hasCurrent = filtered.some((r) =>
-        isSameYearMonth(r.billingMonth, now),
-      );
-      if (!hasCurrent) {
-        filtered.push({
+    const normalizedRows: MaintenanceBillMonthSummaryDTO[] = [];
+
+    for (let month = 1; month <= lastVisibleMonth; month++) {
+      const billingMonth = toMonthStartIso(year, month);
+      const key = `${year}-${pad2(month)}` as MonthKey;
+
+      const existing = summaryByMonthKey.get(key);
+
+      normalizedRows.push(
+        existing ?? {
           apartmentId,
-          billingMonth: currentMonthIso,
+          billingMonth,
           isBillGenerated: false,
           totalAmount: 0,
           individualMaintenanceAmount: 0,
@@ -265,16 +246,11 @@ const MaintenanceBillListing: React.FC<Props> = ({
           totalFlatsCount: 0,
           isBillPaid: false,
           isLocked: false,
-        });
-      }
+        },
+      );
     }
 
-    filtered.sort(
-      (a, b) =>
-        new Date(a.billingMonth).getTime() - new Date(b.billingMonth).getTime(),
-    );
-
-    return filtered.map((r) => {
+    return normalizedRows.map((r) => {
       const key = toMonthKeyFromBillingMonth(r.billingMonth);
       const selectedIds = paidIdsByMonthKey[key];
       const paidCount = Array.isArray(selectedIds)
@@ -300,15 +276,7 @@ const MaintenanceBillListing: React.FC<Props> = ({
         apartmentNameHidden: apartmentName ?? "",
       };
     });
-  }, [
-    apartmentId,
-    apartmentName,
-    currentMonthIso,
-    monthSummary,
-    now,
-    year,
-    paidIdsByMonthKey,
-  ]);
+  }, [apartmentId, apartmentName, monthSummary, now, year, paidIdsByMonthKey]);
 
   const loadMonthSummary = useCallback(async () => {
     if (!apartmentId || !year) {
@@ -330,7 +298,6 @@ const MaintenanceBillListing: React.FC<Props> = ({
     }
   }, [apartmentId, year]);
 
-  // ExtraExpense-style: load flats master once (flatId->flatNumber source of truth)
   useEffect(() => {
     let mounted = true;
 
@@ -412,54 +379,7 @@ const MaintenanceBillListing: React.FC<Props> = ({
   useEffect(() => {
     void loadMonthSummary();
     void loadFlatOwnerLookup();
-  }, [loadFlatOwnerLookup, loadMonthSummary]);
-
-  useEffect(() => {
-    if (!apartmentId || !year) return;
-    if (generateRequestId <= 0) return;
-
-    const run = async () => {
-      const current = new Date();
-
-      const monthFromPicker = parseMonthFromMonthYear(monthYear);
-      const monthToGenerate =
-        monthFromPicker ??
-        (year === current.getFullYear() ? current.getMonth() + 1 : 1);
-
-      const req: MonthlyBillApartmentGenerateRequestDTO = {
-        apartmentId,
-        year,
-        month: monthToGenerate,
-      };
-
-      try {
-        await httpClient.post(endpoints.generateForApartment, req);
-
-        const monthKey: MonthKey = `${year}-${pad2(monthToGenerate)}`;
-        setPaidIdsByMonthKey((prev) => {
-          const next = { ...prev };
-          delete next[monthKey];
-          return next;
-        });
-
-        await loadMonthSummary();
-        void ensurePaidIdsLoaded(
-          new Date(year, monthToGenerate - 1, 1).toISOString(),
-        );
-      } catch (err) {
-        console.error("Generate monthly bills failed", err);
-      }
-    };
-
-    void run();
-  }, [
-    apartmentId,
-    ensurePaidIdsLoaded,
-    generateRequestId,
-    loadMonthSummary,
-    monthYear,
-    year,
-  ]);
+  }, [loadFlatOwnerLookup, loadMonthSummary, refreshKey]);
 
   const getSelectedPaidIds = useCallback(
     (billingMonthIso: string): number[] => {

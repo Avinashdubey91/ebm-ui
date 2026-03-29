@@ -2,6 +2,9 @@
    Maintenance Bill - Page Header
    (headerActions uses MeterReading-like structure)
    =============================== */
+html{
+  scrollbar-gutter: stable;
+}
 
 .maintenance-bill-listing-page .meter-reading-header-actions {
   display: flex;
@@ -176,7 +179,8 @@
 
 .mb-update-payment-cell {
   position: relative;
-  z-index: 9999;
+  margin-top: -4px;
+  padding-bottom: 4px;
 }
 
 /* React-select portal/menu stacking */
@@ -215,6 +219,9 @@
 }
 
 .mb-update-payment-cell {
-  margin-top: -4px;
-  padding-bottom: 4px;
+  
+}
+
+.maintenance-bill-listing-page .meter-reading-controls .btn[title="Generate Maintenance Bill"] {
+  min-width: 190px;
 }

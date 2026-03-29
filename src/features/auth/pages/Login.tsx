@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { getGreeting } from "../../../utils/dateUtils";
 import { loginUser } from "../authService";
 import { clearSession } from "../../../utils/session";
-import { stopNotificationConnection, startNotificationConnection } from "../../../api/signalR";
+import { stopNotificationConnection } from "../../../api/signalR";
 
 import Modal from "../../../components/Modal";
 import ChangePasswordModal from "./ChangePasswordModal";
@@ -51,10 +51,6 @@ const Login: React.FC = () => {
     setAuth(response.token, response.userId.toString());
     localStorage.setItem("username", username);
     localStorage.setItem("status", "Online");
-
-    await startNotificationConnection((notification) => {
-      console.log("🔔 Notification:", notification);
-    }, response.token);
 
     setIsLoadingPostLogin(true);
     setTimeout(() => navigate("/dashboard"), 1000);

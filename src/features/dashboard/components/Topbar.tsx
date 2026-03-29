@@ -239,10 +239,7 @@ const Topbar: React.FC = () => {
               </div>
 
               {/* Notification list */}
-              <div
-                className="px-2 pt-1 pb-2 custom-scroll"
-                style={{ maxHeight: "300px", overflowY: "scroll" }}
-              >
+              <div className="dashboard-ebm-notification-list custom-scroll">
                 {notifications.map((note) => (
                   <a
                     key={note.notificationId}

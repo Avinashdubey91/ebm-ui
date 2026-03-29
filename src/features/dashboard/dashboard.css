@@ -186,7 +186,6 @@ body {
   margin-left: 260px;
   transition: margin-left 0.3s ease;
   flex-grow: 1;
-  border: 2px dashed red;    /* For visual debugging */
   min-height: calc(100vh - 56px); /* Ensure full vertical fill excluding topbar */
   width: calc(100vw - 260px);
   box-sizing: border-box;
@@ -200,7 +199,6 @@ body {
   flex-grow: 1;
   width: 100%;
   box-sizing: border-box;
-  background: #fff; /* for testing */
 }
 
 /* ===================== Inputs ===================== */
@@ -338,7 +336,6 @@ input[type="month"]::-webkit-calendar-picker-indicator {
   padding: 10px 0;
   font-size: 0.85rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-  border: 2px dashed greenyellow;
 }
 
 .footer a {
@@ -422,13 +419,16 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 
 .dashboard-ebm-notification-dropdown {
   position: absolute;
-  top: 130%;
+  top: calc(100% + 4px);
   right: 0;
-  z-index: 1050;
-  min-width: 280px;
-  max-height: 280px;
-  overflow-y: hidden;
+  z-index: 99999;
+  width: 250px;
+  max-width: calc(100vw - 24px);
+  max-height: 380px;
+  overflow: hidden;
   font-size: 0.85rem;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
 }
 
 .custom-scroll {
@@ -438,6 +438,50 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 
 .custom-scroll::-webkit-scrollbar {
   display: none;                  /* Chrome, Safari, Edge */
+}
+
+.dashboard-ebm-notification-list {
+  max-height: 250px;
+  overflow-y: auto;
+  padding: 0 0 0.65rem 0;
+}
+
+.dashboard-ebm-notification-dropdown .dropdown-item {
+  display: block;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.dashboard-ebm-notification-dropdown .dropdown-item:last-child {
+  border-bottom: 1px solid #e9ecef;
+}
+
+.dashboard-ebm-notification-dropdown .dropdown-item small {
+  display: block;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  margin-top: 0.22rem;
+  line-height: 1.45;
+  padding-right: 0;
+}
+
+.dashboard-ebm-notification-list::after {
+  content: "";
+  display: block;
+  height: 0.45rem;
+}
+
+.dashboard-ebm-topbar,
+.dashboard-ebm-topbar .dropdown.position-relative {
+  z-index: 99999;
+}
+
+.dashboard-ebm-topbar {
+  isolation: isolate;
 }
 
 /* ===================== Responsive (≤ 768px) ===================== */

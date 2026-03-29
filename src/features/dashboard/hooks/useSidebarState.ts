@@ -1,40 +1,46 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
+
+const OPEN_SUBMENU_STORAGE_KEY = "dashboard-ebm-open-submenu";
 
 export const useSidebarState = () => {
   const [collapsed, setCollapsed] = useState(false);
-  const [openSubmenus, setOpenSubmenus] = useState<string[]>([]);
+  const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
 
   // Load from localStorage
   useEffect(() => {
-    const stored = localStorage.getItem('dashboard-ebm-open-submenus');
+    const stored = localStorage.getItem(OPEN_SUBMENU_STORAGE_KEY);
     if (stored) {
-      setOpenSubmenus(JSON.parse(stored));
+      setOpenSubmenu(stored);
     }
   }, []);
 
   // Save to localStorage
   useEffect(() => {
-    localStorage.setItem('dashboard-ebm-open-submenus', JSON.stringify(openSubmenus));
-  }, [openSubmenus]);
+    if (openSubmenu) {
+      localStorage.setItem(OPEN_SUBMENU_STORAGE_KEY, openSubmenu);
+    } else {
+      localStorage.removeItem(OPEN_SUBMENU_STORAGE_KEY);
+    }
+  }, [openSubmenu]);
 
   const toggleSidebar = () => {
-    setCollapsed(prev => {
+    setCollapsed((prev) => {
       const next = !prev;
+
       if (next) {
-        // collapsing sidebar → collapse all open submenus
-        setOpenSubmenus([]);
+        // collapsing sidebar → collapse any expanded submenu
+        setOpenSubmenu(null);
       }
+
       return next;
     });
   };
 
   const toggleSubmenu = (id: string) => {
-    setOpenSubmenus(prev =>
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-    );
+    setOpenSubmenu((prev) => (prev === id ? null : id));
   };
 
-  const isSubmenuOpen = (id: string) => openSubmenus.includes(id);
+  const isSubmenuOpen = (id: string) => openSubmenu === id;
 
   return {
     collapsed,

@@ -5,7 +5,12 @@ import { fetchAllEntities, deleteEntity } from "../../../../api/genericCrudApi";
 import type { MaintenanceGroupDTO } from "../../../../types/MaintenanceGroupDTO";
 import type { ApartmentDTO } from "../../../../types/ApartmentDTO";
 
-import { safeValue } from "../../../../utils/format";
+import {
+  safeValue,
+  formatDateDmy,
+  formatPrefixedId,
+  abbreviateWithLastWord,
+} from "../../../../utils/format";
 import SharedListingTable from "../../../shared/SharedListingTable";
 import {
   showDeleteConfirmation,
@@ -19,28 +24,6 @@ const endpoints = {
   getAll: "/maintenancegroup/Get-All-MaintenanceGroups",
   delete: "/maintenancegroup/Delete-MaintenanceGroup",
   getAllApartments: "/apartment/Get-All-Apartment",
-};
-
-const toDmy = (value?: string | null): string => {
-  if (!value) return "-";
-
-  // If API gives ISO-ish string, use the date portion directly (no timezone conversion)
-  if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
-    const y = value.slice(0, 4);
-    const m = value.slice(5, 7);
-    const d = value.slice(8, 10);
-    return `${d}-${m}-${y}`;
-  }
-
-  // Fallback: format using LOCAL date parts (still avoids UTC shift)
-  const dt = new Date(value);
-  if (Number.isNaN(dt.getTime())) return "-";
-
-  const dd = String(dt.getDate()).padStart(2, "0");
-  const mm = String(dt.getMonth() + 1).padStart(2, "0");
-  const yyyy = dt.getFullYear();
-
-  return `${dd}-${mm}-${yyyy}`;
 };
 
 const toMoney = (value?: number | null): string => {
@@ -134,23 +117,32 @@ const GroupListing: React.FC = () => {
       loading={loading}
       columns={[
         {
+          key: "maintenanceGroupId",
+          label: "Group ID",
+          width: "110px",
+          renderCell: (g: MaintenanceGroupDTO) =>
+            formatPrefixedId("MG", g.maintenanceGroupId),
+        },
+        {
           key: "apartmentId",
           label: "Apartment",
           width: "180px",
           renderCell: (g: MaintenanceGroupDTO) =>
-            apartmentNameById.get(g.apartmentId) ?? safeValue(g.apartmentId),
+            abbreviateWithLastWord(
+              apartmentNameById.get(g.apartmentId) ?? safeValue(g.apartmentId),
+            ),
         },
         {
           key: "effectiveFrom",
           label: "Effective From",
           width: "130px",
-          renderCell: (g) => toDmy(g.effectiveFrom),
+          renderCell: (g) => formatDateDmy(g.effectiveFrom),
         },
         {
           key: "effectiveTo",
           label: "Effective To",
           width: "130px",
-          renderCell: (g) => toDmy(g.effectiveTo ?? null),
+          renderCell: (g) => formatDateDmy(g.effectiveTo ?? null),
         },
         {
           key: "totalCharge",
@@ -186,9 +178,9 @@ const GroupListing: React.FC = () => {
         <>
           <strong>Group ID:</strong> {safeValue(g.maintenanceGroupId)} |{" "}
           <strong>Apartment ID:</strong> {safeValue(g.apartmentId)} |{" "}
-          <strong>Effective From:</strong> {toDmy(g.effectiveFrom)} |{" "}
-          <strong>Effective To:</strong> {toDmy(g.effectiveTo ?? null)} |{" "}
-          <strong>Total Charge:</strong> {toMoney(g.totalCharge)} |{" "}
+          <strong>Effective From:</strong> {formatDateDmy(g.effectiveFrom)} |{" "}
+          <strong>Effective To:</strong> {formatDateDmy(g.effectiveTo ?? null)}{" "}
+          | <strong>Total Charge:</strong> {toMoney(g.totalCharge)} |{" "}
           <strong>Status:</strong> {g.isActive ? "Active" : "Inactive"}
         </>
       )}

@@ -24,7 +24,6 @@ export const safeValue = (
   return fallback;
 };
 
-// Patch Start: timezone-safe date parsing + formatting helpers
 const parseToLocalDate = (value?: string | Date | null): Date | null => {
   if (!value) return null;
 
@@ -95,10 +94,45 @@ export const formatDate = (
   const mmm = months[d.getMonth()] ?? "Jan";
   return `${dd}-${mmm}-${yyyy}`;
 };
-// Patch End
 
 /**
  * Truncates a long string to a given max length and appends ellipsis.
  */
 export const truncate = (text: string, maxLength: number = 50): string =>
   text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+
+/**
+ * Formats numeric id with prefix (e.g. 1 -> MG-1).
+ */
+export const formatPrefixedId = (
+  prefix: string,
+  value: number | string | null | undefined,
+  fallback: string = "-"
+): string => {
+  if (value === null || value === undefined || value === "") return fallback;
+  return `${prefix}-${value}`;
+};
+
+/**
+ * Abbreviates multi-word names by converting all words except the last one to initials.
+ * Example: "Mittal Parkview Residency" -> "M P Residency"
+ */
+export const abbreviateWithLastWord = (
+  text: string | null | undefined,
+  fallback: string = "-"
+): string => {
+  const normalized = safeValue(text, "").trim().replace(/\s+/g, " ");
+  if (!normalized) return fallback;
+
+  const parts = normalized.split(" ");
+  if (parts.length === 1) return parts[0];
+
+  const lastWord = parts[parts.length - 1];
+  const initials = parts
+    .slice(0, -1)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase());
+
+  return [...initials, lastWord].join(" ");
+};
+
