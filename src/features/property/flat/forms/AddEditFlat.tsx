@@ -46,13 +46,13 @@ const emptyFlat: FlatDTO = {
   isRented: false,
   floorNumber: undefined,
   facingDirection: "",
-  flatType: "",
+  flatType: "3BHK",
   superBuiltUpArea: undefined,
   carParkingSlots: 0,
   isActive: true,
   hasGasPipeline: false,
   hasWaterConnection: true,
-  hasBalcony: false,
+  hasBalcony: true,
   isFurnished: false,
   hasSolarPanel: false,
   hasInternetConnection: false,
@@ -154,9 +154,8 @@ const AddEditFlat = forwardRef<AddEditFormHandle, Props>(
     const [formData, setFormData] = useState<FlatDTO>(emptyFlat);
     const [apartments, setApartments] = useState<ApartmentDTO[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [submitMode, setSubmitMode] = useState<"save" | "saveAndNext">(
-      "save"
-    );
+    const submitModeRef = useRef<"save" | "saveAndNext">("save");
+    const isEditMode = !!flatId;
 
     // Keep text state so user can type "12." then "12.5" naturally
     const [superBuiltUpAreaText, setSuperBuiltUpAreaText] =
@@ -172,7 +171,7 @@ const AddEditFlat = forwardRef<AddEditFormHandle, Props>(
       setSuperBuiltUpAreaText(
         data.superBuiltUpArea === undefined || data.superBuiltUpArea === null
           ? ""
-          : String(data.superBuiltUpArea)
+          : String(data.superBuiltUpArea),
       );
     }, []);
 
@@ -199,7 +198,7 @@ const AddEditFlat = forwardRef<AddEditFormHandle, Props>(
       return Object.keys(formData).some(
         (key) =>
           formData[key as keyof FlatDTO] !==
-          initialRef.current![key as keyof FlatDTO]
+          initialRef.current![key as keyof FlatDTO],
       );
     }, [formData]);
 
@@ -212,7 +211,9 @@ const AddEditFlat = forwardRef<AddEditFormHandle, Props>(
     };
 
     // Text inputs only
-    const handleInputChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+    const handleInputChange: React.ChangeEventHandler<HTMLInputElement> = (
+      e,
+    ) => {
       const { name, value } = e.target;
 
       switch (name) {
@@ -260,7 +261,9 @@ const AddEditFlat = forwardRef<AddEditFormHandle, Props>(
     };
 
     // Select only
-    const handleSelectChange: React.ChangeEventHandler<HTMLSelectElement> = (e) => {
+    const handleSelectChange: React.ChangeEventHandler<HTMLSelectElement> = (
+      e,
+    ) => {
       const { name, value } = e.target;
 
       if (name === "apartmentId") {
@@ -273,7 +276,9 @@ const AddEditFlat = forwardRef<AddEditFormHandle, Props>(
     };
 
     // Switch toggles only
-    const handleBooleanToggle: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+    const handleBooleanToggle: React.ChangeEventHandler<HTMLInputElement> = (
+      e,
+    ) => {
       const { name, checked } = e.target;
       if (!isFlatBooleanKey(name)) return;
 
@@ -281,7 +286,7 @@ const AddEditFlat = forwardRef<AddEditFormHandle, Props>(
     };
 
     const requestSubmit = (mode: "save" | "saveAndNext") => {
-      setSubmitMode(mode);
+      submitModeRef.current = mode;
       formRef.current?.requestSubmit();
     };
 
@@ -300,14 +305,22 @@ const AddEditFlat = forwardRef<AddEditFormHandle, Props>(
         if (flatId) {
           await updateEntity(endpoints.update, flatId, formData, userId, false);
           await showAddUpdateResult(true, "update", "flat");
-          navigate(parentListPath);
+
+          if (submitModeRef.current === "saveAndNext") {
+            // Stay on page after update and refresh initial snapshot
+            initialRef.current = { ...formData };
+            applyFormState(formData);
+          } else {
+            navigate(parentListPath);
+          }
+
           return;
         }
 
         await createEntity(endpoints.add, formData, userId, false);
         await showAddUpdateResult(true, "add", "flat");
 
-        if (submitMode === "saveAndNext") {
+        if (submitModeRef.current === "saveAndNext") {
           applyFormState(emptyFlat);
           initialRef.current = { ...emptyFlat };
         } else {
@@ -354,7 +367,7 @@ const AddEditFlat = forwardRef<AddEditFormHandle, Props>(
         onSubmit={handleSubmit}
         onReset={handleReset}
         onSaveAndNext={() => requestSubmit("saveAndNext")}
-        isEditMode={!!flatId}
+        isEditMode={isEditMode}
         formRef={formRef}
       >
         <div className="row g-4">
@@ -369,6 +382,7 @@ const AddEditFlat = forwardRef<AddEditFormHandle, Props>(
                       name="apartmentId"
                       value={formData.apartmentId}
                       onChange={handleSelectChange}
+                      disabled={isEditMode}
                       required
                       options={apartmentOptions}
                     />
@@ -491,7 +505,7 @@ const AddEditFlat = forwardRef<AddEditFormHandle, Props>(
         </div>
       </SharedAddEditForm>
     );
-  }
+  },
 );
 
 export default AddEditFlat;

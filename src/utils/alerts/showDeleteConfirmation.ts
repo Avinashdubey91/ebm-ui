@@ -18,7 +18,7 @@ export type ActionConfirmationOptions = {
  * Generic confirmation dialog (same UI style as delete, but customizable text/buttons)
  */
 export const showActionConfirmation = async (
-  options: ActionConfirmationOptions
+  options: ActionConfirmationOptions,
 ): Promise<boolean> => {
   const swalOptions: SweetAlertOptions = {
     icon: options.icon ?? "warning",
@@ -40,7 +40,7 @@ export const showActionConfirmation = async (
  * Delete confirmation (kept as-is for listing delete flow)
  */
 export const showDeleteConfirmation = async (
-  entityName = "item"
+  entityName = "item",
 ): Promise<boolean> =>
   showActionConfirmation({
     icon: "warning",
@@ -60,7 +60,7 @@ export const showDeleteResult = async (
   entityName = "item",
   customMessage?: string,
   titleOverride?: string,
-  showToastOnly = true
+  showToastOnly = true,
 ): Promise<void> => {
   const title = titleOverride || (success ? "Deleted" : "Error!");
   const message =
@@ -82,6 +82,9 @@ export const showDeleteResult = async (
       ...commonOptions,
       toast: true,
       position: "top-end",
+      customClass: {
+        container: "app-toast-container",
+      },
     });
   } else {
     await Swal.fire(commonOptions);

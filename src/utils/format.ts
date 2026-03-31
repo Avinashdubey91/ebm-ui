@@ -136,3 +136,22 @@ export const abbreviateWithLastWord = (
   return [...initials, lastWord].join(" ");
 };
 
+/**
+ * Converts full name to acronym.
+ * Example:
+ * "Mittal Parkview Residency" -> "MPR"
+ */
+export const toAcronym = (
+  text: string | null | undefined,
+  fallback: string = "-"
+): string => {
+  if (!text) return fallback;
+
+  return text
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase())
+    .join("");
+};
+

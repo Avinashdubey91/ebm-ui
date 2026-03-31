@@ -1,6 +1,7 @@
 export interface FlatDTO {
   flatId?: number;
   apartmentId: number;
+  apartmentName?: string;
   flatNumber: string;
   isRented?: boolean;
   floorNumber?: number;

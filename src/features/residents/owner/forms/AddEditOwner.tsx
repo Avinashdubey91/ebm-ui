@@ -6,6 +6,7 @@ import React, {
   forwardRef,
   useImperativeHandle,
   useCallback,
+  memo,
 } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -29,7 +30,6 @@ import type { StateDTO } from "../../../../types/StateDTO";
 import type { DistrictDTO } from "../../../../types/DistrictDTO";
 import SelectField from "../../../../components/common/SelectField";
 import {
-  buildAadhaarProps,
   formatAadhaarForDisplay,
   buildNumericInputProps,
   buildEmailProps,
@@ -45,7 +45,7 @@ const endpoints = {
   getById: "/OwnerProfile/Get-Owner-By-Id",
   add: "/OwnerProfile/Add-New-Owner",
   update: "/OwnerProfile/Update-Owner-By-Id",
-};
+} as const;
 
 const emptyOwner: OwnerDTO = {
   ownerId: 0,
@@ -74,23 +74,42 @@ const emptyOwner: OwnerDTO = {
   districtId: undefined,
 };
 
+const numericSelectNames = new Set<keyof OwnerDTO>([
+  "countryId",
+  "stateId",
+  "districtId",
+]);
+
+const ownerBooleanKeys = ["isFirstOwner", "isDeceased", "isActive"] as const;
+type OwnerBooleanKey = (typeof ownerBooleanKeys)[number];
+
+const genderOptions: Array<{ label: string; value: string | number }> = [
+  { label: "Male", value: "Male" },
+  { label: "Female", value: "Female" },
+];
+
+const statusTiles: Array<{ name: OwnerBooleanKey; label: string }> = [
+  { name: "isFirstOwner", label: "First Owner" },
+  { name: "isDeceased", label: "Deceased" },
+  { name: "isActive", label: "Active" },
+];
+
 type SectionCardProps = {
   title: string;
   children: React.ReactNode;
 };
 
-const SectionCard = ({ title, children }: SectionCardProps) => (
-  <div className="border rounded-3 p-3">
-    <div className="fw-bold mb-3">{title}</div>
-    {children}
-  </div>
-);
-
-const ownerBooleanKeys = ["isFirstOwner", "isDeceased", "isActive"] as const;
-type OwnerBooleanKey = (typeof ownerBooleanKeys)[number];
-
-const isOwnerBooleanKey = (name: string): name is OwnerBooleanKey =>
-  (ownerBooleanKeys as readonly string[]).includes(name);
+const SectionCard = memo(function SectionCard({
+  title,
+  children,
+}: SectionCardProps) {
+  return (
+    <div className="border rounded-3 p-3">
+      <div className="fw-bold mb-3">{title}</div>
+      {children}
+    </div>
+  );
+});
 
 type SwitchFieldProps = {
   name: OwnerBooleanKey;
@@ -99,8 +118,14 @@ type SwitchFieldProps = {
   onChange: React.ChangeEventHandler<HTMLInputElement>;
 };
 
-const SwitchField = ({ name, label, checked, onChange }: SwitchFieldProps) => {
+const SwitchField = memo(function SwitchField({
+  name,
+  label,
+  checked,
+  onChange,
+}: SwitchFieldProps) {
   const id = `owner-switch-${name}`;
+
   return (
     <div className="border rounded-3 px-3 py-2 d-flex align-items-center justify-content-between h-100">
       <label className="mb-0 fw-semibold" htmlFor={id}>
@@ -119,178 +144,520 @@ const SwitchField = ({ name, label, checked, onChange }: SwitchFieldProps) => {
       </div>
     </div>
   );
+});
+
+const isOwnerBooleanKey = (name: string): name is OwnerBooleanKey =>
+  (ownerBooleanKeys as readonly string[]).includes(name);
+
+const scrollToFirstInvalidField = (form: HTMLFormElement) => {
+  const firstInvalid = form.querySelector(":invalid") as
+    | HTMLInputElement
+    | HTMLSelectElement
+    | HTMLTextAreaElement
+    | null;
+
+  if (!firstInvalid) return;
+
+  firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
+  firstInvalid.focus();
+};
+
+const trimToNull = (value?: string | null): string | null => {
+  if (value == null) return null;
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+};
+
+const normalizeDigitField = (
+  value?: string | null,
+  { optional = false }: { optional?: boolean } = {},
+): string | null => {
+  const trimmed = value?.trim() ?? "";
+  if (trimmed === "") return optional ? null : "";
+  return trimmed.replace(/\D/g, "");
 };
 
 const AddEditOwner = forwardRef<AddEditFormHandle, Props>(
   ({ ownerId, onUnsavedChange }, ref) => {
+    const navigate = useNavigate();
+    const { parentListPath } = useCurrentMenu();
+
     const [formData, setFormData] = useState<OwnerDTO>(emptyOwner);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitMode, setSubmitMode] = useState<"save" | "saveAndNext">(
-      "save"
+      "save",
     );
-
-    const { parentListPath } = useCurrentMenu();
     const [aadhaarFocused, setAadhaarFocused] = useState(false);
-    const navigate = useNavigate();
-    const formRef = useRef<HTMLFormElement>(null);
-    const initialRef = useRef<OwnerDTO | null>(null);
 
     const [countries, setCountries] = useState<CountryDTO[]>([]);
     const [states, setStates] = useState<StateDTO[]>([]);
     const [districts, setDistricts] = useState<DistrictDTO[]>([]);
 
-    useEffect(() => {
-      if (ownerId) {
-        fetchEntityById<OwnerDTO>(endpoints.getById, ownerId).then((data) => {
-          setFormData(data);
-          initialRef.current = { ...data };
+    const formRef = useRef<HTMLFormElement>(null);
+    const initialRef = useRef<OwnerDTO>(emptyOwner);
+
+    const setFieldValue = useCallback(
+      (key: keyof OwnerDTO, value: OwnerDTO[keyof OwnerDTO]) => {
+        setFormData((prev) => {
+          if (prev[key] === value) return prev;
+          return { ...prev, [key]: value };
         });
-      } else {
-        setFormData(emptyOwner);
-        initialRef.current = { ...emptyOwner };
-      }
-    }, [ownerId]);
+      },
+      [],
+    );
+
+    const initializeNewOwner = useCallback(() => {
+      setFormData(emptyOwner);
+      initialRef.current = { ...emptyOwner };
+      setStates([]);
+      setDistricts([]);
+    }, []);
+
+    useEffect(() => {
+      let isActive = true;
+
+      const run = async () => {
+        try {
+          if (ownerId) {
+            const data = await fetchEntityById<OwnerDTO>(
+              endpoints.getById,
+              ownerId,
+            );
+            if (!isActive) return;
+            setFormData(data);
+            initialRef.current = { ...data };
+            return;
+          }
+
+          if (!isActive) return;
+          initializeNewOwner();
+        } catch (error) {
+          console.error("Failed to load owner data", error);
+        }
+      };
+
+      void run();
+
+      return () => {
+        isActive = false;
+      };
+    }, [ownerId, initializeNewOwner]);
 
     const hasUnsavedChanges = useMemo(() => {
-      if (!initialRef.current) return false;
-      return Object.keys(formData).some(
-        (key) =>
-          formData[key as keyof OwnerDTO] !==
-          initialRef.current?.[key as keyof OwnerDTO]
+      const initial = initialRef.current;
+      return (Object.keys(formData) as Array<keyof OwnerDTO>).some(
+        (key) => formData[key] !== initial[key],
       );
     }, [formData]);
+
+    const aadhaarDigits = useMemo(
+      () => (formData.aadharNumber ?? "").replace(/\D/g, ""),
+      [formData.aadharNumber],
+    );
+
+    const isAadhaarInvalid =
+      aadhaarDigits.length > 0 && aadhaarDigits.length !== 12;
 
     useEffect(() => {
       onUnsavedChange?.(hasUnsavedChanges);
     }, [hasUnsavedChanges, onUnsavedChange]);
 
     const handleReset = useCallback(() => {
-      setFormData(initialRef.current ?? emptyOwner);
+      setFormData({ ...initialRef.current });
     }, []);
 
-    const requestSubmit = (mode: "save" | "saveAndNext") => {
+    const requestSubmit = useCallback((mode: "save" | "saveAndNext") => {
       setSubmitMode(mode);
       formRef.current?.requestSubmit();
-    };
-
-    const handleInputChange: React.ChangeEventHandler<HTMLInputElement> = (
-      e
-    ) => {
-      const { name, value } = e.target;
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    };
-
-    const handleSelectChange: React.ChangeEventHandler<HTMLSelectElement> = (
-      e
-    ) => {
-      const { name, value } = e.target;
-
-      const numericSelects = new Set(["countryId", "stateId", "districtId"]);
-      if (numericSelects.has(name)) {
-        const parsed = value === "" ? undefined : Number(value);
-        setFormData((prev) => ({ ...prev, [name]: parsed }));
-        return;
-      }
-
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    };
-
-    const handleBooleanToggle: React.ChangeEventHandler<HTMLInputElement> = (
-      e
-    ) => {
-      const { name, checked } = e.target;
-      if (!isOwnerBooleanKey(name)) return;
-      setFormData((prev) => ({ ...prev, [name]: checked }));
-    };
-
-    const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
-      if (e) e.preventDefault();
-
-      if (formRef.current && !formRef.current.checkValidity()) {
-        formRef.current.reportValidity();
-        return;
-      }
-
-      setIsSubmitting(true);
-      try {
-        const userId = parseInt(localStorage.getItem("userId") ?? "0", 10);
-
-        if (ownerId) {
-          await updateEntity(
-            endpoints.update,
-            ownerId,
-            formData,
-            userId,
-            false
-          );
-          await showAddUpdateResult(true, "update", "owner");
-        } else {
-          await createEntity(endpoints.add, formData, userId, false);
-          await showAddUpdateResult(true, "add", "owner");
-        }
-
-        if (submitMode === "saveAndNext") handleReset();
-        else navigate(parentListPath);
-      } catch (err) {
-        console.error(err);
-        await showAddUpdateResult(false, "error", "owner");
-      } finally {
-        setIsSubmitting(false);
-      }
-    };
-
-    useImperativeHandle(ref, () => ({
-      submit: () => requestSubmit("save"),
-      reset: () => handleReset(),
-      saveAndNext: () => requestSubmit("saveAndNext"),
-    }));
-
-    useEffect(() => {
-      fetchCountries().then(setCountries).catch(console.error);
     }, []);
 
-    useEffect(() => {
-      if (formData.countryId) {
-        fetchStatesByCountryId(formData.countryId).then((fetchedStates) => {
-          setStates(fetchedStates);
+    const handleInputChange = useCallback<
+      React.ChangeEventHandler<HTMLInputElement>
+    >(
+      (e) => {
+        const { name, value } = e.target;
 
-          if (!ownerId) {
+        if (
+          name === "mobile" ||
+          name === "alternateMobile" ||
+          name === "emergencyContactNumber"
+        ) {
+          setFieldValue(name as keyof OwnerDTO, value.replace(/\D/g, ""));
+          return;
+        }
+
+        if (name === "aadharNumber") {
+          setFieldValue("aadharNumber", value.replace(/\D/g, "").slice(0, 12));
+          return;
+        }
+
+        setFieldValue(name as keyof OwnerDTO, value);
+      },
+      [setFieldValue],
+    );
+
+    const handleSelectChange = useCallback<
+      React.ChangeEventHandler<HTMLSelectElement>
+    >(
+      (e) => {
+        const { name, value } = e.target;
+        const key = name as keyof OwnerDTO;
+
+        if (numericSelectNames.has(key)) {
+          const parsed = value === "" ? undefined : Number(value);
+
+          if (key === "countryId") {
             setFormData((prev) => ({
               ...prev,
+              countryId: parsed,
               stateId: undefined,
               districtId: undefined,
             }));
+            setStates([]);
             setDistricts([]);
+            return;
           }
-        });
-      } else {
-        setStates([]);
-        setDistricts([]);
-      }
-    }, [formData.countryId, ownerId]);
 
-    useEffect(() => {
-      if (formData.stateId) {
-        fetchDistrictsByStateId(formData.stateId).then((fetchedDistricts) => {
-          setDistricts(fetchedDistricts);
-
-          if (!ownerId) {
+          if (key === "stateId") {
             setFormData((prev) => ({
               ...prev,
+              stateId: parsed,
               districtId: undefined,
             }));
+            setDistricts([]);
+            return;
           }
-        });
-      } else {
-        setDistricts([]);
-      }
-    }, [formData.stateId, ownerId]);
 
-    const statusTiles: Array<{ name: OwnerBooleanKey; label: string }> = [
-      { name: "isFirstOwner", label: "First Owner" },
-      { name: "isDeceased", label: "Deceased" },
-      { name: "isActive", label: "Active" },
-    ];
+          setFieldValue(key, parsed);
+          return;
+        }
+
+        setFieldValue(key, value);
+      },
+      [setFieldValue],
+    );
+
+    const handleBooleanToggle = useCallback<
+      React.ChangeEventHandler<HTMLInputElement>
+    >(
+      (e) => {
+        const { name, checked } = e.target;
+        if (!isOwnerBooleanKey(name)) return;
+        setFieldValue(name, checked);
+      },
+      [setFieldValue],
+    );
+
+    const handleEmailBlur = useMemo(
+      () =>
+        onBlurNormalizeEmail((val) => {
+          setFieldValue("emailId", val);
+        }),
+      [setFieldValue],
+    );
+
+    const handleAadhaarFocus = useCallback<
+      React.FocusEventHandler<HTMLInputElement>
+    >(
+      (e) => {
+        setAadhaarFocused(true);
+        const rawDigits = (formData.aadharNumber ?? "").replace(/\D/g, "");
+        e.currentTarget.value = rawDigits;
+      },
+      [formData.aadharNumber],
+    );
+
+    const handleAadhaarBlur = useCallback<
+      React.FocusEventHandler<HTMLInputElement>
+    >(
+      (e) => {
+        const rawDigits = e.currentTarget.value.replace(/\D/g, "").slice(0, 12);
+        setFieldValue("aadharNumber", rawDigits);
+        setAadhaarFocused(false);
+      },
+      [setFieldValue],
+    );
+
+    const countryOptions = useMemo(
+      () =>
+        countries.map((c) => ({
+          label: c.countryName,
+          value: c.countryId,
+        })),
+      [countries],
+    );
+
+    const stateOptions = useMemo(
+      () =>
+        states.map((s) => ({
+          label: `${s.stateName} (${s.stateCode})`,
+          value: s.stateId,
+        })),
+      [states],
+    );
+
+    const districtOptions = useMemo(
+      () =>
+        districts.map((d) => ({
+          label: d.districtName,
+          value: d.districtId,
+        })),
+      [districts],
+    );
+
+    useEffect(() => {
+      let isActive = true;
+
+      const run = async () => {
+        try {
+          const result = await fetchCountries();
+          if (!isActive) return;
+          setCountries(result);
+        } catch (error) {
+          console.error("Failed to load countries", error);
+        }
+      };
+
+      void run();
+
+      return () => {
+        isActive = false;
+      };
+    }, []);
+
+    useEffect(() => {
+      let isActive = true;
+
+      const run = async () => {
+        if (!formData.countryId) {
+          setStates([]);
+          setDistricts([]);
+          return;
+        }
+
+        try {
+          const fetchedStates = await fetchStatesByCountryId(
+            formData.countryId,
+          );
+          if (!isActive) return;
+          setStates(fetchedStates);
+        } catch (error) {
+          if (!isActive) return;
+          setStates([]);
+          console.error("Failed to load states", error);
+        }
+      };
+
+      void run();
+
+      return () => {
+        isActive = false;
+      };
+    }, [formData.countryId]);
+
+    useEffect(() => {
+      let isActive = true;
+
+      const run = async () => {
+        if (!formData.stateId) {
+          setDistricts([]);
+          return;
+        }
+
+        try {
+          const fetchedDistricts = await fetchDistrictsByStateId(
+            formData.stateId,
+          );
+          if (!isActive) return;
+          setDistricts(fetchedDistricts);
+        } catch (error) {
+          if (!isActive) return;
+          setDistricts([]);
+          console.error("Failed to load districts", error);
+        }
+      };
+
+      void run();
+
+      return () => {
+        isActive = false;
+      };
+    }, [formData.stateId]);
+
+    const handleSubmit = useCallback(
+      async (e?: React.FormEvent<HTMLFormElement>) => {
+        if (e) e.preventDefault();
+
+        const form = formRef.current;
+        const aadhaarInput = form?.elements.namedItem(
+          "aadharNumber",
+        ) as HTMLInputElement | null;
+
+        if (aadhaarInput) {
+          aadhaarInput.setCustomValidity("");
+        }
+
+        if (aadhaarDigits.length > 0 && aadhaarDigits.length !== 12) {
+          if (aadhaarInput) {
+            aadhaarInput.setCustomValidity(
+              "Aadhar number must be exactly 12 digits",
+            );
+            aadhaarInput.reportValidity();
+            scrollToFirstInvalidField(form!);
+          }
+          return;
+        }
+
+        if (form && !form.checkValidity()) {
+          form.reportValidity();
+          scrollToFirstInvalidField(form);
+          return;
+        }
+
+        setIsSubmitting(true);
+
+        try {
+          const userId = parseInt(localStorage.getItem("userId") ?? "0", 10);
+
+          if (!Number.isFinite(userId) || userId <= 0) {
+            throw new Error(
+              "Current user id is missing. Please login again and retry.",
+            );
+          }
+
+          const payload: OwnerDTO = {
+            ...formData,
+            ownerId: ownerId ?? formData.ownerId,
+            firstName: formData.firstName.trim(),
+            lastName: formData.lastName.trim(),
+            gender: trimToNull(formData.gender) ?? "",
+            mobile: normalizeDigitField(formData.mobile) ?? "",
+            alternateMobile:
+              normalizeDigitField(formData.alternateMobile, {
+                optional: true,
+              }) ?? "",
+            emailId: trimToNull(formData.emailId) ?? "",
+            address: trimToNull(formData.address) ?? "",
+            city: trimToNull(formData.city) ?? "",
+            pinCode:
+              normalizeDigitField(formData.pinCode, {
+                optional: true,
+              }) ?? "",
+            occupation: trimToNull(formData.occupation) ?? "",
+            aadharNumber:
+              normalizeDigitField(formData.aadharNumber, {
+                optional: true,
+              }) ?? "",
+            ownershipType: trimToNull(formData.ownershipType) ?? "",
+            profilePhotoUrl: trimToNull(formData.profilePhotoUrl) ?? "",
+            idProofUrl: trimToNull(formData.idProofUrl) ?? "",
+            emergencyContactName:
+              trimToNull(formData.emergencyContactName) ?? "",
+            emergencyContactNumber:
+              normalizeDigitField(formData.emergencyContactNumber, {
+                optional: false,
+              }) ?? "",
+            notes: trimToNull(formData.notes) ?? "",
+          };
+
+          if (!payload.alternateMobile) {
+            payload.alternateMobile =
+              null as unknown as OwnerDTO["alternateMobile"];
+          }
+
+          if (!payload.emailId) {
+            payload.emailId = null as unknown as OwnerDTO["emailId"];
+          }
+
+          if (!payload.address) {
+            payload.address = null as unknown as OwnerDTO["address"];
+          }
+
+          if (!payload.city) {
+            payload.city = null as unknown as OwnerDTO["city"];
+          }
+
+          if (!payload.pinCode) {
+            payload.pinCode = null as unknown as OwnerDTO["pinCode"];
+          }
+
+          if (!payload.occupation) {
+            payload.occupation = null as unknown as OwnerDTO["occupation"];
+          }
+
+          if (!payload.aadharNumber) {
+            payload.aadharNumber = null as unknown as OwnerDTO["aadharNumber"];
+          }
+
+          if (!payload.ownershipType) {
+            payload.ownershipType =
+              null as unknown as OwnerDTO["ownershipType"];
+          }
+
+          if (!payload.profilePhotoUrl) {
+            payload.profilePhotoUrl =
+              null as unknown as OwnerDTO["profilePhotoUrl"];
+          }
+
+          if (!payload.idProofUrl) {
+            payload.idProofUrl = null as unknown as OwnerDTO["idProofUrl"];
+          }
+
+          if (!payload.emergencyContactName) {
+            payload.emergencyContactName =
+              null as unknown as OwnerDTO["emergencyContactName"];
+          }
+
+          if (!payload.notes) {
+            payload.notes = null as unknown as OwnerDTO["notes"];
+          }
+
+          if (ownerId) {
+            await updateEntity(
+              endpoints.update,
+              ownerId,
+              payload,
+              userId,
+              false,
+            );
+            await showAddUpdateResult(true, "update", "owner");
+          } else {
+            await createEntity(endpoints.add, payload, userId, false);
+            await showAddUpdateResult(true, "add", "owner");
+          }
+
+          if (submitMode === "saveAndNext") {
+            handleReset();
+          } else {
+            navigate(parentListPath);
+          }
+        } catch (err) {
+          console.error(err);
+          await showAddUpdateResult(false, "error", "owner");
+        } finally {
+          setIsSubmitting(false);
+        }
+      },
+      [
+        aadhaarDigits,
+        formData,
+        handleReset,
+        navigate,
+        ownerId,
+        parentListPath,
+        submitMode,
+      ],
+    );
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        submit: () => requestSubmit("save"),
+        reset: () => handleReset(),
+        saveAndNext: () => requestSubmit("saveAndNext"),
+      }),
+      [handleReset, requestSubmit],
+    );
 
     return (
       <SharedAddEditForm
@@ -303,7 +670,6 @@ const AddEditOwner = forwardRef<AddEditFormHandle, Props>(
         formRef={formRef}
       >
         <div className="row g-4">
-          {/* Full-width sections first (cleaner + avoids cramped layout) */}
           <div className="col-12">
             <SectionCard title="Basic Information">
               <div className="row g-3">
@@ -333,10 +699,7 @@ const AddEditOwner = forwardRef<AddEditFormHandle, Props>(
                     name="gender"
                     value={formData.gender ?? ""}
                     onChange={handleSelectChange}
-                    options={[
-                      { label: "Male", value: "Male" },
-                      { label: "Female", value: "Female" },
-                    ]}
+                    options={genderOptions}
                   />
                 </div>
               </div>
@@ -369,8 +732,9 @@ const AddEditOwner = forwardRef<AddEditFormHandle, Props>(
                     onChange={handleInputChange}
                     {...buildNumericInputProps({
                       maxDigits: 10,
-                      pattern: "^\\d{10}$",
+                      pattern: "^$|^\\d{10}$",
                       title: "Alternate mobile must be exactly 10 digits",
+                      required: false,
                     })}
                   />
                 </div>
@@ -382,9 +746,7 @@ const AddEditOwner = forwardRef<AddEditFormHandle, Props>(
                     value={formData.emailId ?? ""}
                     onChange={handleInputChange}
                     {...buildEmailProps()}
-                    onBlur={onBlurNormalizeEmail((val) =>
-                      setFormData((p) => ({ ...p, emailId: val }))
-                    )}
+                    onBlur={handleEmailBlur}
                   />
                 </div>
               </div>
@@ -432,10 +794,7 @@ const AddEditOwner = forwardRef<AddEditFormHandle, Props>(
                     name="countryId"
                     value={formData.countryId ?? ""}
                     onChange={handleSelectChange}
-                    options={countries.map((c) => ({
-                      label: c.countryName,
-                      value: c.countryId,
-                    }))}
+                    options={countryOptions}
                     required
                   />
                 </div>
@@ -446,10 +805,7 @@ const AddEditOwner = forwardRef<AddEditFormHandle, Props>(
                     name="stateId"
                     value={formData.stateId ?? ""}
                     onChange={handleSelectChange}
-                    options={states.map((s) => ({
-                      label: `${s.stateName} (${s.stateCode})`,
-                      value: s.stateId,
-                    }))}
+                    options={stateOptions}
                     disabled={!formData.countryId}
                     required
                   />
@@ -461,10 +817,7 @@ const AddEditOwner = forwardRef<AddEditFormHandle, Props>(
                     name="districtId"
                     value={formData.districtId ?? ""}
                     onChange={handleSelectChange}
-                    options={districts.map((d) => ({
-                      label: d.districtName,
-                      value: d.districtId,
-                    }))}
+                    options={districtOptions}
                     disabled={!formData.stateId}
                     required
                   />
@@ -482,18 +835,20 @@ const AddEditOwner = forwardRef<AddEditFormHandle, Props>(
                     name="aadharNumber"
                     value={formatAadhaarForDisplay(
                       formData.aadharNumber ?? "",
-                      aadhaarFocused
+                      aadhaarFocused,
                     )}
                     onChange={handleInputChange}
-                    {...buildAadhaarProps()}
-                    onFocus={(e) => {
-                      setAadhaarFocused(true);
-                      e.currentTarget.value = e.currentTarget.value.replace(
-                        /-/g,
-                        ""
-                      );
-                    }}
-                    onBlur={() => setAadhaarFocused(false)}
+                    pattern={
+                      aadhaarFocused
+                        ? "^$|^\\d{12}$"
+                        : "^$|^\\d{4}-\\d{4}-\\d{4}$"
+                    }
+                    title="Aadhar number must be exactly 12 digits"
+                    className={`form-control${isAadhaarInvalid ? " is-invalid" : ""}`}
+                    inputMode="numeric"
+                    maxLength={aadhaarFocused ? 12 : 14}
+                    onFocus={handleAadhaarFocus}
+                    onBlur={handleAadhaarBlur}
                   />
                 </div>
 
@@ -582,7 +937,9 @@ const AddEditOwner = forwardRef<AddEditFormHandle, Props>(
         </div>
       </SharedAddEditForm>
     );
-  }
+  },
 );
+
+AddEditOwner.displayName = "AddEditOwner";
 
 export default AddEditOwner;

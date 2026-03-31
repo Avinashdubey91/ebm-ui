@@ -112,11 +112,7 @@ function SharedListingTable<T>({
   const disablePaging = effectiveLoading;
 
   return (
-    <div
-      className="table-responsive p-2 position-relative"
-      style={{ overflowX: "auto", overflowY: "hidden" }}
-    >
-      {/* ✅ Component-level overlay (uses inset so it always covers the table area) */}
+    <div className="page-listing-table-scroll position-relative">
       {effectiveLoading && (
         <div
           className="position-absolute d-flex flex-column justify-content-center align-items-center"
@@ -192,12 +188,13 @@ function SharedListingTable<T>({
                           {renderCell
                             ? renderCell(item)
                             : typeof item[key] === "boolean"
-                            ? item[key]
-                              ? "Yes"
-                              : "No"
-                            : typeof item[key] === "object" || item[key] == null
-                            ? "-"
-                            : String(item[key])}
+                              ? item[key]
+                                ? "Yes"
+                                : "No"
+                              : typeof item[key] === "object" ||
+                                  item[key] == null
+                                ? "-"
+                                : String(item[key])}
                         </td>
                       ))}
 
@@ -246,7 +243,7 @@ function SharedListingTable<T>({
           </table>
 
           {pagination && (
-            <div className="d-flex align-items-center justify-content-between mt-2">
+            <div className="d-flex align-items-center justify-content-between mt-2 px-1 pb-1">
               <div className="d-flex align-items-center gap-2">
                 <span className="text-muted">{rangeText}</span>
                 <select

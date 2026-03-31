@@ -1,8 +1,10 @@
+/* Fix - remove default Vite root width and padding causing page gap */
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  text-align: left;
 }
 
 .logo {
@@ -16,6 +18,11 @@
 }
 .logo.react:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+.app-toast-container {
+  top: 72px !important;   /* adjust based on topbar height */
+  z-index: 20000 !important;
 }
 
 @keyframes logo-spin {

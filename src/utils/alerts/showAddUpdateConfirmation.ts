@@ -13,7 +13,7 @@ const putToast = (msg: string, title: string, type: "success" | "error") => {
 
 const clearToast = () => {
   ["showToast", "showToastTitle", "showToastType"].forEach((k) =>
-    sessionStorage.removeItem(k)
+    sessionStorage.removeItem(k),
   );
 };
 
@@ -27,7 +27,7 @@ export async function showAddUpdateResult(
   action: Action,
   entityName?: string,
   customMessage?: string,
-  titleOverride?: string
+  titleOverride?: string,
 ): Promise<void>;
 
 /** Toast-only mode (listing): compatible with showDeleteResult signature */
@@ -36,7 +36,7 @@ export async function showAddUpdateResult(
   entityName?: string,
   customMessage?: string,
   titleOverride?: string,
-  showToastOnly?: boolean
+  showToastOnly?: boolean,
 ): Promise<void>;
 
 /* ---------- Impl ---------- */
@@ -59,7 +59,11 @@ export async function showAddUpdateResult(
 
     const entity = cap(entityName);
     const past =
-      action === "add" ? "added" : action === "update" ? "updated" : "processed";
+      action === "add"
+        ? "added"
+        : action === "update"
+          ? "updated"
+          : "processed";
 
     if (success) {
       const title = titleOverride || `${entity} ${past}`;
@@ -110,9 +114,7 @@ export async function showAddUpdateResult(
     (success ? "success" : "error")) as "success" | "error";
 
   const title =
-    titleOverride ||
-    primedTitle ||
-    (success ? "Success" : "Error!");
+    titleOverride || primedTitle || (success ? "Success" : "Error!");
   const message =
     customMessage ||
     primedMsg ||
@@ -134,6 +136,9 @@ export async function showAddUpdateResult(
       ...options,
       toast: true,
       position: "top-end",
+      customClass: {
+        container: "app-toast-container",
+      },
     });
   } else {
     await Swal.fire(options);

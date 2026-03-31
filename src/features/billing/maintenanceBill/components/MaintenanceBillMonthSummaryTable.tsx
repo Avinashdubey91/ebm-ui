@@ -25,10 +25,13 @@ type RowVM = {
 type Props = {
   loading: boolean;
   rows: RowVM[];
-  flatOptions: MultiSelectOption[];
 
+  getFlatOptionsForMonth: (billingMonthIso: string) => MultiSelectOption[];
   getSelectedPaidIds: (billingMonthIso: string) => number[];
   onEnsurePaidIdsLoaded: (billingMonthIso: string) => Promise<void> | void;
+  onEnsureFlatOwnerLookupLoaded: (
+    billingMonthIso: string,
+  ) => Promise<void> | void;
 
   onPaidFlatsChange: (
     billingMonthIso: string,
@@ -76,9 +79,10 @@ function formatBillingMonthDate(iso: string): string {
 const MaintenanceBillMonthSummaryTable: React.FC<Props> = ({
   loading,
   rows,
-  flatOptions,
+  getFlatOptionsForMonth,
   getSelectedPaidIds,
   onEnsurePaidIdsLoaded,
+  onEnsureFlatOwnerLookupLoaded,
   onPaidFlatsChange,
   onBillPaidToggle,
   onLockToggle,
@@ -123,8 +127,8 @@ const MaintenanceBillMonthSummaryTable: React.FC<Props> = ({
     setExpandedKey((prev) => (prev === key ? null : key));
   };
 
-  const thClass = "mb-th py-1";
-  const tdClass = "mb-td py-1";
+  const thClass = "mb-th";
+  const tdClass = "mb-td";
 
   const iconSquareBtnStyle: React.CSSProperties = {
     width: 34,
@@ -141,7 +145,7 @@ const MaintenanceBillMonthSummaryTable: React.FC<Props> = ({
   };
 
   return (
-    <div className="mb-listing-table-wrap p-2 position-relative">
+    <div className="page-listing-table-scroll mb-listing-table-wrap position-relative px-1">
       {effectiveLoading && (
         <div className="mb-listing-table-overlay position-absolute d-flex flex-column justify-content-center align-items-center">
           <div className="spinner-border" role="status" aria-label="Loading" />
@@ -212,17 +216,20 @@ const MaintenanceBillMonthSummaryTable: React.FC<Props> = ({
                 </div>
               </th>
 
-              <th className={`${thClass} mb-th-center mb-col-bill-paid`}>
-                Paid
-              </th>
-              <th className={`${thClass} mb-th-center mb-col-lock`} />
-              <th className={`${thClass} mb-th-center mb-col-action`} />
+              <th className={`${thClass} mb-col-bill-paid`}>Paid</th>
+              <th
+                className={`${thClass} mb-th-center mb-col-lock mb-lock-header`}
+              />
+              <th
+                className={`${thClass} mb-th-center mb-col-action mb-action-header`}
+              />
             </tr>
           </thead>
 
           <tbody>
             {rows.map((r) => {
               const paidValue = paidValueByKey[r.key] ?? [];
+              const flatOptions = getFlatOptionsForMonth(r.billingMonth);
               const disableRowEdits = r.isLocked || !r.isBillGenerated;
               const isExpanded = expandedKey === r.key;
               const rowClassName = effectiveLoading ? "" : "mb-row-clickable";
@@ -242,7 +249,9 @@ const MaintenanceBillMonthSummaryTable: React.FC<Props> = ({
                     <td className={`${tdClass} mb-nowrap`}>
                       {r.individualMaintenanceText}
                     </td>
-                    <td className={`${tdClass} mb-nowrap`}>{r.paidCountText}</td>
+                    <td className={`${tdClass} mb-nowrap`}>
+                      {r.paidCountText}
+                    </td>
 
                     <td className="mb-update-payment-td py-1">
                       <div
@@ -262,6 +271,7 @@ const MaintenanceBillMonthSummaryTable: React.FC<Props> = ({
                           }
                           showCountOnly
                           onChange={async (values) => {
+                            await onEnsureFlatOwnerLookupLoaded(r.billingMonth);
                             await onEnsurePaidIdsLoaded(r.billingMonth);
                             await onPaidFlatsChange(r.billingMonth, values);
                           }}
@@ -273,7 +283,9 @@ const MaintenanceBillMonthSummaryTable: React.FC<Props> = ({
                       {r.isBillGenerated ? (
                         <span className="badge bg-success">Generated</span>
                       ) : (
-                        <span className="badge bg-secondary">Not Generated</span>
+                        <span className="badge bg-secondary">
+                          Not Generated
+                        </span>
                       )}
                     </td>
 
@@ -297,7 +309,7 @@ const MaintenanceBillMonthSummaryTable: React.FC<Props> = ({
                       </div>
                     </td>
 
-                    <td className="text-center py-1">
+                    <td className="text-center py-1 mb-lock-cell">
                       <div className="d-flex justify-content-center">
                         <button
                           type="button"
@@ -330,7 +342,7 @@ const MaintenanceBillMonthSummaryTable: React.FC<Props> = ({
                       </div>
                     </td>
 
-                    <td className="text-center py-1">
+                    <td className="text-center py-1 mb-action-cell">
                       <div className="d-flex justify-content-center">
                         <button
                           type="button"

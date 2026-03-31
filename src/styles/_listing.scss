@@ -70,3 +70,47 @@
 .page-listing .inner-area-header-title {
   text-align: left;
 }
+
+/* Fix - listing page should own available height */
+.page-listing {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Header should stay fixed at top of page content */
+.page-listing .inner-area-header-container {
+  flex-shrink: 0;
+}
+
+/* Content below header should be allowed to shrink and host inner scroll */
+.page-listing-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Table wrapper becomes the scroll container */
+.page-listing-table-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* Sticky table header */
+.page-listing-table-scroll .table-ebm-listing thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background-color: #6f7dfb;
+}
+
+/* Keep header corners looking proper even when sticky */
+.page-listing-table-scroll .table-ebm-listing {
+  margin-bottom: 0;
+}

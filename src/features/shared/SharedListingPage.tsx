@@ -39,7 +39,8 @@ const SharedListingPage: React.FC<SharedListingPageProps> = ({
   contentClassName,
 }) => {
   const navigate = useNavigate();
-  const { singularMenuName, pluralMenuName, createRoutePath } = useCurrentMenu();
+  const { singularMenuName, pluralMenuName, createRoutePath } =
+    useCurrentMenu();
 
   const handleAddNew = useCallback(() => {
     if (createRoutePath) {
@@ -75,7 +76,7 @@ const SharedListingPage: React.FC<SharedListingPageProps> = ({
         </div>
       </div>
 
-      <div className={contentClassName ?? ""}>
+      <div className={`page-listing-content ${contentClassName ?? ""}`.trim()}>
         <ListingComponent key={listingKey} />
       </div>
     </div>

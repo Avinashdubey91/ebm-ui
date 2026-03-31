@@ -1,15 +1,42 @@
 /* ===============================
    Maintenance Bill - Page Header
-   (headerActions uses MeterReading-like structure)
    =============================== */
-html{
-  scrollbar-gutter: stable;
-}
 
 .maintenance-bill-listing-page .meter-reading-header-actions {
   display: flex;
   justify-content: flex-end;
   width: 100%;
+}
+
+/* Fix - complete full-height chain for Maintenance Bill page */
+.maintenance-bill-listing-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.maintenance-bill-listing-page .page-listing {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.maintenance-bill-listing-page .page-listing-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.maintenance-bill-listing-page .maintenance-bill-listing-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .maintenance-bill-listing-page .meter-reading-controls {
@@ -19,7 +46,6 @@ html{
   flex-wrap: nowrap;
 }
 
-/* Remove label spacing inside header controls */
 .maintenance-bill-listing-page .meter-reading-controls .mb-2 {
   margin-bottom: 0 !important;
 }
@@ -28,19 +54,16 @@ html{
   display: none !important;
 }
 
-/* Match control heights inside header */
 .maintenance-bill-listing-page .meter-reading-controls .form-select,
 .maintenance-bill-listing-page .meter-reading-controls .form-control {
   height: 38px;
 }
 
-/* MonthPickerField wrapper fix for header row */
 .maintenance-bill-listing-page .meter-reading-controls .d-flex.flex-column {
   flex-direction: row !important;
   align-items: center !important;
 }
 
-/* SharedListingPage header alignment tweaks */
 .maintenance-bill-listing-page .inner-area-header-container {
   gap: 20px;
 }
@@ -57,36 +80,41 @@ html{
   gap: 10px;
 }
 
-/* In some layouts, tables are wrapped in .table-responsive which can clip dropdowns */
-.maintenance-bill-listing-page .table-responsive {
-  overflow: visible !important;
-}
-
 /* ===============================
    Month Summary Table
    =============================== */
 
-.mb-listing-table-wrap {
-  overflow: visible !important;
+/* Fix - make Maintenance Bill table use same shell/scroll behavior as shared listing pages */
+.maintenance-bill-listing-page .mb-listing-table-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: auto;
+  position: relative;
 }
 
+/* overlay unchanged */
 .mb-listing-table-overlay {
   inset: 0;
   z-index: 5;
   background: rgba(255, 255, 255, 0.72);
 }
 
-.mb-maintenance-table {
+/* Use same visual table behavior as other listing pages */
+.maintenance-bill-listing-page .mb-maintenance-table {
   width: 100%;
-  table-layout: fixed;
+  margin-bottom: 0;
+  table-layout: auto;
 }
 
-.mb-maintenance-table th.mb-th,
-.mb-maintenance-table td.mb-td {
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* Sticky header like shared pages */
+.maintenance-bill-listing-page .mb-maintenance-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
 }
 
+/* keep text behavior simple and close to shared pages */
 .mb-th {
   white-space: nowrap;
 }
@@ -108,60 +136,44 @@ html{
   cursor: pointer;
 }
 
-/* Column sizing (percent based to avoid table overflow) */
+/* Use min-widths instead of percentage widths so table behaves like other pages */
 .mb-col-billing-month {
-  width: 10%;
+  min-width: 170px;
 }
-
 .mb-col-total-amount {
-  width: 10%;
+  min-width: 150px;
 }
-
 .mb-col-individual-amount {
-  width: 10%;
+  min-width: 150px;
 }
-
 .mb-col-payment-status {
-  width: 10%;
+  min-width: 130px;
 }
-
 .mb-col-update-payment {
-  width: 20%;
+  min-width: 260px;
 }
-
 .mb-col-bill-status {
-  width: 10%;
+  min-width: 140px;
 }
-
 .mb-col-bill-paid {
-  width: 6%;
+  min-width: 90px;
+  padding-left: 2rem !important;
 }
 
-.mb-col-lock {
-  width: 3%;
-}
+.mb-col-lock { min-width: 42px; width: 42px; }
+.mb-col-action { min-width: 42px; width: 42px; }
 
-.mb-col-action {
-  width: 3%;
-}
-
-/* ===============================
-   Update Payment - MultiSelect
-   (keeps dropdown visible above table rows)
-   =============================== */
-
+/* Update Payment */
 .maintenance-bill-multiselect-width {
   max-width: 260px;
   width: 100%;
 }
 
-/* Count-only UX (hide chips) */
 .maintenance-bill-multiselect-width .react-select__multi-value,
 .maintenance-bill-multiselect-width .react-select__multi-value__remove {
   display: none !important;
 }
 
-/* Selected option should not be fully blue */
 .maintenance-bill-multiselect-width .react-select__option--is-selected {
   background: transparent !important;
   color: inherit !important;
@@ -171,7 +183,6 @@ html{
   background: rgba(0, 0, 0, 0.04) !important;
 }
 
-/* Ensure Update Payment cell never clips the dropdown */
 .mb-update-payment-td {
   overflow: visible !important;
   position: relative;
@@ -179,11 +190,8 @@ html{
 
 .mb-update-payment-cell {
   position: relative;
-  margin-top: -4px;
-  padding-bottom: 4px;
 }
 
-/* React-select portal/menu stacking */
 .maintenance-bill-listing-page .react-select__menu-portal {
   z-index: 9999 !important;
 }
@@ -193,10 +201,7 @@ html{
   z-index: 9999 !important;
 }
 
-/* ===============================
-   Paid checkbox + Expanded row
-   =============================== */
-
+/* Paid + Expanded */
 .mb-billpaid-checkbox {
   width: 18px;
   height: 18px;
@@ -218,6 +223,16 @@ html{
   color: #8a8a8a;
 }
 
-.maintenance-bill-listing-page .meter-reading-controls .btn[title="Generate Maintenance Bill"] {
+.maintenance-bill-listing-page
+  .meter-reading-controls
+  .btn[title="Generate Maintenance Bill"] {
   min-width: 190px;
+}
+
+.maintenance-bill-listing-page .mb-lock-cell,
+.maintenance-bill-listing-page .mb-action-cell,
+.maintenance-bill-listing-page .mb-lock-header,
+.maintenance-bill-listing-page .mb-action-header {
+  padding-left: 4px !important;
+  padding-right: 4px !important;
 }

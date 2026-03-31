@@ -64,9 +64,29 @@ const endpoints = {
   flats: "/flat/Get-All-Flats",
 };
 
-const toLabel = (v: string | number | null | undefined): string => {
-  if (v === null || v === undefined) return "-";
-  return typeof v === "string" ? v : String(v);
+const verificationStatusLabel = (
+  v: string | number | null | undefined,
+): string => {
+  if (v === null || v === undefined || v === "") return "-";
+
+  if (typeof v === "number") {
+    const byNum: Record<number, string> = {
+      0: "Pending",
+      1: "Verified",
+      2: "Failed",
+      3: "Reverification Required",
+    };
+    return byNum[v] ?? String(v);
+  }
+
+  if (v === "0") return "Pending";
+  if (v === "1") return "Verified";
+  if (v === "2") return "Failed";
+  if (v === "3") return "Reverification Required";
+
+  if (v === "ReverificationRequired") return "Reverification Required";
+
+  return v;
 };
 
 const utilityLabel = (v: string | number | null | undefined): string => {
@@ -108,11 +128,25 @@ const toFlatLabel = (f: FlatDTO): string => {
 };
 
 const prettyPhase = (v: string | number | null | undefined): string => {
-  if (v === null || v === undefined) return "-";
-  if (typeof v === "number") return String(v);
+  if (v === null || v === undefined || v === "") return "-";
+
+  if (typeof v === "number") {
+    const byNum: Record<number, string> = {
+      0: "Single-Phase",
+      1: "Two-Phase",
+      2: "Three-Phase",
+    };
+    return byNum[v] ?? String(v);
+  }
+
+  if (v === "0") return "Single-Phase";
+  if (v === "1") return "Two-Phase";
+  if (v === "2") return "Three-Phase";
+
   if (v === "SinglePhase") return "Single-Phase";
   if (v === "TwoPhase") return "Two-Phase";
   if (v === "ThreePhase") return "Three-Phase";
+
   return v;
 };
 
@@ -258,7 +292,9 @@ const MeterListing: React.FC<MeterListingProps> = ({
           label: "Flat",
           width: "160px",
           renderCell: (m) =>
-            m.flatId ? flatLabelById.get(m.flatId) ?? safeValue(m.flatId) : "N/A",
+            m.flatId
+              ? (flatLabelById.get(m.flatId) ?? safeValue(m.flatId))
+              : "N/A",
         },
         {
           key: "utilityType",
@@ -288,12 +324,13 @@ const MeterListing: React.FC<MeterListingProps> = ({
       renderExpandedRow={(m) => (
         <>
           <strong>Meter ID:</strong> {safeValue(m.meterId)} |{" "}
-          <strong>Installation Date:</strong> {formatDateDmy(m.installationDate)} |{" "}
-          <strong>Last Verified:</strong> {formatDateDmy(m.lastVerifiedDate)} |{" "}
-          <strong>Phase:</strong> {prettyPhase(m.phaseType)} |{" "}
-          <strong>Verification Status:</strong> {toLabel(m.verificationStatus)} |{" "}
-          <strong>Manufacturer:</strong> {safeValue(m.manufacturer)} |{" "}
-          <strong>Model:</strong> {safeValue(m.model)} | <strong>Serial:</strong>{" "}
+          <strong>Installation Date:</strong>{" "}
+          {formatDateDmy(m.installationDate)} | <strong>Last Verified:</strong>{" "}
+          {formatDateDmy(m.lastVerifiedDate)} | <strong>Phase:</strong>{" "}
+          {prettyPhase(m.phaseType)} | <strong>Verification Status:</strong>{" "}
+          {verificationStatusLabel(m.verificationStatus)} |{" "} | <strong>Manufacturer:</strong>{" "}
+          {safeValue(m.manufacturer)} | <strong>Model:</strong>{" "}
+          {safeValue(m.model)} | <strong>Serial:</strong>{" "}
           {safeValue(m.serialNumber)} | <strong>Reading Unit:</strong>{" "}
           {safeValue(m.readingUnit)} | <strong>Location:</strong>{" "}
           {safeValue(m.locationDescription)}

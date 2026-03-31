@@ -1,6 +1,7 @@
+/* Fix - remove extra sticky offset causing header gap below topbar */
 .inner-area-header-container {
-  position: sticky;
-  top: 56px;
+  position: relative;
+  top: 0;
   z-index: 10;
   background-color: #991e61;
   color: white;

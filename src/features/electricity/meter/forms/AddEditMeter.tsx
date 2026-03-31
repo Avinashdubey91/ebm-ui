@@ -140,15 +140,19 @@ const toFlatLabel = (f: FlatDTO): string => {
     typeof f.flatId === "number"
       ? f.flatId
       : typeof (f as unknown as Record<string, unknown>)["flatId"] === "number"
-      ? ((f as unknown as Record<string, unknown>)["flatId"] as number)
-      : undefined;
+        ? ((f as unknown as Record<string, unknown>)["flatId"] as number)
+        : undefined;
 
-  return trimmed.length > 0 ? trimmed : id !== undefined ? `Flat #${id}` : "Flat";
+  return trimmed.length > 0
+    ? trimmed
+    : id !== undefined
+      ? `Flat #${id}`
+      : "Flat";
 };
 
 const toFullName = (
   first?: string | null,
-  last?: string | null
+  last?: string | null,
 ): string | null => {
   const name = `${first ?? ""} ${last ?? ""}`.trim();
   return name.length > 0 ? name : null;
@@ -158,12 +162,12 @@ const normalizeApartmentName = (name?: string | null): string =>
   (name ?? "").trim().toLowerCase();
 
 const resolveDefaultApartmentId = (
-  items: ApartmentDTO[]
+  items: ApartmentDTO[],
 ): number | undefined => {
   if (items.length === 0) return undefined;
 
   const preferred = items.find((a) =>
-    normalizeApartmentName(a.apartmentName).includes("mittal parkview")
+    normalizeApartmentName(a.apartmentName).includes("mittal parkview"),
   );
 
   const preferredId = preferred?.apartmentId;
@@ -196,6 +200,87 @@ const mapScopeToNumber = (v: string | number): number => {
 
   const n = Number(v);
   return Number.isFinite(n) ? n : SCOPE.Personal;
+};
+
+const mapPhaseTypeToFormValue = (
+  v: string | number | null | undefined,
+): string => {
+  if (v === null || v === undefined || v === "") return "";
+  if (typeof v === "string") {
+    if (v === "0") return "SinglePhase";
+    if (v === "1") return "TwoPhase";
+    if (v === "2") return "ThreePhase";
+    return v;
+  }
+
+  const byNum: Record<number, string> = {
+    0: "SinglePhase",
+    1: "TwoPhase",
+    2: "ThreePhase",
+  };
+
+  return byNum[v] ?? "";
+};
+
+const mapVerificationStatusToFormValue = (
+  v: string | number | null | undefined,
+): string => {
+  if (v === null || v === undefined || v === "") return "";
+  if (typeof v === "string") {
+    if (v === "0") return "Pending";
+    if (v === "1") return "Verified";
+    if (v === "2") return "Failed";
+    if (v === "3") return "ReverificationRequired";
+    return v;
+  }
+
+  const byNum: Record<number, string> = {
+    0: "Pending",
+    1: "Verified",
+    2: "Failed",
+    3: "ReverificationRequired",
+  };
+
+  return byNum[v] ?? "";
+};
+
+const mapPhaseTypeToNumber = (
+  v: string | number | null | undefined,
+): number | null => {
+  if (v === null || v === undefined || v === "") return null;
+  if (typeof v === "number") return v;
+
+  if (v === "SinglePhase") return 0;
+  if (v === "TwoPhase") return 1;
+  if (v === "ThreePhase") return 2;
+
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+const mapVerificationStatusToNumber = (
+  v: string | number | null | undefined,
+): number | null => {
+  if (v === null || v === undefined || v === "") return null;
+  if (typeof v === "number") return v;
+
+  if (v === "Pending") return 0;
+  if (v === "Verified") return 1;
+  if (v === "Failed") return 2;
+  if (v === "ReverificationRequired") return 3;
+
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+const toIsoDateOrNull = (value: string): string | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return null;
+
+  return parsed.toISOString();
 };
 
 const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
@@ -236,7 +321,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
               setFormData((prev) =>
                 prev.apartmentId
                   ? prev
-                  : { ...prev, apartmentId: defaultApartmentId }
+                  : { ...prev, apartmentId: defaultApartmentId },
               );
             }
           }
@@ -260,7 +345,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
 
         const data = await fetchEntityById<MeterDTO>(
           endpoints.getById,
-          meterId
+          meterId,
         );
 
         const mapped: FormState = {
@@ -287,21 +372,9 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
 
           installationBy: data.installationBy ?? "",
           verifiedBy: data.verifiedBy ?? "",
-          verificationStatus:
-            data.verificationStatus === null ||
-            data.verificationStatus === undefined
-              ? ""
-              : typeof data.verificationStatus === "string"
-              ? data.verificationStatus
-              : String(data.verificationStatus),
+          verificationStatus: mapVerificationStatusToFormValue(data.verificationStatus),
           verificationRemarks: data.verificationRemarks ?? "",
-
-          phaseType:
-            data.phaseType === null || data.phaseType === undefined
-              ? ""
-              : typeof data.phaseType === "string"
-              ? data.phaseType
-              : String(data.phaseType),
+          phaseType: mapPhaseTypeToFormValue(data.phaseType),
 
           deactivationReason: data.deactivationReason ?? "",
         };
@@ -316,7 +389,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
     const hasUnsavedChanges = useMemo(() => {
       if (!initialRef.current) return false;
       return (Object.keys(formData) as (keyof FormState)[]).some(
-        (k) => formData[k] !== initialRef.current![k]
+        (k) => formData[k] !== initialRef.current![k],
       );
     }, [formData]);
 
@@ -334,7 +407,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
       const loadOwners = async () => {
         try {
           const res = await fetchEntity<FlatOwnerNameLookupDTO[]>(
-            `${endpoints.flatOwnerLookup}/${aptId}`
+            `${endpoints.flatOwnerLookup}/${aptId}`,
           );
           setFlatOwners(Array.isArray(res) ? res : []);
         } catch (err) {
@@ -354,7 +427,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
             value: a.apartmentId as number,
             label: a.apartmentName ?? `Apartment #${a.apartmentId as number}`,
           })),
-      [apartments]
+      [apartments],
     );
 
     const flatLabelById = useMemo(() => {
@@ -383,7 +456,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
         { value: UTILITY.Gas, label: "Gas" },
         { value: UTILITY.Heat, label: "Heat" },
       ],
-      []
+      [],
     );
 
     const scopeOptions = useMemo(
@@ -396,7 +469,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
         { value: SCOPE.CommonArea, label: "Common Area" },
         { value: SCOPE.Temporary, label: "Temporary" },
       ],
-      []
+      [],
     );
 
     const phaseOptions = useMemo(
@@ -405,7 +478,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
         { value: "TwoPhase", label: "Two-Phase" },
         { value: "ThreePhase", label: "Three-Phase" },
       ],
-      []
+      [],
     );
 
     const verificationStatusOptions = useMemo(
@@ -415,11 +488,11 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
         { value: "Failed", label: "Failed" },
         { value: "ReverificationRequired", label: "Reverification Required" },
       ],
-      []
+      [],
     );
 
     const handleChange = (
-      e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+      e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
     ) => {
       const target = e.currentTarget;
       const { name, value } = target;
@@ -482,7 +555,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
 
       if (!formData.isActive && !formData.deactivationReason.trim()) {
         window.alert(
-          "Please provide Deactivation Reason when meter is inactive."
+          "Please provide Deactivation Reason when meter is inactive.",
         );
         return false;
       }
@@ -507,18 +580,17 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
         const payload = {
           meterId: formData.meterId,
           apartmentId: formData.apartmentId!,
-          flatId: formData.flatId ?? null,
+          flatId:
+            formData.meterScope === SCOPE.Personal
+              ? (formData.flatId ?? null)
+              : null,
 
           meterNumber: formData.meterNumber.trim(),
           utilityType: formData.utilityType,
           meterScope: formData.meterScope,
 
-          installationDate: formData.installationDate
-            ? formData.installationDate
-            : null,
-          lastVerifiedDate: formData.lastVerifiedDate
-            ? formData.lastVerifiedDate
-            : null,
+          installationDate: toIsoDateOrNull(formData.installationDate),
+          lastVerifiedDate: toIsoDateOrNull(formData.lastVerifiedDate),
 
           isActive: formData.isActive,
           isSmartMeter: formData.isSmartMeter,
@@ -531,11 +603,15 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
 
           installationBy: formData.installationBy.trim() || null,
           verifiedBy: formData.verifiedBy.trim() || null,
-          verificationStatus: formData.verificationStatus || null,
+          verificationStatus: mapVerificationStatusToNumber(
+            formData.verificationStatus,
+          ),
           verificationRemarks: formData.verificationRemarks.trim() || null,
 
-          phaseType: formData.phaseType || null,
-          deactivationReason: formData.deactivationReason.trim() || null,
+          phaseType: mapPhaseTypeToNumber(formData.phaseType),
+          deactivationReason: formData.isActive
+            ? null
+            : formData.deactivationReason.trim() || null,
         };
 
         if (isEdit && meterId) {
@@ -834,7 +910,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
         </div>
       </SharedAddEditForm>
     );
-  }
+  },
 );
 
 export default AddEditMeter;

@@ -43,30 +43,6 @@ function getMonthFromMonthYear(monthYear: string): number | null {
   return month;
 }
 
-const useWindowVerticalScrollbar = (): boolean => {
-  const [hasScrollbar, setHasScrollbar] = useState(false);
-
-  useEffect(() => {
-    const update = () => {
-      const docEl = document.documentElement;
-      setHasScrollbar(window.innerWidth > docEl.clientWidth);
-    };
-
-    const scheduleUpdate = () => {
-      window.requestAnimationFrame(update);
-    };
-
-    scheduleUpdate();
-    window.addEventListener("resize", scheduleUpdate);
-
-    return () => {
-      window.removeEventListener("resize", scheduleUpdate);
-    };
-  }, []);
-
-  return hasScrollbar;
-};
-
 const MaintenanceBillListingPage: React.FC = () => {
   const [apartments, setApartments] = useState<ApartmentDTO[]>([]);
   const [selectedApartmentId, setSelectedApartmentId] = useState<
@@ -77,9 +53,6 @@ const MaintenanceBillListingPage: React.FC = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const year = useMemo(() => getYearFromMonthYear(monthYear), [monthYear]);
-
-  const hasWindowScrollbar = useWindowVerticalScrollbar();
-  const contentClassName = hasWindowScrollbar ? "me-3" : "";
 
   useEffect(() => {
     const run = async () => {
@@ -213,7 +186,6 @@ const MaintenanceBillListingPage: React.FC = () => {
       <SharedListingPage
         title="MAINTENANCE BILL"
         headerActions={headerActions}
-        contentClassName={contentClassName}
         ListingComponent={ListingComponent}
       />
     </div>

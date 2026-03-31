@@ -179,6 +179,7 @@ body {
 .dashboard-ebm-sidebar.dashboard-ebm-collapsed ~ .dashboard-ebm-main-content {
   margin-left: 70px;
 }
+/* Fix - constrain dashboard content area for inner scrolling */
 .dashboard-ebm-main-area {
   display: flex;
   flex-direction: column;
@@ -186,19 +187,26 @@ body {
   margin-left: 260px;
   transition: margin-left 0.3s ease;
   flex-grow: 1;
-  min-height: calc(100vh - 56px); /* Ensure full vertical fill excluding topbar */
+  height: calc(100vh - 56px);
   width: calc(100vw - 260px);
   box-sizing: border-box;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .dashboard-ebm-sidebar.dashboard-ebm-collapsed ~ .dashboard-ebm-main-area {
   width: calc(100vw - 70px);
   margin-left: 70px;
 }
+
 .dashboard-ebm-main-area-inner {
-  flex-grow: 1;
+  flex: 1 1 auto;
   width: 100%;
   box-sizing: border-box;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ===================== Inputs ===================== */

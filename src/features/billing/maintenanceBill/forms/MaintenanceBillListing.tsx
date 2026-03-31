@@ -33,7 +33,7 @@ type FlatLookupItem = {
 
 const endpoints = {
   monthSummary: "/MonthlyBilling/Get-MaintenanceBill-MonthSummary",
-  flatOwnerLookup: "/MonthlyBilling/Get-FlatOwnerLookup",
+  generatedFlatOwnerLookup: "/MonthlyBilling/Get-Generated-FlatOwnerLookup",
   paidFlatIds: "/MonthlyBilling/Get-MaintenanceBill-PaidFlatIds",
   updateFlatPayment: "/MonthlyBilling/Update-FlatPaymentStatus",
   updateBillStatus: "/MonthlyBilling/Update-Bill-Status-For-Apartment",
@@ -152,7 +152,13 @@ const MaintenanceBillListing: React.FC<Props> = ({
   >([]);
 
   // Lookup contains flatId + owner name parts (flatNumber is NOT reliable here)
-  const [flatOwners, setFlatOwners] = useState<FlatOwnerNameLookupDTO[]>([]);
+  const [flatOwnersByMonthKey, setFlatOwnersByMonthKey] = useState<
+    Record<MonthKey, FlatOwnerNameLookupDTO[]>
+  >({});
+  const flatOwnersByMonthKeyRef = useRef<
+    Record<MonthKey, FlatOwnerNameLookupDTO[]>
+  >({});
+  const flatOwnerLookupInFlightRef = useRef<Set<MonthKey>>(new Set());
 
   // ExtraExpense approach: get flatNumber from flat master
   const [flats, setFlats] = useState<FlatLookupItem[]>([]);
@@ -167,33 +173,37 @@ const MaintenanceBillListing: React.FC<Props> = ({
     return m;
   }, [flats]);
 
-  const flatOptions: MultiSelectOption[] = useMemo(() => {
-    const items = [...flatOwners];
+  const getFlatOptionsForMonth = useCallback(
+    (billingMonthIso: string): MultiSelectOption[] => {
+      const key = toMonthKeyFromBillingMonth(billingMonthIso);
+      const items = [...(flatOwnersByMonthKey[key] ?? [])];
 
-    const getFlatLabel = (flatId: number): string => {
-      return flatLabelById.get(flatId) ?? `Flat #${flatId}`;
-    };
-
-    items.sort((a, b) => {
-      const aLabel = getFlatLabel(a.flatId);
-      const bLabel = getFlatLabel(b.flatId);
-      return aLabel.localeCompare(bLabel, undefined, {
-        numeric: true,
-        sensitivity: "base",
-      });
-    });
-
-    return items.map((o) => {
-      const owner = buildOwnerDisplayName(o);
-      const flatLabel = getFlatLabel(o.flatId);
-      const label = owner.length > 0 ? `${owner} (${flatLabel})` : flatLabel;
-
-      return {
-        label,
-        value: String(o.flatId),
+      const getFlatLabel = (flatId: number): string => {
+        return flatLabelById.get(flatId) ?? `Flat #${flatId}`;
       };
-    });
-  }, [flatOwners, flatLabelById]);
+
+      items.sort((a, b) => {
+        const aLabel = getFlatLabel(a.flatId);
+        const bLabel = getFlatLabel(b.flatId);
+        return aLabel.localeCompare(bLabel, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        });
+      });
+
+      return items.map((o) => {
+        const owner = buildOwnerDisplayName(o);
+        const flatLabel = getFlatLabel(o.flatId);
+        const label = owner.length > 0 ? `${owner} (${flatLabel})` : flatLabel;
+
+        return {
+          label,
+          value: String(o.flatId),
+        };
+      });
+    },
+    [flatOwnersByMonthKey, flatLabelById],
+  );
 
   const [paidIdsByMonthKey, setPaidIdsByMonthKey] = useState<
     Record<MonthKey, number[]>
@@ -204,6 +214,10 @@ const MaintenanceBillListing: React.FC<Props> = ({
   useEffect(() => {
     paidIdsByMonthKeyRef.current = paidIdsByMonthKey;
   }, [paidIdsByMonthKey]);
+
+  useEffect(() => {
+    flatOwnersByMonthKeyRef.current = flatOwnersByMonthKey;
+  }, [flatOwnersByMonthKey]);
 
   const now = useMemo(() => new Date(), []);
 
@@ -322,22 +336,40 @@ const MaintenanceBillListing: React.FC<Props> = ({
     };
   }, []);
 
-  const loadFlatOwnerLookup = useCallback(async () => {
-    if (!apartmentId) {
-      setFlatOwners([]);
-      return;
-    }
+  const ensureFlatOwnerLookupLoaded = useCallback(
+    async (billingMonthIso: string) => {
+      if (!apartmentId || !year) return;
 
-    try {
-      const endpoint = `${endpoints.flatOwnerLookup}/${apartmentId}`;
-      const raw = await fetchAllEntities<unknown>(endpoint);
-      const list = normalizeLookupArray<FlatOwnerNameLookupDTO>(raw);
-      setFlatOwners(list);
-    } catch (err) {
-      console.error("Failed to load flat owner lookup", err);
-      setFlatOwners([]);
-    }
-  }, [apartmentId]);
+      const key = toMonthKeyFromBillingMonth(billingMonthIso);
+
+      if (flatOwnersByMonthKeyRef.current[key] !== undefined) return;
+      if (flatOwnerLookupInFlightRef.current.has(key)) return;
+
+      flatOwnerLookupInFlightRef.current.add(key);
+
+      try {
+        const month = getMonthNumberFromBillingMonth(billingMonthIso);
+        const endpoint = `${endpoints.generatedFlatOwnerLookup}?apartmentId=${apartmentId}&year=${year}&month=${month}`;
+
+        const raw = await fetchAllEntities<unknown>(endpoint);
+        const list = normalizeLookupArray<FlatOwnerNameLookupDTO>(raw);
+
+        setFlatOwnersByMonthKey((prev) => ({
+          ...prev,
+          [key]: list,
+        }));
+      } catch (err) {
+        console.error("Failed to load generated flat owner lookup", err);
+        setFlatOwnersByMonthKey((prev) => ({
+          ...prev,
+          [key]: [],
+        }));
+      } finally {
+        flatOwnerLookupInFlightRef.current.delete(key);
+      }
+    },
+    [apartmentId, year],
+  );
 
   const ensurePaidIdsLoaded = useCallback(
     async (billingMonthIso: string) => {
@@ -377,9 +409,19 @@ const MaintenanceBillListing: React.FC<Props> = ({
   }, [apartmentId, ensurePaidIdsLoaded, visibleRows]);
 
   useEffect(() => {
+    if (!apartmentId) return;
+
+    visibleRows
+      .filter((r) => r.isBillGenerated)
+      .map((r) => r.billingMonth)
+      .forEach((bm) => {
+        void ensureFlatOwnerLookupLoaded(bm);
+      });
+  }, [apartmentId, visibleRows, ensureFlatOwnerLookupLoaded]);
+
+  useEffect(() => {
     void loadMonthSummary();
-    void loadFlatOwnerLookup();
-  }, [loadFlatOwnerLookup, loadMonthSummary, refreshKey]);
+  }, [loadMonthSummary, refreshKey]);
 
   const getSelectedPaidIds = useCallback(
     (billingMonthIso: string): number[] => {
@@ -459,17 +501,20 @@ const MaintenanceBillListing: React.FC<Props> = ({
   }, []);
 
   return (
-    <MaintenanceBillMonthSummaryTable
-      loading={loading}
-      rows={visibleRows}
-      flatOptions={flatOptions}
-      getSelectedPaidIds={getSelectedPaidIds}
-      onEnsurePaidIdsLoaded={ensurePaidIdsLoaded}
-      onPaidFlatsChange={updatePaidFlats}
-      onBillPaidToggle={handleBillPaidToggle}
-      onLockToggle={handleLockToggle}
-      onPrint={handlePrint}
-    />
+    <div className="maintenance-bill-listing-content">
+      <MaintenanceBillMonthSummaryTable
+        loading={loading}
+        rows={visibleRows}
+        getFlatOptionsForMonth={getFlatOptionsForMonth}
+        getSelectedPaidIds={getSelectedPaidIds}
+        onEnsurePaidIdsLoaded={ensurePaidIdsLoaded}
+        onEnsureFlatOwnerLookupLoaded={ensureFlatOwnerLookupLoaded}
+        onPaidFlatsChange={updatePaidFlats}
+        onBillPaidToggle={handleBillPaidToggle}
+        onLockToggle={handleLockToggle}
+        onPrint={handlePrint}
+      />
+    </div>
   );
 };
 

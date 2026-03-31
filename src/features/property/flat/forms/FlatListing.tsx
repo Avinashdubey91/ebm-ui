@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchAllEntities, deleteEntity } from "../../../../api/genericCrudApi";
 import type { FlatDTO } from "../../../../types/FlatDTO";
-import { safeValue } from "../../../../utils/format";
+import { safeValue, toAcronym } from "../../../../utils/format";
 import SharedListingTable from "../../../shared/SharedListingTable";
 import {
   showDeleteConfirmation,
@@ -86,6 +86,12 @@ const FlatListing: React.FC = () => {
       loading={loading}
       columns={[
         { key: "flatNumber", label: "Flat No", width: "80px" },
+        {
+          key: "apartmentName",
+          label: "Apartment",
+          width: "120px",
+          renderCell: (f) => toAcronym(safeValue(f.apartmentName, "")),
+        },
         { key: "floorNumber", label: "Floor", width: "70px" },
         { key: "flatType", label: "Type", width: "100px" },
         { key: "superBuiltUpArea", label: "Area (sq.ft)", width: "100px" },
@@ -95,12 +101,6 @@ const FlatListing: React.FC = () => {
           label: "Rented",
           width: "80px",
           renderCell: (f) => (f.isRented ? "Yes" : "No"),
-        },
-        {
-          key: "isFurnished",
-          label: "Furnished",
-          width: "100px",
-          renderCell: (f) => (f.isFurnished ? "Yes" : "No"),
         },
         {
           key: "hasGasPipeline",
