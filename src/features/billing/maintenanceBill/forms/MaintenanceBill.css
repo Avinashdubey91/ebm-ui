@@ -91,6 +91,14 @@
   overflow-x: auto;
   overflow-y: auto;
   position: relative;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.maintenance-bill-listing-page .mb-listing-table-wrap::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 /* overlay unchanged */
@@ -199,6 +207,31 @@
 .mb-update-payment-cell .react-select__menu,
 .mb-update-payment-cell .react-select__menu-portal {
   z-index: 9999 !important;
+}
+
+.react-select__menu-list,
+.react-select__menu,
+.react-select__menu-portal .react-select__menu-list,
+.maintenance-bill-listing-page .react-select__menu-list,
+.mb-update-payment-cell .react-select__menu-list {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.react-select__menu-list::-webkit-scrollbar,
+.react-select__menu::-webkit-scrollbar,
+.react-select__menu-portal .react-select__menu-list::-webkit-scrollbar,
+.maintenance-bill-listing-page .react-select__menu-list::-webkit-scrollbar,
+.mb-update-payment-cell .react-select__menu-list::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+
+.react-select__menu-list,
+.react-select__menu-portal .react-select__menu-list {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
 }
 
 /* Paid + Expanded */

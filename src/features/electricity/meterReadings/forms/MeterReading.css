@@ -66,12 +66,16 @@
 .mr-entry-dialog {
   width: 100%;
   max-width: 1150px;
+  max-height: calc(100vh - 120px);
 }
 
 .mr-entry-content {
   position: relative;
   border-radius: 18px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 120px);
 }
 
 .mr-entry-topbar {
@@ -89,13 +93,17 @@
 
 .mr-entry-body {
   padding: 18px 22px 20px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .mr-entry-actions {
+  flex-shrink: 0;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: 14px;
 }
 
 .mr-entry-table th,
@@ -205,6 +213,58 @@
 .meter-reading-listing-page .meter-reading-controls .d-flex.flex-column {
   flex-direction: row !important;
   align-items: center !important;
+}
+
+.mr-entry-separator {
+  flex-shrink: 0;
+  margin: 1rem 0;
+}
+
+.mr-entry-table-section {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mr-entry-table-responsive {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mr-entry-table-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  border-radius: 12px;
+  overflow-y: auto;
+  overflow-x: auto;
+  border: 1px solid #cfd8ea;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.mr-entry-table-wrap::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* Fix - keep Meter Reading Entry modal table header always visible */
+.mr-entry-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #b7cae8; /* match current header tone */
+}
+
+.mr-entry-table thead tr {
+  position: relative;
+  z-index: 3;
 }
 
 /*--END----Meter-Reading Listing Page CSS Classes----*/

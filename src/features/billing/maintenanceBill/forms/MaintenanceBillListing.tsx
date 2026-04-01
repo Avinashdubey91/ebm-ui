@@ -190,7 +190,8 @@ const MaintenanceBillListing: React.FC<Props> = ({
           sensitivity: "base",
         });
       });
-
+      
+      //Need More Values in Multi-Select Dropdown then Disable from Below Line to end of this return and enable "const realOptions" to "return [...realOptions, ...dummyOptions];"
       return items.map((o) => {
         const owner = buildOwnerDisplayName(o);
         const flatLabel = getFlatLabel(o.flatId);
@@ -201,6 +202,28 @@ const MaintenanceBillListing: React.FC<Props> = ({
           value: String(o.flatId),
         };
       });
+
+      // const realOptions = items.map((o) => {
+      //   const owner = buildOwnerDisplayName(o);
+      //   const flatLabel = getFlatLabel(o.flatId);
+      //   const label = owner.length > 0 ? `${owner} (${flatLabel})` : flatLabel;
+
+      //   return {
+      //     label,
+      //     value: String(o.flatId),
+      //   };
+      // });
+
+      // // TEMP ONLY - local UI verification for dropdown internal scroll
+      // const dummyOptions: MultiSelectOption[] = Array.from(
+      //   { length: 20 },
+      //   (_, i) => ({
+      //     label: `Dummy Owner ${i + 1} (Flat D-${i + 1})`,
+      //     value: `dummy-${i + 1}`,
+      //   }),
+      // );
+
+      // return [...realOptions, ...dummyOptions];
     },
     [flatOwnersByMonthKey, flatLabelById],
   );

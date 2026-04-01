@@ -36,7 +36,7 @@ const SharedAddEditForm = forwardRef<AddEditFormHandle, SharedAddEditFormProps>(
       formRef,
       isEditMode,
     },
-    ref
+    ref,
   ) => {
     const internalFormRef = useRef<HTMLFormElement | null>(null);
     const formRefToUse = formRef ?? internalFormRef;
@@ -76,7 +76,10 @@ const SharedAddEditForm = forwardRef<AddEditFormHandle, SharedAddEditFormProps>(
               {singularMenuName ? singularMenuName.toUpperCase() : ""}
             </h4>
             <div className="pe-3 gap-2 d-flex" style={{ flexShrink: 0 }}>
-              <button type="submit" className="btn btn-success add-edit-action-button ">
+              <button
+                type="submit"
+                className="btn btn-success add-edit-action-button "
+              >
                 <i className="fa fa-save me-2" />
                 {isEditMode ? "Update" : "Save"}
               </button>
@@ -110,11 +113,13 @@ const SharedAddEditForm = forwardRef<AddEditFormHandle, SharedAddEditFormProps>(
               </button>
             </div>
           </div>
-          <div className="p-4 position-relative"> {children} </div>
+          <div className="p-4 position-relative shared-add-edit-form-body">
+            {children}
+          </div>
         </form>
       </>
     );
-  }
+  },
 );
 
 export default SharedAddEditForm;

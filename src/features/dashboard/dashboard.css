@@ -52,6 +52,25 @@ body {
   line-height: 1;
 }
 
+/* Fix - compact readonly system time box in topbar */
+.dashboard-ebm-system-time-box {
+  max-width: 115px;
+  height: 38px;
+  padding: 0.375rem 0.75rem;
+  text-align: center;
+  font-weight: 700;
+  background-color: #ffffff;
+  color: #212529;
+  border: 1px solid #ced4da;
+  border-radius: 0.375rem;
+  box-sizing: border-box;
+}
+
+.dashboard-ebm-system-time-box[readonly] {
+  cursor: default;
+  opacity: 1;
+}
+
 /* ===================== Sidebar ===================== */
 .dashboard-ebm-sidebar {
   position: fixed;
@@ -207,6 +226,54 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+/* ===================== Shared Listing Scroll ===================== */
+/* Fix - hide visible vertical scrollbar for all shared listing tables */
+.page-listing-table-scroll {
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* IE / old Edge */
+}
+
+.page-listing-table-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;                /* Chrome / Safari / Edge */
+}
+
+/* ===================== Shared Add/Edit Form Scroll ===================== */
+/* Fix - restore form scrolling inside constrained dashboard layout */
+.page-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.page-form form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.page-form .shared-add-edit-form-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;       
+  -ms-overflow-style: none; 
+}
+
+.page-form .shared-add-edit-form-body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 /* ===================== Inputs ===================== */

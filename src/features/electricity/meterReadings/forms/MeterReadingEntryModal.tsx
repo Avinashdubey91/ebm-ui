@@ -12,7 +12,7 @@ import {
   safeValue,
 } from "../../../../utils/format";
 import { showAddUpdateResult } from "../../../../utils/alerts/showAddUpdateConfirmation";
-import { showActionConfirmation } from "../../../../utils/alerts/showDeleteConfirmation";
+import { showConfirmationDialog } from "../../../../utils/alerts/showConfirmationDialog";
 
 import type { ReadingTypeDTO } from "../../../../types/ReadingTypeDTO";
 import type {
@@ -66,7 +66,7 @@ const parseYmd = (ymd: string): { y: number; m: number; d: number } | null => {
 };
 
 const getBillingPeriod = (
-  readingYmd: string
+  readingYmd: string,
 ): { from: string; to: string; label: string } => {
   const parsed = parseYmd(readingYmd);
   if (!parsed) return { from: "", to: "", label: "-" };
@@ -100,10 +100,10 @@ const pickMonthlyReadingTypeId = (types: ReadingTypeDTO[]): number | null => {
     String(x.typeName ?? "")
       .trim()
       .toLowerCase()
-      .includes("monthly")
+      .includes("monthly"),
   );
   if (monthly?.readingTypeId) return monthly.readingTypeId;
-  return types.length > 0 ? types[0].readingTypeId ?? null : null;
+  return types.length > 0 ? (types[0].readingTypeId ?? null) : null;
 };
 
 const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
@@ -116,7 +116,7 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
   const [apartmentId, setApartmentId] = useState<number | null>(null);
   const [readingDate, setReadingDate] = useState<string>(
-    () => normalizeToYmd(new Date()) || ""
+    () => normalizeToYmd(new Date()) || "",
   );
 
   const [readingDateError, setReadingDateError] = useState<string>("");
@@ -131,7 +131,7 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
       entryRows: "/meterreading/Get-MeterReading-Entry-Rows",
       bulkCreate: "/meterreading/Add-MeterReadings-Bulk",
     }),
-    []
+    [],
   );
 
   const billing = useMemo(() => getBillingPeriod(readingDate), [readingDate]);
@@ -141,11 +141,18 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
       apartments.map((a) => ({
         value: a.apartmentId,
         label: String(
-          a.apartmentName ?? a.name ?? `Apartment #${a.apartmentId}`
+          a.apartmentName ?? a.name ?? `Apartment #${a.apartmentId}`,
         ),
       })),
-    [apartments]
+    [apartments],
   );
+
+  const selectedApartmentLabel = useMemo(() => {
+    const found = apartments.find((a) => a.apartmentId === apartmentId);
+    return String(
+      found?.apartmentName ?? found?.name ?? apartmentId ?? "",
+    ).trim();
+  }, [apartments, apartmentId]);
 
   const readingTypeOptions = useMemo(
     () =>
@@ -153,7 +160,7 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
         value: t.readingTypeId,
         label: String(t.typeName ?? `Type #${t.readingTypeId}`),
       })),
-    [readingTypes]
+    [readingTypes],
   );
 
   const resetState = () => {
@@ -224,9 +231,21 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!topError) return;
+
+    const timerId = window.setTimeout(() => {
+      setTopError("");
+    }, 5000);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [topError]);
+
   const setRowValue = (meterId: number, next: Partial<EntryRowState>) => {
     setRows((prev) =>
-      prev.map((r) => (r.meterId === meterId ? { ...r, ...next } : r))
+      prev.map((r) => (r.meterId === meterId ? { ...r, ...next } : r)),
     );
   };
 
@@ -299,7 +318,7 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
         }
 
         return { ...r, error: undefined };
-      })
+      }),
     );
 
     return ok;
@@ -317,7 +336,7 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
     if (filledRows.length === 0) {
       setTopError(
-        "Please enter at least one Current Reading before finalising."
+        "Please enter at least one Current Reading before finalising.",
       );
       return;
     }
@@ -327,14 +346,14 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
       return;
     }
 
-    const confirmed = await showActionConfirmation({
-      title: "Confirm Finalize",
-      text: "Are you sure to Finalize these Meter Reading Entries ?",
+    const confirmed = await showConfirmationDialog({
+      title: `Confirm Reading Entry for ${billing.label}`,
+      html: `You have entered meter readings for <b>${selectedApartmentLabel || "the selected apartment"}</b> for <b>${billing.label.replace("-", " ")}</b>. Do you want to finalise them?`,
       icon: "warning",
-      confirmButtonText: "Finalize",
+      confirmButtonText: "Finalise",
       cancelButtonText: "Cancel",
       confirmButtonColor: "#28a745",
-      cancelButtonColor: "#aaa",
+      cancelButtonColor: "#6c757d",
     });
 
     if (!confirmed) return;
@@ -431,7 +450,9 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
                 />
                 <div
                   className="mr-entry-field-help text-danger"
-                  style={{ visibility: readingDateError ? "visible" : "hidden" }}
+                  style={{
+                    visibility: readingDateError ? "visible" : "hidden",
+                  }}
                 >
                   {readingDateError || "placeholder"}
                 </div>
@@ -458,107 +479,109 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
             {step === "table" ? (
               <>
-                <hr />
-                <div className="table-responsive">
-                  <div className="mr-entry-table-wrap">
-                    <table className="table table-striped table-bordered mr-entry-table">
-                      <thead className="table-primary">
-                        <tr>
-                          <th>Flat Number</th>
-                          <th>OwnerName / RenterName</th>
-                          <th>Reading Date</th>
-                          <th>Billing Month</th>
-                          <th>Reading Type</th>
-                          <th>Current Reading</th>
-                        </tr>
-                      </thead>
+                <hr className="mr-entry-separator" />
+                <div className="mr-entry-table-section">
+                  <div className="table-responsive mr-entry-table-responsive">
+                    <div className="mr-entry-table-wrap">
+                      <table className="table table-striped table-bordered mr-entry-table">
+                        <thead className="table-primary">
+                          <tr>
+                            <th>Flat Number</th>
+                            <th>OwnerName / RenterName</th>
+                            <th>Reading Date</th>
+                            <th>Billing Month</th>
+                            <th>Reading Type</th>
+                            <th>Current Reading</th>
+                          </tr>
+                        </thead>
 
-                      <tbody>
-                        {rows.map((r) => {
-                          const owner = safeValue(r.ownerName);
-                          const renter = safeValue(r.renterName);
-                          const combinedOwnerRenter =
-                            safeValue(r.ownerRenterDisplay) !== "-"
-                              ? safeValue(r.ownerRenterDisplay)
-                              : owner !== "-" && renter !== "-"
-                              ? `${owner} / ${renter}`
-                              : owner !== "-"
-                              ? owner
-                              : renter;
+                        <tbody>
+                          {rows.map((r) => {
+                            const owner = safeValue(r.ownerName);
+                            const renter = safeValue(r.renterName);
+                            const combinedOwnerRenter =
+                              safeValue(r.ownerRenterDisplay) !== "-"
+                                ? safeValue(r.ownerRenterDisplay)
+                                : owner !== "-" && renter !== "-"
+                                  ? `${owner} / ${renter}`
+                                  : owner !== "-"
+                                    ? owner
+                                    : renter;
 
-                          return (
-                            <tr key={r.meterId}>
-                              <td>
-                                {safeValue(r.flatNumber) === "-"
-                                  ? "N/A"
-                                  : safeValue(r.flatNumber)}
-                              </td>
-                              <td>{combinedOwnerRenter || "-"}</td>
-                              <td>{formatDateDmy(readingDate)}</td>
-                              <td>{billing.label}</td>
+                            return (
+                              <tr key={r.meterId}>
+                                <td>
+                                  {safeValue(r.flatNumber) === "-"
+                                    ? "N/A"
+                                    : safeValue(r.flatNumber)}
+                                </td>
+                                <td>{combinedOwnerRenter || "-"}</td>
+                                <td>{formatDateDmy(readingDate)}</td>
+                                <td>{billing.label}</td>
 
-                              <td style={{ minWidth: 220 }}>
-                                <SelectField
-                                  name={`readingType-${r.meterId}`}
-                                  label=""
-                                  value={r.readingTypeId ?? ""}
-                                  options={readingTypeOptions}
-                                  onChange={(e) => {
-                                    const v = Number(e.currentTarget.value);
-                                    setRowValue(r.meterId, {
-                                      readingTypeId: Number.isFinite(v)
-                                        ? v
-                                        : null,
-                                      error: undefined,
-                                    });
-                                  }}
-                                  disabled={saving}
-                                />
-                              </td>
+                                <td style={{ minWidth: 220 }}>
+                                  <SelectField
+                                    name={`readingType-${r.meterId}`}
+                                    label=""
+                                    value={r.readingTypeId ?? ""}
+                                    options={readingTypeOptions}
+                                    onChange={(e) => {
+                                      const v = Number(e.currentTarget.value);
+                                      setRowValue(r.meterId, {
+                                        readingTypeId: Number.isFinite(v)
+                                          ? v
+                                          : null,
+                                        error: undefined,
+                                      });
+                                    }}
+                                    disabled={saving}
+                                  />
+                                </td>
 
-                              <td style={{ minWidth: 200 }}>
-                                <input
-                                  type="text"
-                                  className={`form-control mr-entry-reading-input ${
-                                    r.error ? "is-invalid" : ""
-                                  }`}
-                                  inputMode="numeric"
-                                  value={r.readingValueText}
-                                  onChange={(e) => {
-                                    const next = normalizeDigitsOnly(
-                                      e.currentTarget.value,
-                                      12
-                                    );
-                                    setRowValue(r.meterId, {
-                                      readingValueText: next,
-                                      error: undefined,
-                                    });
-                                  }}
-                                  disabled={saving}
-                                  placeholder="Numbers only"
-                                />
-                                {r.error ? (
-                                  <div className="invalid-feedback d-block">
-                                    {r.error}
-                                  </div>
-                                ) : null}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {rows.length === 0 ? (
-                    <div className="alert alert-warning text-center">
-                      No active meters found for this apartment.
+                                <td style={{ minWidth: 200 }}>
+                                  <input
+                                    type="text"
+                                    className={`form-control mr-entry-reading-input ${
+                                      r.error ? "is-invalid" : ""
+                                    }`}
+                                    inputMode="numeric"
+                                    value={r.readingValueText}
+                                    onChange={(e) => {
+                                      const next = normalizeDigitsOnly(
+                                        e.currentTarget.value,
+                                        12,
+                                      );
+                                      setRowValue(r.meterId, {
+                                        readingValueText: next,
+                                        error: undefined,
+                                      });
+                                    }}
+                                    disabled={saving}
+                                    placeholder="Numbers only"
+                                  />
+                                  {r.error ? (
+                                    <div className="invalid-feedback d-block">
+                                      {r.error}
+                                    </div>
+                                  ) : null}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
-                  ) : null}
+
+                    {rows.length === 0 ? (
+                      <div className="alert alert-warning text-center m-3">
+                        No active meters found for this apartment.
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
 
                 {rows.length > 0 ? (
-                  <div className="mr-entry-actions">
+                  <div className="mr-entry-actions pt-3">
                     <button
                       type="button"
                       className="btn btn-success"

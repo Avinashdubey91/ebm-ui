@@ -97,20 +97,20 @@ const emptyForm: FormState = {
   lastVerifiedDate: "",
 
   isActive: true,
-  isSmartMeter: false,
+  isSmartMeter: true,
 
-  manufacturer: "",
-  model: "",
-  serialNumber: "",
-  readingUnit: "",
-  locationDescription: "",
+  manufacturer: "L&T",
+  model: "EM101",
+  serialNumber: "CML-6250861",
+  readingUnit: "kWh",
+  locationDescription: "Beside basement Elevator",
 
-  installationBy: "",
-  verifiedBy: "",
+  installationBy: "Electricity Board",
+  verifiedBy: "JUSCO",
   verificationStatus: "",
-  verificationRemarks: "",
+  verificationRemarks: "Working",
 
-  phaseType: "",
+  phaseType: "0",
   deactivationReason: "",
 };
 
