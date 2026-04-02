@@ -1,38 +1,58 @@
-import { useMemo } from 'react';
+import { useContext, useMemo } from 'react';
 import { useLocation, useRoutes } from 'react-router-dom';
+import type { RouteObject } from 'react-router-dom';
 import { baseRoutes } from '../routes/AppRoutes';
 import { generateRoutes } from '../utils/generateRoutes';
-import { useMenuData } from '../features/dashboard/hooks/useMenuData';
 import { DYNAMIC_MENU_BASE_PATH } from '../constants/routes';
 import LoaderOverlay from '../components/common/LoaderOverlay';
+import { MenuContext } from '../context/MenuContext';
 
 const AppRoutes = () => {
   const location = useLocation();
   const isLoginPage = location.pathname === '/login';
+  const menuContext = useContext(MenuContext);
 
-  const { menus, loading, isAuthenticated } = useMenuData();
+  if (!menuContext) {
+    throw new Error('AppRoutes must be used within MenuProvider');
+  }
+
+  const { menus, loading, isAuthenticated } = menuContext;
 
   const routes = useMemo(() => {
-    const newRoutes = [...baseRoutes];
+    const dynamicRoutes =
+      !isLoginPage && isAuthenticated && menus.length > 0
+        ? generateRoutes(menus)
+        : [];
 
-    if (!isLoginPage && isAuthenticated && menus.length > 0) {
-      const rootRoute = newRoutes.find((r) => r.path === '/');
-      const dashboardRoute = rootRoute?.children?.find(
-        (c) => c.path === DYNAMIC_MENU_BASE_PATH
-      );
+    const updatedRoutes = baseRoutes.map((route) => {
+      if (
+        route.path === '/' &&
+        route.children?.some((child) => child.path === DYNAMIC_MENU_BASE_PATH)
+      ) {
+        return {
+          ...route,
+          children: route.children.map((child) => {
+            if (child.path === DYNAMIC_MENU_BASE_PATH) {
+              return {
+                ...child,
+                children: [...(child.children ?? []), ...dynamicRoutes]
+              };
+            }
 
-      if (dashboardRoute && Array.isArray(dashboardRoute.children)) {
-        const dynamicRoutes = generateRoutes(menus);
-        dashboardRoute.children.push(...dynamicRoutes);
+            return child;
+          })
+        };
       }
-    }
 
-    return newRoutes;
+      return route;
+    });
+
+    return updatedRoutes as RouteObject[];
   }, [isLoginPage, isAuthenticated, menus]);
 
   const element = useRoutes(routes);
 
-  const shouldBlockRender = !isLoginPage && (loading || !isAuthenticated || menus.length === 0);
+  const shouldBlockRender = !isLoginPage && isAuthenticated && loading;
   if (shouldBlockRender) {
     return <LoaderOverlay />;
   }

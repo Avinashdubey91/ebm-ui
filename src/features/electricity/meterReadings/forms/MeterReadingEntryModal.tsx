@@ -512,7 +512,7 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
                               <tr key={r.meterId}>
                                 <td>
                                   {safeValue(r.flatNumber) === "-"
-                                    ? "N/A"
+                                    ? "Common"
                                     : safeValue(r.flatNumber)}
                                 </td>
                                 <td>{combinedOwnerRenter || "-"}</td>

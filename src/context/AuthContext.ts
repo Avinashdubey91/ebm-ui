@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 
-interface AuthContextType {
+export interface AuthContextType {
   token: string | null;
   userId: string | null;
   isAuthenticated: boolean;

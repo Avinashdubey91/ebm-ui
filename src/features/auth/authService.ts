@@ -5,11 +5,12 @@ interface LoginRequest {
   password: string;
 }
 
-interface LoginResponse {
+export interface LoginResponse {
   message: string;
   token: string;
   userId: number;
-  userName: string;
+  fullName: string;
+  role: string;
 }
 
 export const loginUser = async (credentials: LoginRequest): Promise<LoginResponse> => {

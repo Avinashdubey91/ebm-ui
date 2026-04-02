@@ -1,54 +1,89 @@
-// src/features/dashboard/hooks/useMenuData.ts
 import { useEffect, useState } from "react";
 import { fetchSideMenus, fetchSubMenus } from "../../../api/menuService";
 import type { SideNavigationMenuDTO } from "../../../types/menuTypes";
 import { useAuthContext } from "../../../context/AuthContext";
-import { useLocation } from "react-router-dom";
+
+let menuCache: SideNavigationMenuDTO[] | null = null;
+let menuRequest: Promise<SideNavigationMenuDTO[]> | null = null;
+
+const loadMenusFromApi = async (): Promise<SideNavigationMenuDTO[]> => {
+  const [mainMenus, subMenus] = await Promise.all([
+    fetchSideMenus(),
+    fetchSubMenus(),
+  ]);
+
+  return mainMenus.map((menu) => ({
+    ...menu,
+    subMenus: subMenus.filter(
+      (sub) => sub.sideNavigationMenuId === menu.sideNavigationMenuId
+    ),
+  }));
+};
+
+export const clearMenuCache = () => {
+  menuCache = null;
+  menuRequest = null;
+};
 
 export const useMenuData = () => {
-  const [menus, setMenus] = useState<SideNavigationMenuDTO[]>([]);
-  const [loading, setLoading] = useState(true);
   const { isAuthenticated, isReady } = useAuthContext();
-  const location = useLocation();
+
+  const [menus, setMenus] = useState<SideNavigationMenuDTO[]>(menuCache ?? []);
+  const [loading, setLoading] = useState<boolean>(!menuCache);
 
   useEffect(() => {
-    const path = location.pathname.toLowerCase();
-    const isLoginPage = path === "/login";
+    let isMounted = true;
 
-    // 🛑 Don't run unless auth system is initialized
-    if (!isReady) return;
-
-    // 🛑 If on login page and user not authenticated, skip and mark done
-    if (isLoginPage && !isAuthenticated) {
-      console.log("🛑 Skipping menu load on", path);
-      setLoading(false);
+    if (!isReady) {
       return;
     }
 
-    const loadMenus = async () => {
-      try {
-        const [mainMenus, subMenus] = await Promise.all([
-          fetchSideMenus(),
-          fetchSubMenus(),
-        ]);
-
-        const merged = mainMenus.map((menu) => ({
-          ...menu,
-          subMenus: subMenus.filter(
-            (sub) => sub.sideNavigationMenuId === menu.sideNavigationMenuId
-          ),
-        }));
-
-        setMenus(merged);
-      } catch (err) {
-        console.error("❌ Menu Load Error:", err);
-      } finally {
+    if (!isAuthenticated) {
+      clearMenuCache();
+      if (isMounted) {
+        setMenus([]);
         setLoading(false);
       }
-    };
+      return;
+    }
 
-    loadMenus();
-  }, [isReady, isAuthenticated, location.pathname]);
+    if (menuCache) {
+      if (isMounted) {
+        setMenus(menuCache);
+        setLoading(false);
+      }
+      return;
+    }
+
+    setLoading(true);
+
+    if (!menuRequest) {
+      menuRequest = loadMenusFromApi();
+    }
+
+    menuRequest
+      .then((data) => {
+        menuCache = data;
+        if (isMounted) {
+          setMenus(data);
+        }
+      })
+      .catch((err) => {
+        console.error("❌ Menu Load Error:", err);
+        if (isMounted) {
+          setMenus([]);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isReady, isAuthenticated]);
 
   return { menus, loading, isAuthenticated };
 };
