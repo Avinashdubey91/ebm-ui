@@ -52,6 +52,7 @@
 	display: flex;
 	justify-content: center;
 	align-items: center;
+	overflow: hidden;
 }
 
 .self-solutions-login-login-box {
@@ -129,7 +130,7 @@
 /* =========================
    Tablet and below
    ========================= */
-@media (max-width: 991.98px) {
+@media (max-width: 1023.98px) {
 	.self-solutions-login-body {
 		min-height: 100dvh;
 	}
@@ -152,6 +153,8 @@
 		max-width: 720px;
 		min-height: auto;
 		border-radius: 16px;
+		box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+		overflow: hidden;
 	}
 
 	.self-solutions-login-login-box {
@@ -159,6 +162,8 @@
 		height: auto;
 		min-height: auto;
 		padding: 2rem 1.5rem;
+		justify-content: center;
+		background-color: white;
 	}
 
 	.self-solutions-login-greeting-text {
@@ -193,10 +198,13 @@
 		width: 100%;
 		max-width: 100%;
 		border-radius: 14px;
+		box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+		overflow: hidden;
 	}
 
 	.self-solutions-login-login-box {
 		padding: 1.5rem 1rem;
+		background-color: white;
 	}
 
 	.self-solutions-login-greeting-text {
@@ -253,10 +261,12 @@
 
 	.self-solutions-login-right-side {
 		border-radius: 12px;
+		overflow: hidden;
 	}
 
 	.self-solutions-login-login-box {
 		padding: 1.25rem 0.9rem;
+		background-color: white;
 	}
 
 	.self-solutions-login-greeting-text h3 {
