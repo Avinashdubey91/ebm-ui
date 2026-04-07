@@ -52,12 +52,19 @@ const UnlockAccountModal: React.FC<Props> = ({
 
   const canVerifyAndUnlock = useMemo(() => {
     if (isBusy) return false;
-    return Boolean(username.trim() && email.trim() && mobile.trim() && otp.trim());
+    return Boolean(
+      username.trim() && email.trim() && mobile.trim() && otp.trim(),
+    );
   }, [isBusy, username, email, mobile, otp]);
 
   const handleClose = () => {
     if (isBusy) return;
     onClose();
+  };
+
+  const handleMobileChange = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, "").slice(0, 10);
+    setMobile(digitsOnly);
   };
 
   const handleSendOtp = async () => {
@@ -78,7 +85,9 @@ const UnlockAccountModal: React.FC<Props> = ({
       });
 
       setStep("otp");
-      setInfoMessage("OTP sent successfully. Please check your registered channel.");
+      setInfoMessage(
+        "OTP sent successfully. Please check your registered channel.",
+      );
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
       setError(e?.response?.data?.message || "Failed to send OTP.");
@@ -118,7 +127,8 @@ const UnlockAccountModal: React.FC<Props> = ({
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
       setError(
-        e?.response?.data?.message || "OTP verification or account unlock failed."
+        e?.response?.data?.message ||
+          "OTP verification or account unlock failed.",
       );
     } finally {
       setLoadingStage("");
@@ -219,7 +229,9 @@ const UnlockAccountModal: React.FC<Props> = ({
                   placeholder="Enter mobile number"
                   value={mobile}
                   disabled={isBusy || step === "otp"}
-                  onChange={(e) => setMobile(e.target.value)}
+                  inputMode="numeric"
+                  maxLength={10}
+                  onChange={(e) => handleMobileChange(e.target.value)}
                 />
               </div>
 
@@ -313,15 +325,15 @@ const UnlockAccountModal: React.FC<Props> = ({
           loadingStage === "sending"
             ? "Sending OTP..."
             : loadingStage === "verifying"
-            ? "Verifying OTP..."
-            : "Unlocking Account..."
+              ? "Verifying OTP..."
+              : "Unlocking Account..."
         }
         subMessage={
           loadingStage === "sending"
             ? "Please wait while we generate and deliver OTP."
             : loadingStage === "verifying"
-            ? "Please wait while we confirm your OTP."
-            : "Finalizing your account unlock request."
+              ? "Please wait while we confirm your OTP."
+              : "Finalizing your account unlock request."
         }
       />
     </>

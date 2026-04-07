@@ -59,7 +59,8 @@ const ChangePasswordModal: React.FC<Props> = ({
     if (!isOpen) return;
     if (showUsername) return;
 
-    const storedUsername = localStorage.getItem("username") || defaultUsername || "";
+    const storedUsername =
+      localStorage.getItem("username") || defaultUsername || "";
     setUsername(storedUsername);
 
     if (!storedUsername) return;
@@ -112,6 +113,11 @@ const ChangePasswordModal: React.FC<Props> = ({
     onClose();
   };
 
+  const handleMobileChange = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, "").slice(0, 10);
+    setMobile(digitsOnly);
+  };
+
   const handleSendOtp = async () => {
     setError("");
     setInfoMessage("");
@@ -146,7 +152,9 @@ const ChangePasswordModal: React.FC<Props> = ({
       await sendOtp(otpPayload);
 
       setStep("otp");
-      setInfoMessage("OTP sent successfully. Please check your registered channel.");
+      setInfoMessage(
+        "OTP sent successfully. Please check your registered channel.",
+      );
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
       setError(e?.response?.data?.message || "Failed to send OTP.");
@@ -199,7 +207,7 @@ const ChangePasswordModal: React.FC<Props> = ({
       const e = err as { response?: { data?: { message?: string } } };
       setError(
         e?.response?.data?.message ||
-          "OTP verification or password change failed."
+          "OTP verification or password change failed.",
       );
     } finally {
       setLoadingStage("");
@@ -304,7 +312,9 @@ const ChangePasswordModal: React.FC<Props> = ({
                     placeholder="Enter mobile number"
                     value={mobile}
                     disabled={isBusy}
-                    onChange={(e) => setMobile(e.target.value)}
+                    inputMode="numeric"
+                    maxLength={10}
+                    onChange={(e) => handleMobileChange(e.target.value)}
                   />
                 </div>
               </div>
@@ -318,7 +328,7 @@ const ChangePasswordModal: React.FC<Props> = ({
             )}
 
             {step === "form" ? (
-              <div className="self-solutions-auth-grid">
+              <div className="self-solutions-auth-grid self-solutions-auth-password-grid">
                 <div className="self-solutions-auth-field">
                   <label htmlFor="cp-new-password">New Password</label>
                   <input
@@ -439,19 +449,19 @@ const ChangePasswordModal: React.FC<Props> = ({
           loadingStage === "sending"
             ? "Sending OTP..."
             : loadingStage === "verifying"
-            ? "Verifying OTP..."
-            : loadingStage === "verified"
-            ? "✅ OTP Verified Successfully"
-            : "Updating Password..."
+              ? "Verifying OTP..."
+              : loadingStage === "verified"
+                ? "✅ OTP Verified Successfully"
+                : "Updating Password..."
         }
         subMessage={
           loadingStage === "sending"
             ? "Please wait while we generate and deliver OTP."
             : loadingStage === "verifying"
-            ? "Please wait while we confirm your OTP."
-            : loadingStage === "verified"
-            ? "Password update will begin shortly..."
-            : "Finalizing your password update."
+              ? "Please wait while we confirm your OTP."
+              : loadingStage === "verified"
+                ? "Password update will begin shortly..."
+                : "Finalizing your password update."
         }
       />
     </>
