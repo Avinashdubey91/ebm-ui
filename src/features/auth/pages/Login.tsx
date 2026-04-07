@@ -18,7 +18,7 @@ import { handleApiError } from "../../../utils/handleApiError";
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { setAuth } = UseAuth(); // 👈 Use hook that updates context state
+  const { setAuth } = UseAuth();
 
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState("");
@@ -28,7 +28,12 @@ const Login: React.FC = () => {
   const [modalMessage, setModalMessage] = useState("");
   const [showChangePwdModal, setShowChangePwdModal] = useState(false);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
+
   const [isLoadingPostLogin, setIsLoadingPostLogin] = useState(false);
+  const [overlayMessage, setOverlayMessage] = useState("Signing you in...");
+  const [overlaySubMessage, setOverlaySubMessage] = useState(
+    "Please wait while we verify your credentials..."
+  );
 
   useEffect(() => {
     clearSession();
@@ -37,30 +42,41 @@ const Login: React.FC = () => {
   }, []);
 
   const togglePassword = () => {
+    if (isLoadingPostLogin) return;
     setShowPassword((prev) => !prev);
   };
 
   const handleLogin = async () => {
-  try {
-    const response = await loginUser({ userName: username, password });
+    if (isLoadingPostLogin) return;
 
-    if (!response.userId || !response.token) {
-      throw new Error("Invalid login response: Missing user ID or token");
+    try {
+      setIsLoadingPostLogin(true);
+      setOverlayMessage("Signing you in...");
+      setOverlaySubMessage("Please wait while we verify your credentials...");
+
+      const response = await loginUser({ userName: username, password });
+
+      if (!response.userId || !response.token) {
+        throw new Error("Invalid login response: Missing user ID or token");
+      }
+
+      setAuth(response.token, response.userId.toString());
+      localStorage.setItem("username", username);
+      localStorage.setItem("status", "Online");
+
+      setOverlayMessage("✅ You've successfully logged in!");
+      setOverlaySubMessage("Please wait while we load your dashboard...");
+
+      setTimeout(() => navigate("/dashboard"), 1000);
+    } catch (error: unknown) {
+      setIsLoadingPostLogin(false);
+
+      const { userMessage, statusCode } = handleApiError(error, "Login failed");
+      console.warn("Login failed with status:", statusCode);
+      setModalType("error");
+      setModalMessage(`${userMessage} (Error Code: ${statusCode ?? "N/A"})`);
     }
-
-    setAuth(response.token, response.userId.toString());
-    localStorage.setItem("username", username);
-    localStorage.setItem("status", "Online");
-
-    setIsLoadingPostLogin(true);
-    setTimeout(() => navigate("/dashboard"), 1000);
-  } catch (error: unknown) {
-    const { userMessage, statusCode } = handleApiError(error, "Login failed");
-    console.warn("Login failed with status:", statusCode);
-    setModalType("error");
-    setModalMessage(`${userMessage} (Error Code: ${statusCode ?? "N/A"})`);
-  }
-};
+  };
 
   const closeModal = () => {
     setModalType(null);
@@ -108,6 +124,7 @@ const Login: React.FC = () => {
                     placeholder="Enter User Name"
                     autoComplete="current-username"
                     value={username}
+                    disabled={isLoadingPostLogin}
                     onChange={(e) => setUsername(e.target.value)}
                   />
                 </div>
@@ -125,11 +142,12 @@ const Login: React.FC = () => {
                     placeholder="Enter Password"
                     autoComplete="current-password"
                     value={password}
+                    disabled={isLoadingPostLogin}
                     onChange={(e) => setPassword(e.target.value)}
                   />
                   <span
                     className="input-group-text"
-                    style={{ cursor: "pointer" }}
+                    style={{ cursor: isLoadingPostLogin ? "not-allowed" : "pointer" }}
                     onClick={togglePassword}
                   >
                     <i
@@ -146,6 +164,7 @@ const Login: React.FC = () => {
                   <button
                     type="reset"
                     className="btn btn-outline-danger"
+                    disabled={isLoadingPostLogin}
                     onClick={() => {
                       setUsername("");
                       setPassword("");
@@ -155,8 +174,13 @@ const Login: React.FC = () => {
                   </button>
                 </div>
                 <div className="col-6 d-grid">
-                  <button type="submit" className="btn btn-outline-success">
-                    <i className="fa fa-check"></i>&nbsp;&nbsp;Login
+                  <button
+                    type="submit"
+                    className="btn btn-outline-success"
+                    disabled={isLoadingPostLogin}
+                  >
+                    <i className="fa fa-check"></i>&nbsp;&nbsp;
+                    {isLoadingPostLogin ? "Please wait..." : "Login"}
                   </button>
                 </div>
               </div>
@@ -166,6 +190,7 @@ const Login: React.FC = () => {
                   <button
                     type="button"
                     className="btn btn-outline-warning"
+                    disabled={isLoadingPostLogin}
                     onClick={() => setShowChangePwdModal(true)}
                   >
                     <i className="fa fa-key"></i>&nbsp;&nbsp;ResetPassword
@@ -175,6 +200,7 @@ const Login: React.FC = () => {
                   <button
                     type="button"
                     className="btn btn-outline-info"
+                    disabled={isLoadingPostLogin}
                     onClick={() => setShowUnlockModal(true)}
                   >
                     <i className="fa fa-unlock"></i>&nbsp;&nbsp;UnlockAccount
@@ -204,10 +230,11 @@ const Login: React.FC = () => {
           onClose={() => setShowUnlockModal(false)}
         />
       )}
+
       <OverlayMessage
         show={isLoadingPostLogin}
-        message="✅ You've successfully logged in!"
-        subMessage="Please wait while we load your dashboard..."
+        message={overlayMessage}
+        subMessage={overlaySubMessage}
       />
     </div>
   );

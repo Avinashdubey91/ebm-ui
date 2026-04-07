@@ -1,27 +1,39 @@
-import React from 'react';
+import React from "react";
 
 interface PasswordSuccessModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onAction: () => void;
+  actionLabel?: string;
 }
 
-const PasswordSuccessModal: React.FC<PasswordSuccessModalProps> = ({ isOpen, onClose }) => {
+const PasswordSuccessModal: React.FC<PasswordSuccessModalProps> = ({
+  isOpen,
+  onAction,
+  actionLabel = "Done",
+}) => {
   if (!isOpen) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
-      style={{ backgroundColor: 'transparent' }}
-    >
-      <div className="bg-white shadow-xl rounded-xl p-6 w-80 text-center pointer-events-auto">
-        <div className="text-green-500 text-5xl mb-4">✓</div>
-        <h2 className="text-xl text-black font-bold">Password Changed!</h2>
-        <p className="text-sm text-black">Your password has been changed successfully.</p>
+    <div className="self-solutions-success-backdrop" aria-hidden="false">
+      <div
+        className="self-solutions-success-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="password-success-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="self-solutions-success-icon">✓</div>
+        <h2 id="password-success-title">Password Changed</h2>
+        <p>
+          Your password has been changed successfully. You can now continue with
+          the next step.
+        </p>
         <button
-          onClick={onClose}
-          className="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition-all"
+          type="button"
+          onClick={onAction}
+          className="btn btn-primary self-solutions-success-btn"
         >
-          Back to My App
+          {actionLabel}
         </button>
       </div>
     </div>
