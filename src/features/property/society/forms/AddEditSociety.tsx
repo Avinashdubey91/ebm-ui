@@ -21,6 +21,7 @@ import SharedAddEditForm from "../../../shared/SharedAddEditForm";
 import type { AddEditFormHandle } from "../../../shared/SharedAddEditForm";
 import { showAddUpdateResult } from "../../../../utils/alerts/showAddUpdateConfirmation";
 import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
+import { UseAuth } from "../../../../context/UseAuth";
 
 export interface AddEditSocietyRef {
   submit: () => void;
@@ -123,11 +124,12 @@ const AddEditSociety = forwardRef<AddEditFormHandle, Props>(
   ({ societyId, onUnsavedChange }, ref) => {
     const navigate = useNavigate();
     const { parentListPath } = useCurrentMenu();
+    const { userId } = UseAuth();
 
     const [formData, setFormData] = useState<SocietyDTO>(emptySociety);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitMode, setSubmitMode] = useState<"save" | "saveAndNext">(
-      "save"
+      "save",
     );
 
     const formRef = useRef<HTMLFormElement>(null);
@@ -135,12 +137,12 @@ const AddEditSociety = forwardRef<AddEditFormHandle, Props>(
 
     const numericSelectNames = useMemo(
       () => new Set<string>(["countryId", "stateId", "districtId"]),
-      []
+      [],
     );
 
     const { countries, states, districts } = useLocationDropdowns(
       formData.countryId,
-      formData.stateId
+      formData.stateId,
     );
 
     const hasUnsavedChanges = useMemo(() => {
@@ -170,7 +172,7 @@ const AddEditSociety = forwardRef<AddEditFormHandle, Props>(
           (data) => {
             setFormData(data);
             initialRef.current = { ...data };
-          }
+          },
         );
       } else {
         setFormData(emptySociety);
@@ -179,7 +181,7 @@ const AddEditSociety = forwardRef<AddEditFormHandle, Props>(
     }, [societyId]);
 
     const handleChange = (
-      e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+      e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
     ) => {
       const el = e.currentTarget;
       const name = el.name;
@@ -228,19 +230,22 @@ const AddEditSociety = forwardRef<AddEditFormHandle, Props>(
 
       setIsSubmitting(true);
       try {
-        const userId = parseInt(localStorage.getItem("userId") || "0", 10);
+        const currentUserId = Number(userId);
+
+        if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) {
+          throw new Error("Authenticated user id is missing.");
+        }
 
         if (societyId) {
           await updateEntity(
             endpoints.update,
             societyId,
             formData,
-            userId,
-            false
+            currentUserId
           );
           await showAddUpdateResult(true, "update", "society");
         } else {
-          await createEntity(endpoints.add, formData, userId, false);
+          await createEntity(endpoints.add, formData, currentUserId);
           await showAddUpdateResult(true, "add", "society");
         }
 
@@ -356,7 +361,7 @@ const AddEditSociety = forwardRef<AddEditFormHandle, Props>(
                       onInput={(e: React.FormEvent<HTMLInputElement>) => {
                         e.currentTarget.value = keepDigitsOnly(
                           e.currentTarget.value,
-                          6
+                          6,
                         );
                       }}
                     />
@@ -424,7 +429,7 @@ const AddEditSociety = forwardRef<AddEditFormHandle, Props>(
                       onInput={(e: React.FormEvent<HTMLInputElement>) => {
                         e.currentTarget.value = keepDigitsOnly(
                           e.currentTarget.value,
-                          10
+                          10,
                         );
                       }}
                     />
@@ -440,7 +445,7 @@ const AddEditSociety = forwardRef<AddEditFormHandle, Props>(
                       required
                       onInvalid={(e) =>
                         e.currentTarget.setCustomValidity(
-                          "Please enter valid Email Address"
+                          "Please enter valid Email Address",
                         )
                       }
                       onInput={(e) => e.currentTarget.setCustomValidity("")}
@@ -487,7 +492,7 @@ const AddEditSociety = forwardRef<AddEditFormHandle, Props>(
                       onInput={(e: React.FormEvent<HTMLInputElement>) => {
                         e.currentTarget.value = keepDigitsOnly(
                           e.currentTarget.value,
-                          10
+                          10,
                         );
                       }}
                     />
@@ -515,7 +520,7 @@ const AddEditSociety = forwardRef<AddEditFormHandle, Props>(
                       onInput={(e: React.FormEvent<HTMLInputElement>) => {
                         e.currentTarget.value = keepDigitsOnly(
                           e.currentTarget.value,
-                          10
+                          10,
                         );
                       }}
                     />
@@ -552,7 +557,7 @@ const AddEditSociety = forwardRef<AddEditFormHandle, Props>(
         </div>
       </SharedAddEditForm>
     );
-  }
+  },
 );
 
 export default AddEditSociety;

@@ -6,15 +6,17 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isReady: boolean;
   setAuth: (token: string, userId: string) => void;
+  clearAuth: () => void;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// ✅ Add and export this hook
 export const useAuthContext = () => {
   const context = useContext(AuthContext);
+
   if (!context) {
     throw new Error('useAuthContext must be used within an AuthProvider');
   }
+
   return context;
 };

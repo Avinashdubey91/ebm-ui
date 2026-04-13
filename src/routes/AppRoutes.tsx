@@ -1,33 +1,62 @@
-import type { RouteObject } from 'react-router-dom';
-import { Navigate } from 'react-router-dom';
-import PrivateRoute from './PrivateRoute';
-import Dashboard from '../features/dashboard/pages/Dashboard';
-import Login from '../features/auth/pages/Login';
+import { useContext, useMemo } from "react";
+import { Navigate, useLocation, useRoutes } from "react-router-dom";
+import type { RouteObject } from "react-router-dom";
 
-export const baseRoutes: RouteObject[] = [
-  {
-    path: '/',
-    element: <PrivateRoute />,
-    children: [
+import Dashboard from "../features/dashboard/pages/Dashboard";
+import Login from "../features/auth/pages/Login";
+import PrivateRoute from "../routes/PrivateRoute";
+import { generateRoutes } from "../utils/generateRoutes";
+import LoaderOverlay from "../components/common/LoaderOverlay";
+import { MenuContext } from "../context/MenuContext";
+
+const AppRoutes = () => {
+  const location = useLocation();
+  const isLoginPage = location.pathname === "/login";
+  const menuContext = useContext(MenuContext);
+
+  if (!menuContext) {
+    throw new Error("AppRoutes must be used within MenuProvider");
+  }
+
+  const { menus, loading, isAuthenticated } = menuContext;
+
+  const routes = useMemo<RouteObject[]>(() => {
+    const dynamicRoutes =
+      !isLoginPage && isAuthenticated && menus.length > 0
+        ? generateRoutes(menus)
+        : [];
+
+    return [
       {
-        index: true,
-        element: <Navigate to="/dashboard" replace />
-      },
-      {
-        path: 'dashboard',
-        element: <Dashboard />,
+        path: "/",
+        element: <PrivateRoute />,
         children: [
           {
-            path: '',
-            element: <div className="px-4 py-4 text-center fw-bold">Welcome to Dashboard</div>,
-          }
-          // Don't hardcode * here — dynamicRoutes will include it
-        ]
-      }
-    ]
-  },
-  {
-    path: '/login',
-    element: <Login />,
+            index: true,
+            element: <Navigate to="/dashboard" replace />,
+          },
+          {
+            path: "dashboard/*",
+            element: <Dashboard />,
+            children: dynamicRoutes,
+          },
+        ],
+      },
+      {
+        path: "/login",
+        element: <Login />,
+      },
+    ];
+  }, [isLoginPage, isAuthenticated, menus]);
+
+  const element = useRoutes(routes);
+
+  const shouldBlockRender = !isLoginPage && isAuthenticated && loading;
+  if (shouldBlockRender) {
+    return <LoaderOverlay />;
   }
-];
+
+  return element;
+};
+
+export default AppRoutes;

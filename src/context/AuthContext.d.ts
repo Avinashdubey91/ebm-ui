@@ -4,6 +4,7 @@ export interface AuthContextType {
     isAuthenticated: boolean;
     isReady: boolean;
     setAuth: (token: string, userId: string) => void;
+    clearAuth: () => void;
 }
 export declare const AuthContext: import("react").Context<AuthContextType | undefined>;
 export declare const useAuthContext: () => AuthContextType;

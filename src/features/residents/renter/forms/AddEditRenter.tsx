@@ -28,6 +28,7 @@ import type { CountryDTO } from "../../../../types/CountryDTO";
 import type { StateDTO } from "../../../../types/StateDTO";
 import type { DistrictDTO } from "../../../../types/DistrictDTO";
 import SelectField from "../../../../components/common/SelectField";
+import { UseAuth } from "../../../../context/UseAuth";
 
 interface Props {
   renterId?: number;
@@ -114,9 +115,12 @@ const AddEditRenter = forwardRef<AddEditFormHandle, Props>(
   ({ renterId, onUnsavedChange }, ref) => {
     const [formData, setFormData] = useState<RenterDTO>(emptyRenter);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [submitMode, setSubmitMode] = useState<"save" | "saveAndNext">("save");
+    const [submitMode, setSubmitMode] = useState<"save" | "saveAndNext">(
+      "save",
+    );
 
     const { parentListPath } = useCurrentMenu();
+    const { userId } = UseAuth();
     const navigate = useNavigate();
 
     const formRef = useRef<HTMLFormElement>(null);
@@ -143,7 +147,7 @@ const AddEditRenter = forwardRef<AddEditFormHandle, Props>(
       return Object.keys(formData).some(
         (key) =>
           formData[key as keyof RenterDTO] !==
-          initialRef.current?.[key as keyof RenterDTO]
+          initialRef.current?.[key as keyof RenterDTO],
       );
     }, [formData]);
 
@@ -169,7 +173,10 @@ const AddEditRenter = forwardRef<AddEditFormHandle, Props>(
           setFormData((p) => ({ ...p, lastName: value }));
           return;
         case "mobile":
-          setFormData((p) => ({ ...p, mobile: digitsOnly(value).slice(0, 15) }));
+          setFormData((p) => ({
+            ...p,
+            mobile: digitsOnly(value).slice(0, 15),
+          }));
           return;
         case "alternateMobile":
           setFormData((p) => ({
@@ -187,7 +194,10 @@ const AddEditRenter = forwardRef<AddEditFormHandle, Props>(
           setFormData((p) => ({ ...p, city: value }));
           return;
         case "pinCode":
-          setFormData((p) => ({ ...p, pinCode: digitsOnly(value).slice(0, 6) }));
+          setFormData((p) => ({
+            ...p,
+            pinCode: digitsOnly(value).slice(0, 6),
+          }));
           return;
         case "aadharNumber":
           setFormData((p) => ({
@@ -213,11 +223,15 @@ const AddEditRenter = forwardRef<AddEditFormHandle, Props>(
       }
     };
 
-    const handleInputChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+    const handleInputChange: React.ChangeEventHandler<HTMLInputElement> = (
+      e,
+    ) => {
       setTextField(e.target.name, e.target.value);
     };
 
-    const handleSelectChange: React.ChangeEventHandler<HTMLSelectElement> = (e) => {
+    const handleSelectChange: React.ChangeEventHandler<HTMLSelectElement> = (
+      e,
+    ) => {
       const { name, value } = e.target;
 
       if (name === "gender") {
@@ -243,7 +257,9 @@ const AddEditRenter = forwardRef<AddEditFormHandle, Props>(
       }
     };
 
-    const handleBooleanToggle: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+    const handleBooleanToggle: React.ChangeEventHandler<HTMLInputElement> = (
+      e,
+    ) => {
       const { name, checked } = e.target;
       if (!isRenterBooleanKey(name)) return;
 
@@ -263,13 +279,22 @@ const AddEditRenter = forwardRef<AddEditFormHandle, Props>(
 
       setIsSubmitting(true);
       try {
-        const userId = parseInt(localStorage.getItem("userId") ?? "0", 10);
+        const currentUserId = Number(userId);
+
+        if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) {
+          throw new Error("Authenticated user id is missing.");
+        }
 
         if (renterId) {
-          await updateEntity(endpoints.update, renterId, formData, userId, false);
+          await updateEntity(
+            endpoints.update,
+            renterId,
+            formData,
+            currentUserId
+          );
           await showAddUpdateResult(true, "update", "renter");
         } else {
-          await createEntity(endpoints.add, formData, userId, false);
+          await createEntity(endpoints.add, formData, currentUserId);
           await showAddUpdateResult(true, "add", "renter");
         }
 
@@ -575,7 +600,7 @@ const AddEditRenter = forwardRef<AddEditFormHandle, Props>(
         </div>
       </SharedAddEditForm>
     );
-  }
+  },
 );
 
 export default AddEditRenter;

@@ -16,6 +16,7 @@ import type { CurrencyDTO } from "../../../../types/CurrencyDTO";
 import type { RateTypeDTO } from "../../../../types/RateTypeDTO";
 
 import { buildIdLabelMap } from "../../../../utils/formValueUtils";
+import { UseAuth } from "../../../../context/UseAuth";
 
 const ENTITY_NAME = "Unit Charge";
 
@@ -46,7 +47,10 @@ const getYearFromYmd = (ymd?: string | null): number | null => {
   return year;
 };
 
-const formatMonthLabel = (monthByte?: number | null, year?: number | null): string => {
+const formatMonthLabel = (
+  monthByte?: number | null,
+  year?: number | null,
+): string => {
   if (!monthByte || monthByte < 1 || monthByte > 12 || !year) return "-";
   return `${MONTH_NAMES[monthByte - 1]} - ${year}`;
 };
@@ -54,11 +58,13 @@ const formatMonthLabel = (monthByte?: number | null, year?: number | null): stri
 const UnitChargeListing: React.FC = () => {
   const navigate = useNavigate();
   const { createRoutePath } = useCurrentMenu();
+  const { userId } = UseAuth();
 
   const [loading, setLoading] = useState(false);
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
 
-  const [sortField, setSortField] = useState<keyof UnitChargeDTO>("unitChargeId");
+  const [sortField, setSortField] =
+    useState<keyof UnitChargeDTO>("unitChargeId");
   const [sortAsc, setSortAsc] = useState(true);
 
   const [rows, setRows] = useState<UnitChargeDTO[]>([]);
@@ -70,7 +76,7 @@ const UnitChargeListing: React.FC = () => {
       list: "/unitcharge/Get-All-UnitCharges",
       delete: "/unitcharge/Delete-UnitCharge",
     }),
-    []
+    [],
   );
 
   useEffect(() => {
@@ -82,14 +88,18 @@ const UnitChargeListing: React.FC = () => {
 
         // lookups from DB
         try {
-          const cur = await fetchAllEntities<CurrencyDTO>(LOOKUP_ENDPOINTS.currencies);
+          const cur = await fetchAllEntities<CurrencyDTO>(
+            LOOKUP_ENDPOINTS.currencies,
+          );
           setCurrencies(Array.isArray(cur) ? cur : []);
         } catch {
           setCurrencies([]);
         }
 
         try {
-          const rt = await fetchAllEntities<RateTypeDTO>(LOOKUP_ENDPOINTS.rateTypes);
+          const rt = await fetchAllEntities<RateTypeDTO>(
+            LOOKUP_ENDPOINTS.rateTypes,
+          );
           setRateTypes(Array.isArray(rt) ? rt : []);
         } catch {
           setRateTypes([]);
@@ -115,7 +125,7 @@ const UnitChargeListing: React.FC = () => {
 
   const rateTypeLabelById = useMemo(() => {
     return buildIdLabelMap(rateTypes, "rateTypeId", (r) =>
-      String(r.rateTypeName ?? "").trim()
+      String(r.rateTypeName ?? "").trim(),
     );
   }, [rateTypes]);
 
@@ -140,14 +150,14 @@ const UnitChargeListing: React.FC = () => {
   const handleDelete = async (id?: number) => {
     if (!id) return;
 
-    const deletedBy = parseInt(localStorage.getItem("userId") ?? "0", 10);
-    if (!deletedBy) return;
+    const currentUserId = Number(userId);
+    if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) return;
 
     const confirmed = await showDeleteConfirmation(ENTITY_NAME);
     if (!confirmed) return;
 
     try {
-      await deleteEntity(ENDPOINTS.delete, id, deletedBy);
+      await deleteEntity(ENDPOINTS.delete, id, currentUserId);
       setRows((prev) => prev.filter((x) => x.unitChargeId !== id));
       setExpandedRowId(null);
       await showDeleteResult(true, ENTITY_NAME);
@@ -218,9 +228,13 @@ const UnitChargeListing: React.FC = () => {
       ]}
       renderExpandedRow={(x) => {
         const fromYear = getYearFromYmd(x.effectiveFrom);
-        const toYear = getYearFromYmd((x as UnitChargeDTO).effectiveTo) ?? fromYear;
+        const toYear =
+          getYearFromYmd((x as UnitChargeDTO).effectiveTo) ?? fromYear;
 
-        const monthFromLabel = formatMonthLabel(x.applicableMonthFrom, fromYear);
+        const monthFromLabel = formatMonthLabel(
+          x.applicableMonthFrom,
+          fromYear,
+        );
         const monthToLabel = formatMonthLabel(x.applicableMonthTo, toYear);
 
         return (
@@ -228,9 +242,9 @@ const UnitChargeListing: React.FC = () => {
             <strong>Threshold:</strong> {safeValue(x.threshold)} |{" "}
             <strong>Subsidized:</strong>{" "}
             {x.subsidizedFlag == null ? "-" : x.subsidizedFlag ? "Yes" : "No"} |{" "}
-            <strong>Peak Multiplier:</strong> {safeValue(x.peakDemandMultiplier)} |{" "}
-            <strong>Tiered Rate:</strong> {safeValue(x.tieredRate)} |{" "}
-            <strong>Month Range:</strong>{" "}
+            <strong>Peak Multiplier:</strong>{" "}
+            {safeValue(x.peakDemandMultiplier)} | <strong>Tiered Rate:</strong>{" "}
+            {safeValue(x.tieredRate)} | <strong>Month Range:</strong>{" "}
             {monthFromLabel !== "-" && monthToLabel !== "-"
               ? `${monthFromLabel} to ${monthToLabel}`
               : "-"}{" "}

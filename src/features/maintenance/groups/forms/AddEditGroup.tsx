@@ -17,6 +17,7 @@ import { showAddUpdateResult } from "../../../../utils/alerts/showAddUpdateConfi
 import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
 
 import type { ApartmentDTO } from "../../../../types/ApartmentDTO";
+import { UseAuth } from "../../../../context/UseAuth";
 
 const endpoints = {
   apartments: "/apartment/Get-All-Apartment",
@@ -109,6 +110,7 @@ const AddEditGroup = forwardRef<AddEditFormHandle, Props>(
     const navigate = useNavigate();
     const { parentListPath } = useCurrentMenu();
     const isEdit = !!maintenanceGroupId;
+    const { userId } = UseAuth();
 
     const [formData, setFormData] = useState<FormState>(emptyForm);
     const [apartments, setApartments] = useState<ApartmentDTO[]>([]);
@@ -261,7 +263,11 @@ const AddEditGroup = forwardRef<AddEditFormHandle, Props>(
 
       setIsSubmitting(true);
       try {
-        const userId = parseInt(localStorage.getItem("userId") || "0", 10);
+        const currentUserId = Number(userId);
+
+        if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) {
+          throw new Error("Authenticated user id is missing.");
+        }
 
         const payload = {
           maintenanceGroupId: formData.maintenanceGroupId,
@@ -277,12 +283,11 @@ const AddEditGroup = forwardRef<AddEditFormHandle, Props>(
             endpoints.update,
             maintenanceGroupId,
             payload,
-            userId,
-            false
+            currentUserId
           );
           await showAddUpdateResult(true, "update", "maintenance group");
         } else {
-          await createEntity(endpoints.add, payload, userId, false);
+          await createEntity(endpoints.add, payload, currentUserId);
           await showAddUpdateResult(true, "add", "maintenance group");
         }
 

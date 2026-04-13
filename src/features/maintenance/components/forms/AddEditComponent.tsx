@@ -8,7 +8,11 @@ import React, {
 } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { createEntity, fetchEntityById, updateEntity } from "../../../../api/genericCrudApi";
+import {
+  createEntity,
+  fetchEntityById,
+  updateEntity,
+} from "../../../../api/genericCrudApi";
 import SharedAddEditForm from "../../../shared/SharedAddEditForm";
 import type { AddEditFormHandle } from "../../../shared/SharedAddEditForm";
 
@@ -19,6 +23,7 @@ import SwitchTile from "../../../../components/SwitchTile";
 
 import { showAddUpdateResult } from "../../../../utils/alerts/showAddUpdateConfirmation";
 import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
+import { UseAuth } from "../../../../context/UseAuth";
 
 type SubmitMode = "save" | "saveAndNext";
 
@@ -61,6 +66,7 @@ const AddEditComponent = forwardRef<AddEditFormHandle, Props>(
   ({ maintenanceComponentId, onUnsavedChange }, ref) => {
     const navigate = useNavigate();
     const { parentListPath } = useCurrentMenu();
+    const { userId } = UseAuth();
 
     const isEditMode =
       typeof maintenanceComponentId === "number" && maintenanceComponentId > 0;
@@ -93,13 +99,14 @@ const AddEditComponent = forwardRef<AddEditFormHandle, Props>(
 
         const data = await fetchEntityById<MaintenanceComponentApiDTO>(
           endpoints.getById,
-          maintenanceComponentId
+          maintenanceComponentId,
         );
 
         if (!isMounted) return;
 
         const mapped: FormState = {
-          maintenanceComponentId: data.maintenanceComponentId ?? maintenanceComponentId,
+          maintenanceComponentId:
+            data.maintenanceComponentId ?? maintenanceComponentId,
           componentName: data.componentName ?? "",
           description: data.description ?? "",
           isActive: Boolean(data.isActive),
@@ -126,11 +133,14 @@ const AddEditComponent = forwardRef<AddEditFormHandle, Props>(
       (
         e: React.ChangeEvent<
           HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-        >
+        >,
       ) => {
         const { name, value } = e.currentTarget;
 
-        if (e.currentTarget instanceof HTMLInputElement && e.currentTarget.type === "checkbox") {
+        if (
+          e.currentTarget instanceof HTMLInputElement &&
+          e.currentTarget.type === "checkbox"
+        ) {
           const checked = e.currentTarget.checked;
           setFormData((prev) => ({ ...prev, [name]: checked }));
           markDirty();
@@ -140,7 +150,7 @@ const AddEditComponent = forwardRef<AddEditFormHandle, Props>(
         setFormData((prev) => ({ ...prev, [name]: value }));
         markDirty();
       },
-      [markDirty]
+      [markDirty],
     );
 
     const validateBeforeSubmit = useCallback((): boolean => {
@@ -170,7 +180,9 @@ const AddEditComponent = forwardRef<AddEditFormHandle, Props>(
       return {
         maintenanceComponentId: formData.maintenanceComponentId,
         componentName: formData.componentName.trim(),
-        description: formData.description.trim() ? formData.description.trim() : null,
+        description: formData.description.trim()
+          ? formData.description.trim()
+          : null,
         isActive: formData.isActive,
         isDeprecated: formData.isDeprecated,
       };
@@ -183,7 +195,11 @@ const AddEditComponent = forwardRef<AddEditFormHandle, Props>(
 
         setIsSubmitting(true);
         try {
-          const userId = parseInt(localStorage.getItem("userId") || "0", 10);
+          const currentUserId = Number(userId);
+
+          if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) {
+            throw new Error("Authenticated user id is missing.");
+          }
           const payload = buildPayload();
 
           if (isEditMode && typeof maintenanceComponentId === "number") {
@@ -191,12 +207,11 @@ const AddEditComponent = forwardRef<AddEditFormHandle, Props>(
               endpoints.update,
               maintenanceComponentId,
               payload,
-              userId,
-              false
+              currentUserId,
             );
             await showAddUpdateResult(true, "update", "maintenance component");
           } else {
-            await createEntity(endpoints.add, payload, userId, false);
+            await createEntity(endpoints.add, payload, currentUserId);
             await showAddUpdateResult(true, "add", "maintenance component");
           }
 
@@ -224,8 +239,9 @@ const AddEditComponent = forwardRef<AddEditFormHandle, Props>(
         maintenanceComponentId,
         navigate,
         parentListPath,
-        validateBeforeSubmit,
-      ]
+        userId,
+        validateBeforeSubmit
+      ],
     );
 
     const handleSubmit = useCallback(
@@ -233,7 +249,7 @@ const AddEditComponent = forwardRef<AddEditFormHandle, Props>(
         e.preventDefault();
         void doSubmit("save");
       },
-      [doSubmit]
+      [doSubmit],
     );
 
     const handleSaveAndNext = useCallback(() => {
@@ -258,7 +274,7 @@ const AddEditComponent = forwardRef<AddEditFormHandle, Props>(
           void doSubmit("saveAndNext");
         },
       }),
-      [doSubmit, handleReset]
+      [doSubmit, handleReset],
     );
 
     return (
@@ -328,7 +344,7 @@ const AddEditComponent = forwardRef<AddEditFormHandle, Props>(
         </div>
       </SharedAddEditForm>
     );
-  }
+  },
 );
 
 export default AddEditComponent;

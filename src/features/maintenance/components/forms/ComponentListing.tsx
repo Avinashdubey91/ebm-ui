@@ -11,6 +11,7 @@ import {
   showDeleteResult,
 } from "../../../../utils/alerts/showDeleteConfirmation";
 import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
+import { UseAuth } from "../../../../context/UseAuth";
 
 const ENTITY_NAME = "Maintenance Component";
 
@@ -22,12 +23,14 @@ const endpoints = {
 const ComponentListing: React.FC = () => {
   const navigate = useNavigate();
   const { createRoutePath } = useCurrentMenu();
+  const { userId } = UseAuth();
 
   const [components, setComponents] = useState<MaintenanceComponentDTO[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const [sortField, setSortField] =
-    useState<keyof MaintenanceComponentDTO>("maintenanceComponentId");
+  const [sortField, setSortField] = useState<keyof MaintenanceComponentDTO>(
+    "maintenanceComponentId",
+  );
   const [sortAsc, setSortAsc] = useState(true);
 
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
@@ -36,7 +39,9 @@ const ComponentListing: React.FC = () => {
     const load = async () => {
       setLoading(true);
       try {
-        const res = await fetchAllEntities<MaintenanceComponentDTO>(endpoints.getAll);
+        const res = await fetchAllEntities<MaintenanceComponentDTO>(
+          endpoints.getAll,
+        );
         setComponents(Array.isArray(res) ? res : []);
       } catch (err) {
         console.error("❌ Failed to load maintenance components:", err);
@@ -63,17 +68,17 @@ const ComponentListing: React.FC = () => {
   const handleDelete = async (id?: number) => {
     if (!id) return;
 
-    const deletedBy = parseInt(localStorage.getItem("userId") ?? "0", 10);
-    if (!deletedBy) return;
+    const currentUserId = Number(userId);
+    if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) return;
 
     const confirmed = await showDeleteConfirmation(ENTITY_NAME);
     if (!confirmed) return;
 
     try {
-      await deleteEntity(endpoints.delete, id, deletedBy);
+      await deleteEntity(endpoints.delete, id, currentUserId);
 
       setComponents((prev) =>
-        prev.filter((c) => c.maintenanceComponentId !== id)
+        prev.filter((c) => c.maintenanceComponentId !== id),
       );
       setExpandedRowId(null);
 

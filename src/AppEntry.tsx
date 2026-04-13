@@ -1,6 +1,6 @@
 // src/AppEntry.tsx
 import { BrowserRouter } from "react-router-dom";
-import AppRoutes from "./layouts/AppRoutes";
+import AppRoutes from "./routes/AppRoutes";
 import { NotificationProvider } from "./context/NotificationProvider"; // ✅ Move this here
 
 const AppEntry = () => (

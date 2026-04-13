@@ -10,6 +10,7 @@ import {
   showDeleteConfirmation,
   showDeleteResult,
 } from "../../../../utils/alerts/showDeleteConfirmation";
+import { UseAuth } from "../../../../context/UseAuth";
 
 type MeterDTO = {
   meterId: number;
@@ -156,6 +157,7 @@ const MeterListing: React.FC<MeterListingProps> = ({
 }) => {
   const navigate = useNavigate();
   const { createRoutePath } = useCurrentMenu();
+  const { userId } = UseAuth();
 
   const [loading, setLoading] = useState(false);
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
@@ -246,14 +248,14 @@ const MeterListing: React.FC<MeterListingProps> = ({
   const handleDelete = async (id?: number) => {
     if (!id) return;
 
-    const deletedBy = parseInt(localStorage.getItem("userId") ?? "0", 10);
-    if (!deletedBy) return;
+    const currentUserId = Number(userId);
+    if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) return;
 
     const confirmed = await showDeleteConfirmation(ENTITY_NAME);
     if (!confirmed) return;
 
     try {
-      await deleteEntity(endpoints.delete, id, deletedBy);
+      await deleteEntity(endpoints.delete, id, currentUserId);
       setMeters((prev) => prev.filter((x) => x.meterId !== id));
       setExpandedRowId(null);
       await showDeleteResult(true, ENTITY_NAME);
@@ -328,12 +330,12 @@ const MeterListing: React.FC<MeterListingProps> = ({
           {formatDateDmy(m.installationDate)} | <strong>Last Verified:</strong>{" "}
           {formatDateDmy(m.lastVerifiedDate)} | <strong>Phase:</strong>{" "}
           {prettyPhase(m.phaseType)} | <strong>Verification Status:</strong>{" "}
-          {verificationStatusLabel(m.verificationStatus)} |{" "} | <strong>Manufacturer:</strong>{" "}
-          {safeValue(m.manufacturer)} | <strong>Model:</strong>{" "}
-          {safeValue(m.model)} | <strong>Serial:</strong>{" "}
-          {safeValue(m.serialNumber)} | <strong>Reading Unit:</strong>{" "}
-          {safeValue(m.readingUnit)} | <strong>Location:</strong>{" "}
-          {safeValue(m.locationDescription)}
+          {verificationStatusLabel(m.verificationStatus)} | |{" "}
+          <strong>Manufacturer:</strong> {safeValue(m.manufacturer)} |{" "}
+          <strong>Model:</strong> {safeValue(m.model)} |{" "}
+          <strong>Serial:</strong> {safeValue(m.serialNumber)} |{" "}
+          <strong>Reading Unit:</strong> {safeValue(m.readingUnit)} |{" "}
+          <strong>Location:</strong> {safeValue(m.locationDescription)}
           {!m.isActive && (
             <>
               {" "}

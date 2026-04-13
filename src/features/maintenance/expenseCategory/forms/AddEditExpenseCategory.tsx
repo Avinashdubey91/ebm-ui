@@ -24,6 +24,7 @@ import { showAddUpdateResult } from "../../../../utils/alerts/showAddUpdateConfi
 import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
 
 import type { ExpenseCategoryDTO } from "../../../../types/ExpenseCategoryDTO";
+import { UseAuth } from "../../../../context/UseAuth";
 
 type SubmitMode = "save" | "saveAndNext";
 
@@ -51,6 +52,7 @@ const AddEditExpenseCategory = forwardRef<AddEditFormHandle, Props>(
   ({ expenseCategoryId, onUnsavedChange }, ref) => {
     const navigate = useNavigate();
     const { parentListPath } = useCurrentMenu();
+    const { userId } = UseAuth();
 
     const isEditMode =
       typeof expenseCategoryId === "number" && expenseCategoryId > 0;
@@ -170,8 +172,11 @@ const AddEditExpenseCategory = forwardRef<AddEditFormHandle, Props>(
         if (isSubmitting) return;
         if (!validateBeforeSubmit()) return;
 
-        const userId = parseInt(localStorage.getItem("userId") ?? "0", 10);
-        if (!userId) return;
+        const currentUserId = Number(userId);
+
+        if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) {
+          throw new Error("Authenticated user id is missing.");
+        }
 
         setIsSubmitting(true);
 
@@ -183,8 +188,7 @@ const AddEditExpenseCategory = forwardRef<AddEditFormHandle, Props>(
               endpoints.update,
               expenseCategoryId,
               payload,
-              userId,
-              false
+              currentUserId
             );
             await showAddUpdateResult(true, "update", "expense category");
             setHasUnsavedChanges(false);
@@ -192,7 +196,7 @@ const AddEditExpenseCategory = forwardRef<AddEditFormHandle, Props>(
             return;
           }
 
-          await createEntity(endpoints.add, payload, userId, false);
+          await createEntity(endpoints.add, payload, currentUserId);
           await showAddUpdateResult(true, "add", "expense category");
           setHasUnsavedChanges(false);
 
@@ -222,6 +226,7 @@ const AddEditExpenseCategory = forwardRef<AddEditFormHandle, Props>(
         isSubmitting,
         navigate,
         parentListPath,
+        userId,
         validateBeforeSubmit,
       ]
     );

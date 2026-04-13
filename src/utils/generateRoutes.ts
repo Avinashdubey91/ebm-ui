@@ -16,13 +16,24 @@ for (const path in lazyModules) {
   }
 }
 
+const toDashboardRelativePath = (value?: string | null): string => {
+  if (!value) return "";
+
+  return value
+    .replace(/^\//, "")
+    .replace(/^dashboard\/?/i, "")
+    .replace(/\/+/g, "/")
+    .replace(/\/$/, "");
+};
+
 export const generateRoutes = (
   menus: SideNavigationMenuDTO[]
 ): RouteObject[] => {
   const dynamicRoutes: RouteObject[] = [];
 
   for (const menu of menus) {
-    if (!menu.routePath) continue;
+    const parentPath = toDashboardRelativePath(menu.routePath);
+    if (!parentPath) continue;
 
     const children: RouteObject[] = [];
 
@@ -32,7 +43,7 @@ export const generateRoutes = (
       const modulePath = componentMap[submenu.componentName];
       if (!modulePath) continue;
 
-      const loader = lazyModules[componentMap[submenu.componentName]];
+      const loader = lazyModules[modulePath];
 
       const LazyComponent = loader
         ? lazy(
@@ -40,33 +51,35 @@ export const generateRoutes = (
           )
         : lazy(() => import("../components/NotFoundPlaceholder"));
 
+      const subPath = toDashboardRelativePath(submenu.routePath);
+      if (!subPath) continue;
+
       children.push({
-        path: submenu.routePath,
+        path: subPath,
         element: React.createElement(LazyComponent),
       });
 
-      // Dynamically generate edit route if routePath matches known patterns
       const editPatterns = ["create", "add"];
-      const routeLower = submenu.routePath.toLowerCase();
+      const routeLower = subPath.toLowerCase();
 
       const matchedPattern = editPatterns.find(
         (p) => routeLower === p || routeLower.endsWith(`/${p}`)
       );
 
       if (matchedPattern) {
-        const pathSegments = submenu.routePath.split("/").filter(Boolean);
+        const pathSegments = subPath.split("/").filter(Boolean);
+
         if (pathSegments.length === 1) {
-          // e.g., 'create' → generate 'edit/:id'
           children.push({
-            path: `edit/:id`,
+            path: "edit/:id",
             element: React.createElement(LazyComponent),
           });
         } else {
-          // e.g., 'society/create' → generate 'society/edit/:id'
-          const baseEditPath = submenu.routePath.replace(
+          const baseEditPath = subPath.replace(
             new RegExp(`/${matchedPattern}$`, "i"),
             "/edit"
           );
+
           children.push({
             path: `${baseEditPath}/:id`,
             element: React.createElement(LazyComponent),
@@ -76,7 +89,6 @@ export const generateRoutes = (
     }
 
     if (children.length > 0) {
-      // Add fallback 404 for unknown subroutes
       children.push({
         path: "*",
         element: React.createElement(
@@ -86,33 +98,12 @@ export const generateRoutes = (
         ),
       });
 
-      const routeParts = menu.routePath.replace(/^\//, "").split("/"); // ["dashboard", "users"]
-
-      // If path is "dashboard/users", split to ["dashboard", "users"]
-      // Then nest accordingly
-      const parent: RouteObject = { path: routeParts[0], children: [] };
-      let current = parent;
-
-      for (let i = 1; i < routeParts.length; i++) {
-        const newChild = { path: routeParts[i], children: [] };
-        current.children!.push(newChild);
-        current = newChild;
-      }
-
-      current.children!.push(...children);
-      dynamicRoutes.push(parent);
+      dynamicRoutes.push({
+        path: parentPath,
+        children,
+      });
     }
   }
-
-  console.log(
-    "📌 Final Dynamic Routes:",
-    dynamicRoutes.map((r) => ({
-      parentPath: r.path,
-      children: r.children?.map((c) =>
-        typeof c.path === "string" ? c.path : "[no-path]"
-      ),
-    }))
-  );
 
   return dynamicRoutes;
 };

@@ -1,5 +1,3 @@
-/*  features/property/apartment/forms/AddEditApartment.tsx  */
-
 import React, {
   useMemo,
   useEffect,
@@ -25,6 +23,7 @@ import SharedAddEditForm from "../../../shared/SharedAddEditForm";
 import type { AddEditFormHandle } from "../../../shared/SharedAddEditForm";
 import { showAddUpdateResult } from "../../../../utils/alerts/showAddUpdateConfirmation";
 import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
+import { UseAuth } from "../../../../context/UseAuth";
 
 export interface AddEditApartmentRef {
   submit: () => void;
@@ -137,18 +136,19 @@ const AddEditApartment = forwardRef<AddEditFormHandle, Props>(
     const [societies, setSocieties] = useState<SocietyDTO[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitMode, setSubmitMode] = useState<"save" | "saveAndNext">(
-      "save"
+      "save",
     );
 
     const navigate = useNavigate();
     const { parentListPath } = useCurrentMenu();
+    const { userId } = UseAuth();
 
     const formRef = useRef<HTMLFormElement>(null);
     const initialRef = useRef<ApartmentDTO | null>(null);
 
     const numericOptionalFields = useMemo(
       () => new Set<string>(["constructionYear", "totalFloors", "totalFlats"]),
-      []
+      [],
     );
 
     /* ---------- fetch societies for dropdown ---------- */
@@ -165,7 +165,7 @@ const AddEditApartment = forwardRef<AddEditFormHandle, Props>(
           (data) => {
             setFormData(data);
             initialRef.current = { ...data };
-          }
+          },
         );
       } else {
         setFormData(emptyApartment);
@@ -192,7 +192,7 @@ const AddEditApartment = forwardRef<AddEditFormHandle, Props>(
 
     /* ---------- field change handler ---------- */
     const handleChange = (
-      e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+      e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
     ) => {
       const el = e.currentTarget;
       const name = el.name;
@@ -239,22 +239,25 @@ const AddEditApartment = forwardRef<AddEditFormHandle, Props>(
 
       setIsSubmitting(true);
       try {
-        const userId = parseInt(localStorage.getItem("userId") || "0", 10);
+        const currentUserId = Number(userId);
+
+        if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) {
+          throw new Error("Authenticated user id is missing.");
+        }
 
         if (apartmentId) {
           await updateEntity(
             endpoints.update,
             apartmentId,
             formData,
-            userId,
-            false
+            currentUserId
           );
           await showAddUpdateResult(true, "update", "apartment");
           navigate(parentListPath);
           return;
         }
 
-        await createEntity(endpoints.add, formData, userId, false);
+        await createEntity(endpoints.add, formData, currentUserId);
         await showAddUpdateResult(true, "add", "apartment");
 
         if (submitMode === "saveAndNext") {
@@ -280,7 +283,7 @@ const AddEditApartment = forwardRef<AddEditFormHandle, Props>(
     const societyOptions = societies
       .filter(
         (s): s is SocietyDTO & { societyId: number } =>
-          typeof s.societyId === "number"
+          typeof s.societyId === "number",
       )
       .map((s) => ({
         label: s.societyName,
@@ -351,7 +354,7 @@ const AddEditApartment = forwardRef<AddEditFormHandle, Props>(
                     onInput={(e: React.FormEvent<HTMLInputElement>) => {
                       e.currentTarget.value = keepDigitsOnly(
                         e.currentTarget.value,
-                        4
+                        4,
                       );
                     }}
                   />
@@ -384,7 +387,7 @@ const AddEditApartment = forwardRef<AddEditFormHandle, Props>(
                     inputMode="numeric"
                     onInput={(e: React.FormEvent<HTMLInputElement>) => {
                       e.currentTarget.value = keepDigitsOnly(
-                        e.currentTarget.value
+                        e.currentTarget.value,
                       );
                     }}
                   />
@@ -399,7 +402,7 @@ const AddEditApartment = forwardRef<AddEditFormHandle, Props>(
                     inputMode="numeric"
                     onInput={(e: React.FormEvent<HTMLInputElement>) => {
                       e.currentTarget.value = keepDigitsOnly(
-                        e.currentTarget.value
+                        e.currentTarget.value,
                       );
                     }}
                   />
@@ -451,7 +454,7 @@ const AddEditApartment = forwardRef<AddEditFormHandle, Props>(
                     onInput={(e: React.FormEvent<HTMLInputElement>) => {
                       e.currentTarget.value = keepDigitsOnly(
                         e.currentTarget.value,
-                        10
+                        10,
                       );
                     }}
                   />
@@ -480,7 +483,7 @@ const AddEditApartment = forwardRef<AddEditFormHandle, Props>(
         </div>
       </SharedAddEditForm>
     );
-  }
+  },
 );
 
 export default AddEditApartment;

@@ -1,4 +1,6 @@
 import React from 'react';
-export declare const AuthProvider: React.FC<{
+interface Props {
     children: React.ReactNode;
-}>;
+}
+export declare const AuthProvider: React.FC<Props>;
+export {};

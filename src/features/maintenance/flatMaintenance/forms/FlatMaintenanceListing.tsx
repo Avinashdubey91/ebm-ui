@@ -15,8 +15,8 @@ import {
   showDeleteConfirmation,
   showDeleteResult,
 } from "../../../../utils/alerts/showDeleteConfirmation";
+import { UseAuth } from "../../../../context/UseAuth";
 
-// Minimal shape (avoid depending on unknown FlatDTO file)
 type FlatLite = {
   flatId: number;
   apartmentId?: number | null;
@@ -38,6 +38,7 @@ type GroupMeta = { label: string; effectiveFrom: string };
 const FlatMaintenanceListing: React.FC = () => {
   const navigate = useNavigate();
   const { createRoutePath } = useCurrentMenu();
+  const { userId } = UseAuth();
 
   const [loading, setLoading] = useState(false);
   const [sortField, setSortField] = useState<keyof FlatMaintenanceDTO>(
@@ -95,7 +96,6 @@ const FlatMaintenanceListing: React.FC = () => {
     return m;
   }, [flats]);
 
-  // Patch Start: keep group label + group effectiveFrom separate
   const groupMetaById = useMemo(() => {
     const m = new Map<number, GroupMeta>();
 
@@ -115,7 +115,6 @@ const FlatMaintenanceListing: React.FC = () => {
 
     return m;
   }, [groups, apartmentNameById]);
-  // Patch End
 
   const sortedMaps = useMemo(() => {
     return [...maps].sort((a, b) => {
@@ -133,11 +132,11 @@ const FlatMaintenanceListing: React.FC = () => {
     const confirmed = await showDeleteConfirmation("flat maintenance mapping");
     if (!confirmed) return;
 
-    const deletedBy = parseInt(localStorage.getItem("userId") ?? "0", 10);
-    if (!deletedBy) return;
+    const currentUserId = Number(userId);
+    if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) return;
 
     try {
-      await deleteEntity(endpoints.delete, id, deletedBy);
+      await deleteEntity(endpoints.delete, id, currentUserId);
       setMaps((prev) => prev.filter((x) => x.flatMaintenanceId !== id));
       setExpandedRowId((prev) => (prev === id ? null : prev));
       await showDeleteResult(true, "flat maintenance mapping");

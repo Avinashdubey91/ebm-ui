@@ -10,6 +10,7 @@ import {
   showDeleteResult,
 } from "../../../../utils/alerts/showDeleteConfirmation";
 import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
+import { UseAuth } from "../../../../context/UseAuth";
 
 const endpoints = {
   getAll: "/renterprofile/Get-All-Renters",
@@ -27,6 +28,7 @@ const RenterListing: React.FC = () => {
 
   const navigate = useNavigate();
   const { createRoutePath } = useCurrentMenu();
+  const { userId } = UseAuth();
 
   useEffect(() => {
     const fetchRenters = async () => {
@@ -63,14 +65,14 @@ const RenterListing: React.FC = () => {
   const handleDeleteRenter = async (id?: number) => {
     if (!id) return;
 
-    const deletedBy = parseInt(localStorage.getItem("userId") ?? "0", 10);
-    if (!deletedBy) return;
+    const currentUserId = Number(userId);
+    if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) return;
 
     const confirmed = await showDeleteConfirmation(ENTITY_NAME);
     if (!confirmed) return;
 
     try {
-      await deleteEntity(endpoints.delete, id, deletedBy);
+      await deleteEntity(endpoints.delete, id, currentUserId);
       setRenters((prev) => prev.filter((r) => r.renterId !== id));
       await showDeleteResult(true, ENTITY_NAME);
     } catch (err) {

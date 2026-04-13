@@ -18,7 +18,7 @@ createRoot(document.getElementById("root")!).render(
       <AuthProvider>
         <DashboardProvider>
           <MenuProvider>
-            <AppEntry /> {/* ✅ Only AppEntry here, NotificationProvider moved inside */}
+            <AppEntry /> {/* Only AppEntry here, NotificationProvider moved inside */}
           </MenuProvider>
         </DashboardProvider>
       </AuthProvider>

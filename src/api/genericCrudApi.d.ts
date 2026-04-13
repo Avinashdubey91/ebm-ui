@@ -2,7 +2,7 @@ import type { PagedResultDTO } from "../types/PagedResultDTO";
 /**
  * Creates a new entity (POST).
  */
-export declare const createEntity: (endpoint: string, data: FormData | object, createdBy: number, isMultipart?: boolean) => Promise<Axios.AxiosXHR<unknown>>;
+export declare const createEntity: (endpoint: string, data: FormData | object, createdBy: number) => Promise<Axios.AxiosXHR<unknown>>;
 /**
  * Fetches all entities (GET).
  */
@@ -14,7 +14,7 @@ export declare const fetchEntityById: <T>(endpoint: string, id: number) => Promi
 /**
  * Updates an existing entity (PUT).
  */
-export declare const updateEntity: (endpoint: string, id: number, data: FormData | object, modifiedBy: number, isMultipart?: boolean) => Promise<Axios.AxiosXHR<unknown>>;
+export declare const updateEntity: (endpoint: string, id: number, data: FormData | object, modifiedBy: number) => Promise<Axios.AxiosXHR<unknown>>;
 /**
  * Deletes an entity (DELETE).
  */

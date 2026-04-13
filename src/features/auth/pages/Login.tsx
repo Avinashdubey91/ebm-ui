@@ -15,6 +15,7 @@ import UnlockAccountModal from "./UnlockAccountModal";
 import { UseAuth } from "../../../context/UseAuth";
 import OverlayMessage from "../../../components/common/OverlayMessage";
 import { handleApiError } from "../../../utils/handleApiError";
+import { setAccessToken } from "../../../api/httpClient";
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -36,9 +37,12 @@ const Login: React.FC = () => {
   );
 
   useEffect(() => {
+    // Keep auth state untouched on the login route.
+    // In a refresh-token flow, session restoration may still be in progress.
+    // Only stop live connections and clear non-sensitive page-level session data here.
     clearSession();
     stopNotificationConnection();
-    console.log("🧹 Session forcibly cleared via /login route");
+    console.log("Login route initialized.");
   }, []);
 
   const togglePassword = () => {
@@ -56,15 +60,21 @@ const Login: React.FC = () => {
 
       const response = await loginUser({ userName: username, password });
 
-      if (!response.userId || !response.token) {
-        throw new Error("Invalid login response: Missing user ID or token");
+      if (!response.userId || !response.accessToken) {
+        throw new Error("Invalid login response: Missing user ID or access token.");
       }
 
-      setAuth(response.token, response.userId.toString());
+      // Keep the access token in the shared in-memory HTTP client store.
+      setAccessToken(response.accessToken);
+
+      // Store authentication state in React context only.
+      setAuth(response.accessToken, response.userId.toString());
+
+      // Keep only lightweight non-sensitive UI state locally.
       localStorage.setItem("username", username);
       localStorage.setItem("status", "Online");
 
-      setOverlayMessage("✅ You've successfully logged in!");
+      setOverlayMessage("You have successfully logged in.");
       setOverlaySubMessage("Please wait while we load your dashboard...");
 
       setTimeout(() => navigate("/dashboard"), 1000);
@@ -86,7 +96,6 @@ const Login: React.FC = () => {
   return (
     <div className="self-solutions-login-body">
       <div className="self-solutions-login-full-page">
-        {/* Left Side */}
         <div className="self-solutions-login-left-side">
           <div>Picture 1</div>
           <div>Picture 2</div>
@@ -94,7 +103,6 @@ const Login: React.FC = () => {
           <div>Picture 4</div>
         </div>
 
-        {/* Right Side */}
         <div className="self-solutions-login-right-side">
           <div className="self-solutions-login-login-box">
             <form
@@ -151,9 +159,7 @@ const Login: React.FC = () => {
                     onClick={togglePassword}
                   >
                     <i
-                      className={`fa ${
-                        showPassword ? "fa-eye-slash" : "fa-eye"
-                      }`}
+                      className={`fa ${showPassword ? "fa-eye-slash" : "fa-eye"}`}
                     ></i>
                   </span>
                 </div>

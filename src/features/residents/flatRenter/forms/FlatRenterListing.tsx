@@ -10,6 +10,7 @@ import {
 } from "../../../../utils/alerts/showDeleteConfirmation";
 import { showAddUpdateResult } from "../../../../utils/alerts/showAddUpdateConfirmation";
 import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
+import { UseAuth } from "../../../../context/UseAuth";
 
 const endpoints = {
   getAll: "/flatrenter/Get-All-Renters",
@@ -27,6 +28,7 @@ const FlatRenterListing: React.FC = () => {
 
   const navigate = useNavigate();
   const { createRoutePath } = useCurrentMenu();
+  const { userId } = UseAuth();
 
   useEffect(() => {
     const fetchRenters = async () => {
@@ -67,14 +69,14 @@ const FlatRenterListing: React.FC = () => {
 
   const handleDeleteRenter = async (id?: number) => {
     if (!id) return;
-    const deletedBy = parseInt(localStorage.getItem("userId") ?? "0", 10);
-    if (!deletedBy) return;
+    const currentUserId = Number(userId);
+    if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) return;
 
     const confirmed = await showDeleteConfirmation(ENTITY_NAME);
     if (!confirmed) return;
 
     try {
-      await deleteEntity(endpoints.delete, id, deletedBy);
+      await deleteEntity(endpoints.delete, id, currentUserId);
       setRenters((prev) => prev.filter((r) => r.flatRenterId !== id));
       await showDeleteResult(true, ENTITY_NAME);
     } catch (err) {

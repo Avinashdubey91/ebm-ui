@@ -19,6 +19,7 @@ import type {
   MeterReadingEntryRowDTO,
   MeterReadingEntryBulkRequestDTO,
 } from "../../../../types/MeterReadingEntryDTO";
+import { UseAuth } from "../../../../context/UseAuth";
 
 type ApartmentLookup = {
   apartmentId: number;
@@ -123,6 +124,7 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const [rows, setRows] = useState<EntryRowState[]>([]);
   const [step, setStep] = useState<"select" | "table">("select");
   const [topError, setTopError] = useState<string>("");
+  const { userId } = UseAuth();
 
   const ENDPOINTS = useMemo(
     () => ({
@@ -358,9 +360,10 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
     if (!confirmed) return;
 
-    const createdBy = Number(localStorage.getItem("userId") ?? 0);
-    if (!Number.isFinite(createdBy) || createdBy <= 0) {
-      setTopError("UserId not found. Please login again.");
+    const createdBy = Number(userId);
+
+    if (!userId || Number.isNaN(createdBy) || createdBy <= 0) {
+      setTopError("Authenticated user id is missing. Please login again.");
       return;
     }
 
@@ -376,7 +379,7 @@ const MeterReadingEntryModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
     setSaving(true);
     try {
-      await createEntity(ENDPOINTS.bulkCreate, payload, createdBy, false);
+      await createEntity(ENDPOINTS.bulkCreate, payload, createdBy);
       await showAddUpdateResult(true, "add", "Meter Reading Entry");
 
       window.dispatchEvent(new Event("meterReadingEntry:refresh"));

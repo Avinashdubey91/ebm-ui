@@ -1,14 +1,6 @@
-// src/features/dashboard/components/Topbar.tsx
-
 import React, { useState, useEffect, useMemo } from "react";
 import { useDashboardContext } from "../context/useDashboardContext";
-import {
-  FaUser,
-  FaToggleOn,
-  FaToggleOff,
-  FaSignOutAlt,
-  // FaCalendarAlt,
-} from "react-icons/fa";
+import { FaUser, FaToggleOn, FaToggleOff, FaSignOutAlt } from "react-icons/fa";
 import { useNotificationContext } from "../../../hooks/useNotificationContext";
 import { Link, useNavigate } from "react-router-dom";
 import { getUserProfile } from "../../../api/userProfileService";
@@ -22,29 +14,23 @@ import ChangePasswordModal from "../../auth/pages/ChangePasswordModal";
 import { stopNotificationConnection } from "../../../api/signalR";
 import OverlayMessage from "../../../components/common/OverlayMessage";
 import UserProfileModal from "./UserProfileModal";
+import { UseAuth } from "../../../context/UseAuth";
+import { clearAccessToken } from "../../../api/httpClient";
+import { logoutUser } from "../../auth/authService";
 
 function pad2(value: number): string {
   return String(value).padStart(2, "0");
 }
-//Uncomment below Function for MilliSecond in Topbar Time
-// function pad3(value: number): string {
-//   return String(value).padStart(3, "0");
-// }
 
 function formatSystemTime(date: Date): string {
   const hours24 = date.getHours();
   const minutes = pad2(date.getMinutes());
   const seconds = pad2(date.getSeconds());
-  //const milliseconds = pad3(date.getMilliseconds());
-  //Uncomment above "const milliseconds" for MilliSecond in Topbar Time
 
   const ampm = hours24 >= 12 ? "PM" : "AM";
   const hours12 = hours24 % 12 || 12;
   const hours = pad2(hours12);
 
-  //Uncomment below Return for MilliSecond in Topbar Time and remove or comment the existing return.
-  //After Enabled Millisecond also changed the width in dashboard.css to this class ".dashboard-ebm-system-time-box {" to width=145px.
-  //return `${hours}:${minutes}:${seconds}.${milliseconds} ${ampm}`;
   return `${hours}:${minutes}:${seconds} ${ampm}`;
 }
 
@@ -52,6 +38,7 @@ const Topbar: React.FC = () => {
   const user = useDashboardContext();
   const navigate = useNavigate();
   const { notifications, setNotifications } = useNotificationContext();
+  const { userId, clearAuth } = UseAuth();
 
   const [profile, setProfile] = useState<UserDTO | null>(null);
   const [isDropdownOpen, setDropdownOpen] = useState(false);
@@ -66,6 +53,8 @@ const Topbar: React.FC = () => {
 
   const notifRef = React.useRef<HTMLDivElement>(null);
   const profileRef = React.useRef<HTMLDivElement>(null);
+
+  const currentUserId = Number(userId);
 
   useEffect(() => {
     const toggleButton = document.getElementById("sidebarToggle");
@@ -133,20 +122,42 @@ const Topbar: React.FC = () => {
     navigate("/dashboard/billing/maintenance-bill/list");
   };
 
-  const handleLogout = async () => {
+  const waitForNextPaint = () =>
+    new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+
+  const handleLogout = async (e?: React.MouseEvent<HTMLAnchorElement>) => {
+    e?.preventDefault();
+
+    if (isLoggingOut) return;
+
+    setDropdownOpen(false);
+    setProfileOpen(false);
     setIsLoggingOut(true);
 
-    await stopNotificationConnection();
+    // Allow React to paint the overlay before async teardown starts.
+    await waitForNextPaint();
 
-    setTimeout(() => {
-      localStorage.removeItem("token");
+    try {
+      await stopNotificationConnection();
+      await logoutUser();
+    } catch (error) {
+      console.error("Logout failed.", error);
+    } finally {
+      clearAccessToken();
+      clearAuth();
+
       localStorage.removeItem("username");
-      localStorage.removeItem("userId");
       localStorage.removeItem("status");
 
       user.setStatus("Offline");
-      navigate("/login");
-    }, 1500);
+
+      navigate("/login", {
+        replace: true,
+        state: { logoutCompleted: true },
+      });
+    }
   };
 
   const markNotificationAsReadHandler = async (id: number) => {
@@ -166,11 +177,13 @@ const Topbar: React.FC = () => {
   };
 
   const handleMarkAllRead = async () => {
-    const userId = localStorage.getItem("userId");
-    if (!userId) return;
+    if (!Number.isFinite(currentUserId) || currentUserId <= 0) {
+      console.error("Authenticated user id is missing.");
+      return;
+    }
 
     try {
-      await markAllNotificationsAsRead(userId);
+      await markAllNotificationsAsRead(currentUserId.toString());
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     } catch (err) {
       console.error("Failed to mark all as read", err);
@@ -178,11 +191,13 @@ const Topbar: React.FC = () => {
   };
 
   const handleMarkAllUnread = async () => {
-    const userId = localStorage.getItem("userId");
-    if (!userId) return;
+    if (!Number.isFinite(currentUserId) || currentUserId <= 0) {
+      console.error("Authenticated user id is missing.");
+      return;
+    }
 
     try {
-      await markAllNotificationsAsUnread(userId);
+      await markAllNotificationsAsUnread(currentUserId.toString());
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: false })));
     } catch (err) {
       console.error("Failed to mark all as unread", err);
@@ -239,16 +254,6 @@ const Topbar: React.FC = () => {
           title={systemTimeTitle}
           className="form-control form-control-md dashboard-ebm-system-time-box ms-3"
         />
-
-        {/*
-        <div className="dashboard-ebm-month-picker-wrapper position-relative dashboard-ebm-custom-month-wrapper ms-3">
-          <input
-            type="month"
-            className="form-control form-control-md month-selector"
-          />
-          <FaCalendarAlt className="dashboard-ebm-custom-calendar-icon" />
-        </div>
-        */}
 
         <div className="dropdown position-relative ms-3" ref={notifRef}>
           <button
@@ -496,7 +501,7 @@ const Topbar: React.FC = () => {
       <OverlayMessage
         show={isLoggingOut}
         message="Logging you out..."
-        subMessage=""
+        subMessage="Please wait while we close your session securely..."
       />
 
       {showProfileModal && profile && (

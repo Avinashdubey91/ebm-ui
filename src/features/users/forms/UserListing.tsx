@@ -5,13 +5,17 @@ import type { UserDTO } from "../../../types/UserDTO";
 import { abbreviateRole } from "../../../utils/abbreviate";
 import { formatDate, safeValue, toTitleCase } from "../../../utils/format";
 import SharedListingTable from "../../shared/SharedListingTable";
-import { showDeleteConfirmation, showDeleteResult } from "../../../utils/alerts/showDeleteConfirmation";
+import {
+  showDeleteConfirmation,
+  showDeleteResult,
+} from "../../../utils/alerts/showDeleteConfirmation";
 import { renderImageThumbnail } from "../../../utils/renderImageThumbnail";
 import { useCurrentMenu } from "../../../hooks/useCurrentMenu";
+import { UseAuth } from "../../../context/UseAuth";
 
 const endpoints = {
-  getAll: '/user/Get-All-Users',
-  delete: '/user/Delete-User',
+  getAll: "/user/Get-All-Users",
+  delete: "/user/Delete-User",
 };
 
 const UserListing: React.FC = () => {
@@ -22,27 +26,32 @@ const UserListing: React.FC = () => {
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
   const navigate = useNavigate();
   const { createRoutePath } = useCurrentMenu();
+  const { userId } = UseAuth();
 
   useEffect(() => {
     fetchAllEntities<UserDTO>(endpoints.getAll)
       .then((data) => {
-        console.log("✅ Users Fetched:", data);
+        console.log("Users Fetched:", data);
         setUsers(data);
       })
-      .catch((err) => console.error("❌ Failed to fetch users", err))
+      .catch((err) => console.error("Failed to fetch users", err))
       .finally(() => setLoading(false));
   }, []);
 
-  const handleDelete = async (userId?: number) => {
-    if (!userId) return;
+  const handleDelete = async (targetUserId?: number) => {
+    if (!targetUserId) return;
 
-    const loggedInUserId = parseInt(localStorage.getItem("userId") ?? "0", 10);
-    if (userId === loggedInUserId) {
+    const currentUserId = Number(userId);
+
+    if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) {
+      return;
+    }
+    if (targetUserId === currentUserId) {
       await showDeleteResult(
         false,
         "user",
         "You can't delete your own User Account.",
-        "Action Prohibited!" // ✅ override the default title
+        "Action Prohibited!",
       );
       return;
     }
@@ -51,11 +60,11 @@ const UserListing: React.FC = () => {
     if (!confirmed) return;
 
     try {
-      await deleteEntity(endpoints.delete, userId, loggedInUserId);
-      setUsers((prev) => prev.filter((u) => u.userId !== userId));
+      await deleteEntity(endpoints.delete, targetUserId, currentUserId);
+      setUsers((prev) => prev.filter((u) => u.userId !== targetUserId));
       await showDeleteResult(true, "user");
     } catch (err) {
-      console.error("❌ Failed to delete user", err);
+      console.error("Failed to delete user", err);
       await showDeleteResult(false, "user");
     }
   };
@@ -74,7 +83,13 @@ const UserListing: React.FC = () => {
       loading={loading}
       columns={[
         { key: "userName", label: "User Name", width: "10px" },
-        { key: "firstName", label: "Name", width: "100px", renderCell: (user) => `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()},
+        {
+          key: "firstName",
+          label: "Name",
+          width: "100px",
+          renderCell: (user) =>
+            `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim(),
+        },
         { key: "email", label: "Email", width: "150px" },
         { key: "mobile", label: "Mobile", width: "100px" },
         { key: "addressLine1", label: "Address", width: "160px" },
@@ -92,7 +107,7 @@ const UserListing: React.FC = () => {
           label: "Photo",
           width: "70px",
           renderCell: (user) => renderImageThumbnail(user.profilePicture),
-        }
+        },
       ]}
       sortField={sortField}
       sortAsc={sortAsc}
@@ -111,12 +126,13 @@ const UserListing: React.FC = () => {
       getRowKey={(user) => user.userId ?? Math.floor(Math.random() * 100000)}
       renderExpandedRow={(u) => (
         <>
-          <strong>DOB:</strong> {formatDate(u.dob)} |{" "}
-          <strong>Street:</strong> {safeValue(u.street)} |{" "}
-          <strong>City:</strong> {safeValue(u.city)} |{" "}
-          <strong>District:</strong> {u.districtName ? toTitleCase(u.districtName) : "-"} |{" "}
-          <strong>State:</strong> {u.stateName ? toTitleCase(u.stateName) : "-"} |{" "}
-          <strong>Country:</strong> {u.countryName ? toTitleCase(u.countryName) : "-"}
+          <strong>DOB:</strong> {formatDate(u.dob)} | <strong>Street:</strong>{" "}
+          {safeValue(u.street)} | <strong>City:</strong> {safeValue(u.city)} |{" "}
+          <strong>District:</strong>{" "}
+          {u.districtName ? toTitleCase(u.districtName) : "-"} |{" "}
+          <strong>State:</strong> {u.stateName ? toTitleCase(u.stateName) : "-"}{" "}
+          | <strong>Country:</strong>{" "}
+          {u.countryName ? toTitleCase(u.countryName) : "-"}
           <br />
           <strong>Remarks:</strong> {safeValue(u.remarks)}
         </>

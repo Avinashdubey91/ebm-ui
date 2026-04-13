@@ -11,6 +11,7 @@ import {
   showDeleteResult,
 } from "../../../../utils/alerts/showDeleteConfirmation";
 import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
+import { UseAuth } from "../../../../context/UseAuth";
 
 const endpoints = {
   getAll: "/society/Get-All-Societies",
@@ -28,8 +29,8 @@ const SocietyListing: React.FC = () => {
 
   const navigate = useNavigate();
   const { createRoutePath } = useCurrentMenu();
+  const { userId } = UseAuth();
 
-  // 🔄 Fetch data
   useEffect(() => {
     const fetchSocieties = async () => {
       try {
@@ -68,14 +69,14 @@ const SocietyListing: React.FC = () => {
   const handleDeleteSociety = async (id?: number) => {
     if (!id) return;
 
-    const deletedBy = parseInt(localStorage.getItem("userId") ?? "0", 10);
-    if (!deletedBy || !id) return;
+    const currentUserId = Number(userId);
+    if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) return;
 
     const confirmed = await showDeleteConfirmation(ENTITY_NAME);
     if (!confirmed) return;
 
     try {
-      await deleteEntity(endpoints.delete, id, deletedBy);
+      await deleteEntity(endpoints.delete, id, currentUserId);
       setSocieties((prev) => prev.filter((s) => s.societyId !== id));
       await showDeleteResult(true, ENTITY_NAME);
     } catch (err) {
@@ -120,8 +121,7 @@ const SocietyListing: React.FC = () => {
           <strong>Swimming Pool:</strong> {s.hasSwimmingPool ? "Yes" : "No"} |{" "}
           <strong>Registered:</strong> {safeValue(s.registrationNumber)} |{" "}
           <strong>Contact Person:</strong> {safeValue(s.contactPerson)} |{" "}
-          <strong>Email:</strong> {safeValue(s.email)} |{" "}
-          <br />
+          <strong>Email:</strong> {safeValue(s.email)} | <br />
           <strong>Contact No.:</strong> {safeValue(s.contactNumber)}
         </>
       )}

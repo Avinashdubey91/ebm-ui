@@ -17,6 +17,7 @@ import {
   showDeleteResult,
 } from "../../../../utils/alerts/showDeleteConfirmation";
 import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
+import { UseAuth } from "../../../../context/UseAuth";
 
 const ENTITY_NAME = "Maintenance Group";
 
@@ -34,6 +35,7 @@ const toMoney = (value?: number | null): string => {
 const GroupListing: React.FC = () => {
   const navigate = useNavigate();
   const { createRoutePath } = useCurrentMenu();
+  const { userId } = UseAuth();
 
   const [groups, setGroups] = useState<MaintenanceGroupDTO[]>([]);
   const [apartments, setApartments] = useState<ApartmentDTO[]>([]);
@@ -92,14 +94,14 @@ const GroupListing: React.FC = () => {
   const handleDeleteGroup = async (id?: number) => {
     if (!id) return;
 
-    const deletedBy = parseInt(localStorage.getItem("userId") ?? "0", 10);
-    if (!deletedBy) return;
+    const currentUserId = Number(userId);
+    if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) return;
 
     const confirmed = await showDeleteConfirmation(ENTITY_NAME);
     if (!confirmed) return;
 
     try {
-      await deleteEntity(endpoints.delete, id, deletedBy);
+      await deleteEntity(endpoints.delete, id, currentUserId);
 
       setGroups((prev) => prev.filter((g) => g.maintenanceGroupId !== id));
       setExpandedRowId(null);

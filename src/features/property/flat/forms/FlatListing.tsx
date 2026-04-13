@@ -11,6 +11,7 @@ import {
   showDeleteResult,
 } from "../../../../utils/alerts/showDeleteConfirmation";
 import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
+import { UseAuth } from "../../../../context/UseAuth";
 
 const endpoints = {
   getAll: "/flat/Get-All-Flats",
@@ -28,6 +29,7 @@ const FlatListing: React.FC = () => {
 
   const navigate = useNavigate();
   const { createRoutePath } = useCurrentMenu();
+  const { userId } = UseAuth();
 
   useEffect(() => {
     const fetchFlats = async () => {
@@ -64,14 +66,14 @@ const FlatListing: React.FC = () => {
   const handleDeleteFlat = async (id?: number) => {
     if (!id) return;
 
-    const deletedBy = parseInt(localStorage.getItem("userId") ?? "0", 10);
-    if (!deletedBy || !id) return;
+    const currentUserId = Number(userId);
+    if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) return;
 
     const confirmed = await showDeleteConfirmation(ENTITY_NAME);
     if (!confirmed) return;
 
     try {
-      await deleteEntity(endpoints.delete, id, deletedBy);
+      await deleteEntity(endpoints.delete, id, currentUserId);
       setFlats((prev) => prev.filter((f) => f.flatId !== id));
       await showDeleteResult(true, ENTITY_NAME);
     } catch (err) {
@@ -131,8 +133,7 @@ const FlatListing: React.FC = () => {
           <strong>Water:</strong> {f.hasWaterConnection ? "Yes" : "No"} |{" "}
           <strong>Balcony:</strong> {f.hasBalcony ? "Yes" : "No"} |{" "}
           <strong>Solar:</strong> {f.hasSolarPanel ? "Yes" : "No"} |{" "}
-          <strong>Internet:</strong> {f.hasInternetConnection ? "Yes" : "No"}
-          <br />
+          <strong>Internet:</strong> {f.hasInternetConnection ? "Yes" : "No"} | {" "}
           <strong>Utility Notes:</strong> {safeValue(f.utilityNotes)}
         </>
       )}

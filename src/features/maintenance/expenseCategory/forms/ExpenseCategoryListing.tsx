@@ -12,6 +12,7 @@ import {
 } from "../../../../utils/alerts/showDeleteConfirmation";
 
 import type { ExpenseCategoryDTO } from "../../../../types/ExpenseCategoryDTO";
+import { UseAuth } from "../../../../context/UseAuth";
 
 type SortField = keyof ExpenseCategoryDTO;
 
@@ -30,6 +31,7 @@ function resolveCategoryId(dto: ExpenseCategoryDTO): number | undefined {
 const ExpenseCategoryListing: React.FC = () => {
   const navigate = useNavigate();
   const { createRoutePath } = useCurrentMenu();
+  const { userId } = UseAuth();
 
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<ExpenseCategoryDTO[]>([]);
@@ -98,14 +100,14 @@ const ExpenseCategoryListing: React.FC = () => {
   const handleDelete = async (id?: number) => {
     if (!id) return;
 
-    const deletedBy = parseInt(localStorage.getItem("userId") ?? "0", 10);
-    if (!deletedBy) return;
+    const currentUserId = Number(userId);
+    if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) return;
 
     const confirmed = await showDeleteConfirmation(ENTITY_NAME);
     if (!confirmed) return;
 
     try {
-      await deleteEntity(endpoints.delete, id, deletedBy);
+      await deleteEntity(endpoints.delete, id, currentUserId);
       setItems((prev) => prev.filter((x) => resolveCategoryId(x) !== id));
       setExpandedRowId(null);
       await showDeleteResult(true, ENTITY_NAME);

@@ -2,19 +2,58 @@ import httpClient from "./httpClient";
 import type { PagedResultDTO } from "../types/PagedResultDTO";
 
 /**
+ * Returns true when the payload is FormData.
+ */
+const isFormDataPayload = (value: unknown): value is FormData => {
+  return typeof FormData !== "undefined" && value instanceof FormData;
+};
+
+/**
+ * Validates audit user id before sending create/update/delete requests.
+ * This prevents silent bad requests caused by stale storage-based auth lookups.
+ */
+const ensureValidAuditUserId = (
+  auditHeaderName: "CreatedBy" | "ModifiedBy" | "DeletedBy",
+  auditUserId: number
+) => {
+  if (!Number.isFinite(auditUserId) || auditUserId <= 0) {
+    throw new Error(`${auditHeaderName} is missing or invalid.`);
+  }
+};
+
+/**
+ * Builds request headers without forcing invalid multipart boundaries.
+ * For FormData, Axios/browser should set the Content-Type automatically.
+ * For JSON payloads, send application/json explicitly.
+ */
+const buildMutationHeaders = (
+  auditHeaderName: "CreatedBy" | "ModifiedBy" | "DeletedBy",
+  auditUserId: number,
+  data?: FormData | object
+) => {
+  ensureValidAuditUserId(auditHeaderName, auditUserId);
+
+  const headers: Record<string, string> = {
+    [auditHeaderName]: auditUserId.toString(),
+  };
+
+  if (data !== undefined && !isFormDataPayload(data)) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  return headers;
+};
+
+/**
  * Creates a new entity (POST).
  */
 export const createEntity = async (
   endpoint: string,
   data: FormData | object,
-  createdBy: number,
-  isMultipart: boolean = true
+  createdBy: number
 ) => {
   return httpClient.post(endpoint, data, {
-    headers: {
-      "Content-Type": isMultipart ? "multipart/form-data" : "application/json",
-      CreatedBy: createdBy.toString(),
-    },
+    headers: buildMutationHeaders("CreatedBy", createdBy, data),
   });
 };
 
@@ -44,14 +83,10 @@ export const updateEntity = async (
   endpoint: string,
   id: number,
   data: FormData | object,
-  modifiedBy: number,
-  isMultipart: boolean = true
+  modifiedBy: number
 ) => {
   return httpClient.put(`${endpoint}/${id}`, data, {
-    headers: {
-      "Content-Type": isMultipart ? "multipart/form-data" : "application/json",
-      ModifiedBy: modifiedBy.toString(),
-    },
+    headers: buildMutationHeaders("ModifiedBy", modifiedBy, data),
   });
 };
 
@@ -64,9 +99,7 @@ export const deleteEntity = async (
   deletedBy: number
 ) => {
   return httpClient.delete(`${endpoint}/${id}`, {
-    headers: {
-      DeletedBy: deletedBy.toString(), // ✅ fixed to header
-    },
+    headers: buildMutationHeaders("DeletedBy", deletedBy),
   });
 };
 

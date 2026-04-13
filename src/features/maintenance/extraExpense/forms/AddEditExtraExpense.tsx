@@ -34,6 +34,7 @@ import type { FlatDTO } from "../../../../types/FlatDTO";
 import type { ExpenseCategoryDTO } from "../../../../types/ExpenseCategoryDTO";
 import type { ExtraExpenseDTO } from "../../../../types/ExtraExpenseDTO";
 import type { FlatOwnerNameLookupDTO } from "../../../../types/FlatOwnerNameLookupDTO";
+import { UseAuth } from "../../../../context/UseAuth";
 
 type SubmitMode = "save" | "saveAndNext";
 
@@ -95,7 +96,7 @@ const toFlatLabel = (f: FlatDTO): string => {
 
 const toFullName = (
   first?: string | null,
-  last?: string | null
+  last?: string | null,
 ): string | null => {
   const name = `${first ?? ""} ${last ?? ""}`.trim();
   return name.length > 0 ? name : null;
@@ -126,6 +127,7 @@ const AddEditExtraExpense = forwardRef<AddEditFormHandle, Props>(
   ({ extraExpenseid, onUnsavedChange }, ref) => {
     const navigate = useNavigate();
     const { parentListPath } = useCurrentMenu();
+    const { userId } = UseAuth();
 
     const isEditMode = typeof extraExpenseid === "number" && extraExpenseid > 0;
     const editModeReadOnlyStyle = useMemo<
@@ -221,7 +223,7 @@ const AddEditExtraExpense = forwardRef<AddEditFormHandle, Props>(
           flatId: dto.flatId == null ? "" : Number(dto.flatId),
 
           expenseMonth: isoToYearMonth(
-            dto.monthYear ?? dto.MonthYear ?? dto.expenseMonth
+            dto.monthYear ?? dto.MonthYear ?? dto.expenseMonth,
           ),
           expenseAmount:
             dto.expenseAmount != null ? String(dto.expenseAmount) : "",
@@ -299,9 +301,9 @@ const AddEditExtraExpense = forwardRef<AddEditFormHandle, Props>(
         typeof rawApartmentId === "number"
           ? rawApartmentId
           : typeof rawApartmentId === "string" &&
-            rawApartmentId.trim().length > 0
-          ? Number(rawApartmentId)
-          : undefined;
+              rawApartmentId.trim().length > 0
+            ? Number(rawApartmentId)
+            : undefined;
 
       const shouldLog = lastLookupApartmentIdRef.current !== parsedApartmentId;
       if (shouldLog) {
@@ -397,14 +399,14 @@ const AddEditExtraExpense = forwardRef<AddEditFormHandle, Props>(
           markDirty();
         }
       },
-      [markDirty, isEditMode]
+      [markDirty, isEditMode],
     );
 
     const handleChange = useCallback(
       (
         e: React.ChangeEvent<
           HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-        >
+        >,
       ) => {
         const { name, value } = e.currentTarget;
 
@@ -459,7 +461,7 @@ const AddEditExtraExpense = forwardRef<AddEditFormHandle, Props>(
           markDirty();
         }
       },
-      [markDirty, isEditMode]
+      [markDirty, isEditMode],
     );
 
     const handleMonthChange = useCallback(
@@ -468,7 +470,7 @@ const AddEditExtraExpense = forwardRef<AddEditFormHandle, Props>(
         setFormData((prev) => ({ ...prev, expenseMonth: newYearMonth }));
         markDirty();
       },
-      [markDirty, isEditMode]
+      [markDirty, isEditMode],
     );
 
     const validateBeforeSubmit = useCallback((): boolean => {
@@ -510,8 +512,8 @@ const AddEditExtraExpense = forwardRef<AddEditFormHandle, Props>(
         flatId: formData.isShared
           ? null
           : formData.flatId === ""
-          ? null
-          : Number(formData.flatId),
+            ? null
+            : Number(formData.flatId),
 
         monthYear: monthIso,
         expenseAmount: formData.expenseAmount
@@ -530,7 +532,11 @@ const AddEditExtraExpense = forwardRef<AddEditFormHandle, Props>(
 
         setIsSubmitting(true);
         try {
-          const userId = parseInt(localStorage.getItem("userId") ?? "0", 10);
+          const currentUserId = Number(userId);
+
+          if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) {
+            throw new Error("Authenticated user id is missing.");
+          }
           const payload = buildPayload();
 
           if (isEditMode && extraExpenseid) {
@@ -538,8 +544,7 @@ const AddEditExtraExpense = forwardRef<AddEditFormHandle, Props>(
               endpoints.update,
               extraExpenseid,
               payload,
-              userId,
-              false
+              currentUserId
             );
             await showAddUpdateResult(true, "update", "extra expense");
             setHasUnsavedChanges(false);
@@ -547,7 +552,7 @@ const AddEditExtraExpense = forwardRef<AddEditFormHandle, Props>(
             return;
           }
 
-          await createEntity(endpoints.add, payload, userId, false);
+          await createEntity(endpoints.add, payload, currentUserId);
           await showAddUpdateResult(true, "add", "extra expense");
           setHasUnsavedChanges(false);
 
@@ -584,8 +589,9 @@ const AddEditExtraExpense = forwardRef<AddEditFormHandle, Props>(
         isEditMode,
         navigate,
         parentListPath,
+        userId,
         validateBeforeSubmit,
-      ]
+      ],
     );
 
     const onSubmit = useCallback(
@@ -593,7 +599,7 @@ const AddEditExtraExpense = forwardRef<AddEditFormHandle, Props>(
         e.preventDefault();
         void doSubmit("save");
       },
-      [doSubmit]
+      [doSubmit],
     );
 
     const onSaveAndNext = useCallback(() => {
@@ -681,7 +687,13 @@ const AddEditExtraExpense = forwardRef<AddEditFormHandle, Props>(
               </div>
 
               <div className="col-md-6">
-                <div style={isEditMode ? { opacity: 0.6, pointerEvents: "none" } : undefined}>
+                <div
+                  style={
+                    isEditMode
+                      ? { opacity: 0.6, pointerEvents: "none" }
+                      : undefined
+                  }
+                >
                   <SwitchTile
                     id="isShared"
                     name="isShared"
@@ -740,7 +752,7 @@ const AddEditExtraExpense = forwardRef<AddEditFormHandle, Props>(
         </div>
       </SharedAddEditForm>
     );
-  }
+  },
 );
 
 export default AddEditExtraExpense;

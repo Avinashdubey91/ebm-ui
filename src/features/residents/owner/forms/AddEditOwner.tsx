@@ -35,6 +35,7 @@ import {
   buildEmailProps,
   onBlurNormalizeEmail,
 } from "../../../../utils/formFieldGuards";
+import { UseAuth } from "../../../../context/UseAuth";
 
 interface Props {
   ownerId?: number;
@@ -181,6 +182,7 @@ const AddEditOwner = forwardRef<AddEditFormHandle, Props>(
   ({ ownerId, onUnsavedChange }, ref) => {
     const navigate = useNavigate();
     const { parentListPath } = useCurrentMenu();
+    const { userId } = UseAuth();
 
     const [formData, setFormData] = useState<OwnerDTO>(emptyOwner);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -517,12 +519,10 @@ const AddEditOwner = forwardRef<AddEditFormHandle, Props>(
         setIsSubmitting(true);
 
         try {
-          const userId = parseInt(localStorage.getItem("userId") ?? "0", 10);
+          const currentUserId = Number(userId);
 
-          if (!Number.isFinite(userId) || userId <= 0) {
-            throw new Error(
-              "Current user id is missing. Please login again and retry.",
-            );
+          if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) {
+            throw new Error("Authenticated user id is missing.");
           }
 
           const payload: OwnerDTO = {
@@ -617,12 +617,11 @@ const AddEditOwner = forwardRef<AddEditFormHandle, Props>(
               endpoints.update,
               ownerId,
               payload,
-              userId,
-              false,
+              currentUserId
             );
             await showAddUpdateResult(true, "update", "owner");
           } else {
-            await createEntity(endpoints.add, payload, userId, false);
+            await createEntity(endpoints.add, payload, currentUserId);
             await showAddUpdateResult(true, "add", "owner");
           }
 
@@ -645,6 +644,7 @@ const AddEditOwner = forwardRef<AddEditFormHandle, Props>(
         navigate,
         ownerId,
         parentListPath,
+        userId,
         submitMode,
       ],
     );

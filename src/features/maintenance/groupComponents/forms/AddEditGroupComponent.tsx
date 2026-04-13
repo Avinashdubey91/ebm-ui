@@ -23,6 +23,7 @@ import type { ApartmentDTO } from "../../../../types/ApartmentDTO";
 
 import { showAddUpdateResult } from "../../../../utils/alerts/showAddUpdateConfirmation";
 import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
+import { UseAuth } from "../../../../context/UseAuth";
 
 type SubmitMode = "save" | "saveAndNext";
 
@@ -82,6 +83,7 @@ const AddEditGroupComponent = forwardRef<AddEditFormHandle, Props>(
     const navigate = useNavigate();
     const { parentListPath } = useCurrentMenu();
     const isEdit = !!maintenanceGroupComponentId;
+    const { userId } = UseAuth();
 
     const [formData, setFormData] = useState<FormState>(emptyForm);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -305,7 +307,11 @@ const AddEditGroupComponent = forwardRef<AddEditFormHandle, Props>(
 
       setIsSubmitting(true);
       try {
-        const userId = parseInt(localStorage.getItem("userId") || "0", 10);
+        const currentUserId = Number(userId);
+
+        if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) {
+          throw new Error("Authenticated user id is missing.");
+        }
 
         const payload = {
           maintenanceGroupComponentId: formData.maintenanceGroupComponentId,
@@ -319,15 +325,14 @@ const AddEditGroupComponent = forwardRef<AddEditFormHandle, Props>(
             endpoints.update,
             maintenanceGroupComponentId,
             payload,
-            userId,
-            false
+            currentUserId
           );
           await showAddUpdateResult(true, "update", "group component map");
           navigate(parentListPath);
           return;
         }
 
-        await createEntity(endpoints.add, payload, userId, false);
+        await createEntity(endpoints.add, payload, currentUserId);
         await showAddUpdateResult(true, "add", "group component map");
 
         // Patch Start: Save & Next keeps Group, clears Component + Amount

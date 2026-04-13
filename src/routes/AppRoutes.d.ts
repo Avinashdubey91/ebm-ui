@@ -1,2 +1,2 @@
-import type { RouteObject } from 'react-router-dom';
-export declare const baseRoutes: RouteObject[];
+declare const AppRoutes: () => import("react/jsx-runtime").JSX.Element | null;
+export default AppRoutes;

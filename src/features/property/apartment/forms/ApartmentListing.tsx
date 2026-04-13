@@ -11,6 +11,7 @@ import {
   showDeleteResult,
 } from "../../../../utils/alerts/showDeleteConfirmation";
 import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
+import { UseAuth } from "../../../../context/UseAuth";
 
 const endpoints = {
   getAll: "/apartment/Get-All-Apartment",
@@ -28,6 +29,7 @@ const ApartmentListing: React.FC = () => {
 
   const navigate = useNavigate();
   const { createRoutePath } = useCurrentMenu();
+  const { userId } = UseAuth();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -64,14 +66,14 @@ const ApartmentListing: React.FC = () => {
   const handleDelete = async (id?: number) => {
     if (!id) return;
 
-    const deletedBy = parseInt(localStorage.getItem("userId") ?? "0", 10);
-    if (!deletedBy) return;
+    const currentUserId = Number(userId);
+    if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) return;
 
     const confirmed = await showDeleteConfirmation(ENTITY_NAME);
     if (!confirmed) return;
 
     try {
-      await deleteEntity(endpoints.delete, id, deletedBy);
+      await deleteEntity(endpoints.delete, id, currentUserId);
       setApartments((prev) => prev.filter((a) => a.apartmentId !== id));
       await showDeleteResult(true, ENTITY_NAME);
     } catch (err) {

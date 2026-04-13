@@ -32,6 +32,7 @@ import {
   hhmmToTimeSpan,
 } from "../../../../utils/formValueUtils";
 import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
+import { UseAuth } from "../../../../context/UseAuth";
 
 type SubmitMode = "save" | "saveAndNext";
 
@@ -169,6 +170,7 @@ const AddEditUnitCharge = forwardRef<AddEditFormHandle, Props>(
   ({ unitChargeId, onUnsavedChange }, ref) => {
     const navigate = useNavigate();
     const { parentListPath } = useCurrentMenu();
+    const { userId } = UseAuth();
 
     const isEdit = !!unitChargeId;
 
@@ -546,7 +548,11 @@ const AddEditUnitCharge = forwardRef<AddEditFormHandle, Props>(
 
       setIsSubmitting(true);
       try {
-        const userId = parseInt(localStorage.getItem("userId") || "0", 10);
+        const currentUserId = Number(userId);
+
+        if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) {
+          throw new Error("Authenticated user id is missing.");
+        }
         const payload = buildPayload();
 
         if (isEdit && unitChargeId) {
@@ -554,15 +560,14 @@ const AddEditUnitCharge = forwardRef<AddEditFormHandle, Props>(
             ENDPOINTS.update,
             unitChargeId,
             payload,
-            userId,
-            false
+            currentUserId
           );
           await showAddUpdateResult(true, "update", "unit charge");
           navigate(parentListPath);
           return;
         }
 
-        await createEntity(ENDPOINTS.add, payload, userId, false);
+        await createEntity(ENDPOINTS.add, payload, currentUserId);
         await showAddUpdateResult(true, "add", "unit charge");
 
         const mode = submitModeRef.current;

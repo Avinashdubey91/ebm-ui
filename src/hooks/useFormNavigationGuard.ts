@@ -7,7 +7,7 @@ export const useFormNavigationGuard = (hasUnsavedChanges: boolean, suppressPopst
   const location = useLocation();
   const navigate = useNavigate();
 
-  // ✅ Native browser refresh / close
+  // Native browser refresh / close
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!hasUnsavedChanges) return;
@@ -18,7 +18,7 @@ export const useFormNavigationGuard = (hasUnsavedChanges: boolean, suppressPopst
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
-  // ✅ In-app anchor navigation (menu/submenu clicks)
+  // In-app anchor navigation (menu/submenu clicks)
   useEffect(() => {
     const handleClick = async (e: MouseEvent) => {
       const anchor = (e.target as HTMLElement).closest("a");
@@ -41,15 +41,15 @@ export const useFormNavigationGuard = (hasUnsavedChanges: boolean, suppressPopst
     return () => document.removeEventListener("click", handleClick);
   }, [hasUnsavedChanges, location.pathname, navigate]);
 
-  // ✅ Browser back button (popstate)
+  // Browser back button (popstate)
     useEffect(() => {
-    if (!hasUnsavedChanges || suppressPopstate) return; // ✅ Ignore if suppressed
+    if (!hasUnsavedChanges || suppressPopstate) return; // Ignore if suppressed
 
     history.pushState(null, "", window.location.href);
     let allowBack = false;
 
     const onPopState = async () => {
-      // ✅ If we're manually navigating (custom Back button), skip the alert
+      // If we're manually navigating (custom Back button), skip the alert
       if (window.__suppressNavigationGuard) {
         window.__suppressNavigationGuard = false; // Reset it
         return;
@@ -60,9 +60,9 @@ export const useFormNavigationGuard = (hasUnsavedChanges: boolean, suppressPopst
       const shouldLeave = await showUnsavedChangesDialog();
       if (shouldLeave) {
         allowBack = true;
-        window.history.go(-1); // ✅ proceed
+        window.history.go(-1);
       } else {
-        history.pushState(null, "", window.location.href); // ❌ prevent back
+        history.pushState(null, "", window.location.href); // prevent back
       }
     };
 

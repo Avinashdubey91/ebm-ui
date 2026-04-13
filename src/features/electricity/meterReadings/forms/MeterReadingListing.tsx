@@ -17,7 +17,7 @@ import {
 
 import type { MeterReadingDTO } from "../../../../types/MeterReadingDTO";
 import type { ReadingTypeDTO } from "../../../../types/ReadingTypeDTO";
-
+import { UseAuth } from "../../../../context/UseAuth";
 type MeterFlatOwnerLookup = {
   meterId: number;
   meterNumber?: string | null;
@@ -30,6 +30,7 @@ type MeterFlatOwnerLookup = {
 type SortField = keyof MeterReadingDTO;
 
 const ENTITY_NAME = "Meter Reading";
+const DEFAULT_PAGE_SIZE = 8;
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const DEFAULT_METER_READING_APARTMENT_ID: number | undefined = undefined;
@@ -45,7 +46,7 @@ type MeterReadingListingProps = {
 function buildIdLabelMap<T extends object, K extends keyof T>(
   items: T[],
   idKey: K,
-  getLabel: (item: T) => string
+  getLabel: (item: T) => string,
 ): Record<number, string> {
   const map: Record<number, string> = {};
   for (const item of items) {
@@ -57,8 +58,6 @@ function buildIdLabelMap<T extends object, K extends keyof T>(
   }
   return map;
 }
-
-const DEFAULT_PAGE_SIZE = 8;
 
 const parseSortableDate = (value: unknown): number | null => {
   if (value == null) return null;
@@ -90,7 +89,7 @@ const parseSortableDate = (value: unknown): number | null => {
       dd <= 31
     ) {
       const t = Date.parse(
-        `${yy}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`
+        `${yy}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`,
       );
       return Number.isNaN(t) ? null : t;
     }
@@ -115,6 +114,7 @@ const MeterReadingListing: React.FC<MeterReadingListingProps> = ({
 }) => {
   const navigate = useNavigate();
   const { createRoutePath } = useCurrentMenu();
+  const { userId } = UseAuth();
 
   const [rows, setRows] = useState<MeterReadingDTO[]>([]);
   const [loading, setLoading] = useState(false);
@@ -139,7 +139,7 @@ const MeterReadingListing: React.FC<MeterReadingListingProps> = ({
       meterFlatOwnerLookup: "/meterreading/Get-Meter-FlatOwner-Lookup",
       readingTypes: "/meterreading/Get-All-ReadingTypes",
     }),
-    []
+    [],
   );
 
   // Reset pagination when filters change (relevant when page passes filters)
@@ -153,7 +153,7 @@ const MeterReadingListing: React.FC<MeterReadingListingProps> = ({
     const loadLookups = async () => {
       try {
         const m = await fetchAllEntities<MeterFlatOwnerLookup>(
-          ENDPOINTS.meterFlatOwnerLookup
+          ENDPOINTS.meterFlatOwnerLookup,
         );
         setMeterLookups(Array.isArray(m) ? m : []);
       } catch {
@@ -161,7 +161,9 @@ const MeterReadingListing: React.FC<MeterReadingListingProps> = ({
       }
 
       try {
-        const rt = await fetchAllEntities<ReadingTypeDTO>(ENDPOINTS.readingTypes);
+        const rt = await fetchAllEntities<ReadingTypeDTO>(
+          ENDPOINTS.readingTypes,
+        );
         setReadingTypes(Array.isArray(rt) ? rt : []);
       } catch {
         setReadingTypes([]);
@@ -190,13 +192,14 @@ const MeterReadingListing: React.FC<MeterReadingListingProps> = ({
 
       return parts.join("&");
     },
-    [ENDPOINTS.listPaged, entryMonth, selectedApartmentId]
+    [ENDPOINTS.listPaged, entryMonth, selectedApartmentId],
   );
 
   // Load listing whenever page/filter changes
   useEffect(() => {
     const currentYearMonth = getCurrentYearMonth();
-    const hasMonth = typeof entryMonth === "string" && entryMonth.trim().length > 0;
+    const hasMonth =
+      typeof entryMonth === "string" && entryMonth.trim().length > 0;
     const isFutureMonth = hasMonth && entryMonth!.trim() > currentYearMonth;
 
     const hasApartment =
@@ -275,7 +278,7 @@ const MeterReadingListing: React.FC<MeterReadingListingProps> = ({
 
   const readingTypeLabelById = useMemo(() => {
     return buildIdLabelMap(readingTypes, "readingTypeId", (t) =>
-      String(t.typeName ?? "").trim()
+      String(t.typeName ?? "").trim(),
     );
   }, [readingTypes]);
 
@@ -332,14 +335,14 @@ const MeterReadingListing: React.FC<MeterReadingListingProps> = ({
   const handleDelete = async (id?: number) => {
     if (!id) return;
 
-    const deletedBy = parseInt(localStorage.getItem("userId") ?? "0", 10);
-    if (!deletedBy) return;
+    const currentUserId = Number(userId);
+    if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) return;
 
     const confirmed = await showDeleteConfirmation();
     if (!confirmed) return;
 
     try {
-      await deleteEntity(ENDPOINTS.delete, id, deletedBy);
+      await deleteEntity(ENDPOINTS.delete, id, currentUserId);
       await showDeleteResult(true, ENTITY_NAME);
       await reloadCurrentPage();
     } catch (err) {
@@ -402,7 +405,8 @@ const MeterReadingListing: React.FC<MeterReadingListingProps> = ({
           width: "170px",
           renderCell: (x) =>
             x.readingTypeId
-              ? readingTypeLabelById[x.readingTypeId] ?? `Type #${x.readingTypeId}`
+              ? (readingTypeLabelById[x.readingTypeId] ??
+                `Type #${x.readingTypeId}`)
               : "-",
         },
         {

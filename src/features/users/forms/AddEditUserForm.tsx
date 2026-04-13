@@ -27,6 +27,7 @@ import LoaderOverlay from "../../../components/common/LoaderOverlay";
 import TextInputField from "../../../components/common/TextInputField";
 import SelectField from "../../../components/common/SelectField";
 import FileUploadField from "../../../components/common/FileUploadField";
+import { UseAuth } from "../../../context/UseAuth";
 
 interface CreateUserFormProps {
   userId?: number;
@@ -62,6 +63,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
   });
 
   const navigate = useNavigate();
+  const { userId: authUserId } = UseAuth();
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -127,7 +129,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
             setPreviewUrl(
               `${import.meta.env.VITE_API_BASE_URL?.replace("/api", "")}/${
                 user.profilePicture
-              }`
+              }`,
             );
           }
         })
@@ -162,7 +164,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
   useFormNavigationGuard(hasUnsavedChanges && !isSubmitting);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -189,10 +191,8 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
 
   const resetForm = () => {
     if (userId && initialFormRef.current) {
-      // 🔄 In Edit Mode: Reset only optional fields, keep required fields intact
       setFormData((prev) => ({
         ...prev,
-        // 🛑 Required fields restored from initialRef
         firstName: initialFormRef.current!.firstName,
         lastName: initialFormRef.current!.lastName,
         email: initialFormRef.current!.email,
@@ -204,7 +204,6 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
         stateId: initialFormRef.current!.stateId,
         districtId: initialFormRef.current!.districtId,
 
-        // ✅ Optional fields cleared
         remarks: "",
         addressLine1: "",
         street: "",
@@ -218,7 +217,6 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
       setPreviewUrl("");
       if (fileInputRef.current) fileInputRef.current.value = "";
     } else {
-      // 🆕 In Create Mode: Reset everything except username
       const empty: UserDTO = {
         userName: formData.userName,
         firstName: "",
@@ -282,18 +280,22 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
   };
 
   const handleSubmit = async (
-    e: React.FormEvent<HTMLFormElement> | { preventDefault: () => void }
+    e: React.FormEvent<HTMLFormElement> | { preventDefault: () => void },
   ) => {
     e.preventDefault();
 
-    const createdBy = parseInt(localStorage.getItem("userId") ?? "0"); // ✅ Use only for CreatedBy/ModifiedBy
+    const currentUserId = Number(authUserId);
+
+    if (!authUserId || Number.isNaN(currentUserId) || currentUserId <= 0) {
+      throw new Error("Authenticated user id is missing.");
+    }
+
     setIsSubmitting(true);
 
     try {
       const form = buildFormData();
 
       if (!userId) {
-        // ✅ Creation Mode
         const isAvailable = await checkUsernameAvailability(formData.userName);
         if (!isAvailable) {
           await Swal.fire({
@@ -306,7 +308,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
           return;
         }
 
-        await createEntity(endpoints.add, form, createdBy, true);
+        await createEntity(endpoints.add, form, currentUserId);
         await Swal.fire({
           icon: "success",
           title: "Success",
@@ -316,9 +318,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
           showConfirmButton: false,
         });
       } else {
-        // ✅ Edit Mode
-        const modifiedBy = Number(localStorage.getItem("userId") ?? "0");
-        await updateEntity(endpoints.update, userId, form, modifiedBy, true);
+        await updateEntity(endpoints.update, userId, form, currentUserId);
         await Swal.fire({
           icon: "success",
           title: "Success",
@@ -387,7 +387,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
         })
         .catch(() => setUsernameSuggestions([]))
         .finally(() => setIsCheckingUsername(false));
-    }, 800); // ⏱️ wait 800ms before checking
+    }, 800);
 
     return () => {
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
@@ -456,10 +456,10 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
                   !isCheckingUsername && !isUsernameAvailable
                     ? "is-invalid text-danger"
                     : !isCheckingUsername &&
-                      isUsernameAvailable &&
-                      formData.userName !== ""
-                    ? "is-valid text-success"
-                    : ""
+                        isUsernameAvailable &&
+                        formData.userName !== ""
+                      ? "is-valid text-success"
+                      : ""
                 }`}
                 value={formData.userName}
                 onChange={handleChange}
@@ -493,7 +493,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
                     label="First Name"
                     value={formData.firstName}
                     onChange={handleChange}
-                    disabled={userId ? isFirstNameLocked : false} 
+                    disabled={userId ? isFirstNameLocked : false}
                     required
                   />
                 </div>
@@ -509,11 +509,13 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      marginBottom: 8
+                      marginBottom: 8,
                     }}
                     onClick={() => setIsFirstNameLocked((prev) => !prev)}
                   >
-                    <i className={`fa ${isFirstNameLocked ? "fa-lock" : "fa-unlock"}`}></i>
+                    <i
+                      className={`fa ${isFirstNameLocked ? "fa-lock" : "fa-unlock"}`}
+                    ></i>
                   </button>
                 )}
               </div>
@@ -542,11 +544,13 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      marginBottom: 8
+                      marginBottom: 8,
                     }}
                     onClick={() => setIsLastNameLocked((prev) => !prev)}
                   >
-                    <i className={`fa ${isLastNameLocked ? "fa-lock" : "fa-unlock"}`}></i>
+                    <i
+                      className={`fa ${isLastNameLocked ? "fa-lock" : "fa-unlock"}`}
+                    ></i>
                   </button>
                 )}
               </div>
@@ -591,7 +595,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
                 required
                 onInvalid={(e) =>
                   e.currentTarget.setCustomValidity(
-                    "Please enter valid Email Address"
+                    "Please enter valid Email Address",
                   )
                 }
                 onInput={(e) => e.currentTarget.setCustomValidity("")}

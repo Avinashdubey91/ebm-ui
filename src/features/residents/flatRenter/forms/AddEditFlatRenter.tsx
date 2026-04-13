@@ -26,8 +26,8 @@ import type { SocietyDTO } from "../../../../types/SocietyDTO";
 import type { ApartmentDTO } from "../../../../types/ApartmentDTO";
 import type { FlatDTO } from "../../../../types/FlatDTO";
 import type { RenterDTO } from "../../../../types/RenterDTO";
+import { UseAuth } from "../../../../context/UseAuth";
 
-// ---- Endpoints used here ----
 const endpoints = {
   societies: "/society/Get-All-Societies",
   apartments: "/apartment/Get-All-Apartment",
@@ -44,13 +44,16 @@ type SelectOption = { label: string; value: string | number };
 const toOptions = <T,>(
   items: T[],
   getLabel: (item: T) => string,
-  getValue: (item: T) => string | number | undefined | null
+  getValue: (item: T) => string | number | undefined | null,
 ): SelectOption[] =>
   items
     .map((it) => {
       const v = getValue(it);
       if (v === undefined || v === null || v === "") return null;
-      return { label: getLabel(it), value: typeof v === "number" ? v : String(v) };
+      return {
+        label: getLabel(it),
+        value: typeof v === "number" ? v : String(v),
+      };
     })
     .filter((x): x is SelectOption => x !== null);
 
@@ -126,10 +129,13 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
     const navigate = useNavigate();
     const { parentListPath } = useCurrentMenu();
     const isEdit = !!flatRenterId;
+    const { userId } = UseAuth();
 
     const [formData, setFormData] = useState<FormState>(emptyForm);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [submitMode, setSubmitMode] = useState<"save" | "saveAndNext">("save");
+    const [submitMode, setSubmitMode] = useState<"save" | "saveAndNext">(
+      "save",
+    );
     const formRef = useRef<HTMLFormElement>(null);
     const initialRef = useRef<FormState | null>(null);
 
@@ -171,7 +177,7 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
         try {
           const data = await fetchEntityById<FlatRenterDTO>(
             endpoints.getById,
-            flatRenterId
+            flatRenterId,
           );
 
           const next: FormState = {
@@ -194,18 +200,25 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
 
     // Infer apartmentId and societyId from flatId after masters load (edit mode)
     useEffect(() => {
-      if (!formData.flatId || apartments.length === 0 || flats.length === 0) return;
+      if (!formData.flatId || apartments.length === 0 || flats.length === 0)
+        return;
 
       const flat = flats.find((f) => f.flatId === formData.flatId);
       if (!flat) return;
 
       const inferredApartmentId = Number(flat.apartmentId);
-      const apartment = apartments.find((a) => a.apartmentId === inferredApartmentId);
-      const inferredSocietyId = apartment ? Number(apartment.societyId) : undefined;
+      const apartment = apartments.find(
+        (a) => a.apartmentId === inferredApartmentId,
+      );
+      const inferredSocietyId = apartment
+        ? Number(apartment.societyId)
+        : undefined;
 
       setFormData((prev) => {
-        const needsApt = !prev.apartmentId || prev.apartmentId !== inferredApartmentId;
-        const needsSoc = !prev.societyId || prev.societyId !== inferredSocietyId;
+        const needsApt =
+          !prev.apartmentId || prev.apartmentId !== inferredApartmentId;
+        const needsSoc =
+          !prev.societyId || prev.societyId !== inferredSocietyId;
 
         if (!needsApt && !needsSoc) return prev;
 
@@ -222,7 +235,9 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
       if (!initialRef.current) return false;
       const keys = Object.keys(formData) as (keyof FormState)[];
       const trim = (v: unknown) => (typeof v === "string" ? v.trim() : v);
-      return keys.some((k) => trim(formData[k]) !== trim(initialRef.current![k]));
+      return keys.some(
+        (k) => trim(formData[k]) !== trim(initialRef.current![k]),
+      );
     }, [formData]);
 
     useEffect(() => {
@@ -231,13 +246,19 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
 
     // ---------- Derived lists ----------
     const filteredApartments = useMemo(
-      () => apartments.filter((a) => Number(a.societyId) === Number(formData.societyId)),
-      [apartments, formData.societyId]
+      () =>
+        apartments.filter(
+          (a) => Number(a.societyId) === Number(formData.societyId),
+        ),
+      [apartments, formData.societyId],
     );
 
     const filteredFlats = useMemo(
-      () => flats.filter((f) => Number(f.apartmentId) === Number(formData.apartmentId)),
-      [flats, formData.apartmentId]
+      () =>
+        flats.filter(
+          (f) => Number(f.apartmentId) === Number(formData.apartmentId),
+        ),
+      [flats, formData.apartmentId],
     );
 
     const renterOptions = useMemo(
@@ -246,25 +267,29 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
           label: `${r.firstName} ${r.lastName}${r.mobile ? ` (${r.mobile})` : ""}`,
           value: r.renterId,
         })),
-      [renters]
+      [renters],
     );
 
     // ---------- Handlers ----------
     const handleChange = (
-      e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+      e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
     ) => {
       const target = e.currentTarget;
       const { name } = target;
 
-      const numericFields = new Set(["societyId", "apartmentId", "flatId", "renterId"]);
+      const numericFields = new Set([
+        "societyId",
+        "apartmentId",
+        "flatId",
+        "renterId",
+      ]);
 
       const isCheckbox =
         target instanceof HTMLInputElement && target.type === "checkbox";
 
-      const finalValue: string | number | boolean | undefined =
-        isCheckbox
-          ? target.checked
-          : numericFields.has(name)
+      const finalValue: string | number | boolean | undefined = isCheckbox
+        ? target.checked
+        : numericFields.has(name)
           ? target.value === ""
             ? undefined
             : Number(target.value)
@@ -339,13 +364,22 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
 
       setIsSubmitting(true);
       try {
-        const userId = parseInt(localStorage.getItem("userId") || "0", 10);
+        const currentUserId = Number(userId);
+
+        if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) {
+          throw new Error("Authenticated user id is missing.");
+        }
 
         if (isEdit && formData.flatRenterId) {
-          await updateEntity(endpoints.update, formData.flatRenterId, payload, userId, false);
+          await updateEntity(
+            endpoints.update,
+            formData.flatRenterId,
+            payload,
+            currentUserId,
+          );
           await showAddUpdateResult(true, "update", "flat renter mapping");
         } else {
-          await createEntity(endpoints.assign, payload, userId, false);
+          await createEntity(endpoints.assign, payload, currentUserId);
           await showAddUpdateResult(true, "add", "flat renter mapping");
         }
 
@@ -386,7 +420,8 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
       },
     }));
 
-    const noopReadOnlyChange: React.ChangeEventHandler<HTMLInputElement> = () => undefined;
+    const noopReadOnlyChange: React.ChangeEventHandler<HTMLInputElement> = () =>
+      undefined;
 
     // ---------- UI ----------
     return (
@@ -414,7 +449,11 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
                     onChange={handleChange}
                     required
                     disabled={isEdit}
-                    options={toOptions(societies, (s) => s.societyName, (s) => s.societyId)}
+                    options={toOptions(
+                      societies,
+                      (s) => s.societyName,
+                      (s) => s.societyId,
+                    )}
                   />
                 </div>
 
@@ -429,7 +468,7 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
                     options={toOptions(
                       filteredApartments,
                       (a) => a.apartmentName ?? `Apartment #${a.apartmentId}`,
-                      (a) => a.apartmentId
+                      (a) => a.apartmentId,
                     )}
                   />
                 </div>
@@ -445,7 +484,7 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
                     options={toOptions(
                       filteredFlats,
                       (f) => f.flatNumber ?? `Flat #${f.flatId}`,
-                      (f) => f.flatId
+                      (f) => f.flatId,
                     )}
                   />
                 </div>
@@ -531,7 +570,10 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
                     label="Rent To"
                     value={formData.rentTo ?? ""}
                     onChange={(newDate) =>
-                      setFormData((prev) => ({ ...prev, rentTo: newDate || undefined }))
+                      setFormData((prev) => ({
+                        ...prev,
+                        rentTo: newDate || undefined,
+                      }))
                     }
                   />
                 </div>
@@ -559,7 +601,7 @@ const AddEditFlatRenter = forwardRef<AddEditFormHandle, Props>(
         </div>
       </SharedAddEditForm>
     );
-  }
+  },
 );
 
 export default AddEditFlatRenter;

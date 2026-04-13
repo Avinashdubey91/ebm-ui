@@ -26,6 +26,7 @@ import type { ApartmentDTO } from "../../../../types/ApartmentDTO";
 import type { FlatDTO } from "../../../../types/FlatDTO";
 import type { MeterDTO } from "../../../../types/MeterDTO";
 import type { FlatOwnerNameLookupDTO } from "../../../../types/FlatOwnerNameLookupDTO";
+import { UseAuth } from "../../../../context/UseAuth";
 
 type SubmitMode = "save" | "saveAndNext";
 
@@ -99,18 +100,18 @@ const emptyForm: FormState = {
   isActive: true,
   isSmartMeter: true,
 
-  manufacturer: "L&T",
-  model: "EM101",
-  serialNumber: "CML-6250861",
+  manufacturer: "",
+  model: "",
+  serialNumber: "",
   readingUnit: "kWh",
-  locationDescription: "Beside basement Elevator",
+  locationDescription: "",
 
-  installationBy: "Electricity Board",
-  verifiedBy: "JUSCO",
+  installationBy: "",
+  verifiedBy: "",
   verificationStatus: "",
   verificationRemarks: "Working",
 
-  phaseType: "0",
+  phaseType: "",
   deactivationReason: "",
 };
 
@@ -287,6 +288,7 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
   ({ meterId, onUnsavedChange }, ref) => {
     const navigate = useNavigate();
     const { parentListPath } = useCurrentMenu();
+    const { userId } = UseAuth();
 
     const isEdit = !!meterId;
 
@@ -575,7 +577,11 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
 
       setIsSubmitting(true);
       try {
-        const userId = parseInt(localStorage.getItem("userId") ?? "0", 10);
+        const currentUserId = Number(userId);
+
+        if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) {
+          throw new Error("Authenticated user id is missing.");
+        }
 
         const payload = {
           meterId: formData.meterId,
@@ -615,13 +621,13 @@ const AddEditMeter = forwardRef<AddEditFormHandle, Props>(
         };
 
         if (isEdit && meterId) {
-          await updateEntity(endpoints.update, meterId, payload, userId, false);
+          await updateEntity(endpoints.update, meterId, payload, currentUserId);
           await showAddUpdateResult(true, "update", "meter");
           navigate(parentListPath);
           return;
         }
 
-        await createEntity(endpoints.add, payload, userId, false);
+        await createEntity(endpoints.add, payload, currentUserId);
         await showAddUpdateResult(true, "add", "meter");
 
         if (submitMode === "saveAndNext") {

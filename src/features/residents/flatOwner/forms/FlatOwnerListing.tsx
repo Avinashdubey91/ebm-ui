@@ -10,11 +10,13 @@ import {
 } from "../../../../utils/alerts/showDeleteConfirmation";
 import {  showAddUpdateResult } from "../../../../utils/alerts/showAddUpdateConfirmation";
 import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
+import { UseAuth } from "../../../../context/UseAuth";
 
 const endpoints = {
-  getAll: "/flatowner/Get-All-Owners", // this must return a flat list with joined owner info
-  delete: "/flatowner/Delete-Owner",   // optional: only if delete API is available
+  getAll: "/flatowner/Get-All-Owners",
+  delete: "/flatowner/Delete-Owner",
 };
+
 
 const ENTITY_NAME = "flat owner";
 
@@ -27,6 +29,7 @@ const FlatOwnerListing: React.FC = () => {
 
   const navigate = useNavigate();
   const { createRoutePath } = useCurrentMenu();
+  const { userId } = UseAuth();
 
   useEffect(() => {
     const fetchOwners = async () => {
@@ -51,7 +54,6 @@ const FlatOwnerListing: React.FC = () => {
   useEffect(() => {
     const toastMessage = sessionStorage.getItem("showToast");
     if (toastMessage) {
-      // ⬇️ swap delete -> addUpdate; keep args as-is
       showAddUpdateResult(true, ENTITY_NAME, toastMessage);
       sessionStorage.removeItem("showToast"); // optional; the helper also clears keys
     }
@@ -70,14 +72,14 @@ const FlatOwnerListing: React.FC = () => {
   const handleDeleteOwner = async (id?: number) => {
     if (!id) return;
 
-    const deletedBy = parseInt(localStorage.getItem("userId") ?? "0", 10);
-    if (!deletedBy) return;
+    const currentUserId = Number(userId);
+    if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) return;
 
     const confirmed = await showDeleteConfirmation(ENTITY_NAME);
     if (!confirmed) return;
 
     try {
-      await deleteEntity(endpoints.delete, id, deletedBy);
+      await deleteEntity(endpoints.delete, id, currentUserId);
       setOwners((prev) => prev.filter((o) => o.flatOwnerId !== id));
       await showDeleteResult(true, ENTITY_NAME);
     } catch (err) {

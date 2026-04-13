@@ -12,6 +12,7 @@ import {
   showDeleteConfirmation,
   showDeleteResult,
 } from "../../../../utils/alerts/showDeleteConfirmation";
+import { UseAuth } from "../../../../context/UseAuth";
 
 type ApartmentDTO = { apartmentId: number; apartmentName?: string | null };
 
@@ -77,6 +78,7 @@ function flatLabel(f: FlatDTO): string {
 const ExtraExpenseListing: React.FC = () => {
   const navigate = useNavigate();
   const { createRoutePath } = useCurrentMenu();
+  const { userId } = UseAuth();
 
   const [loading, setLoading] = useState(false);
 
@@ -96,14 +98,13 @@ const ExtraExpenseListing: React.FC = () => {
     const load = async () => {
       setLoading(true);
       try {
-        const [expenseList, aptList, flatList, categoryList] = await Promise.all(
-          [
+        const [expenseList, aptList, flatList, categoryList] =
+          await Promise.all([
             fetchAllEntities<ExtraExpenseDTO>(endpoints.list),
             fetchAllEntities<ApartmentDTO>(endpoints.apartments),
             fetchAllEntities<FlatDTO>(endpoints.flats),
             fetchAllEntities<ExpenseCategoryDTO>(endpoints.categories),
-          ]
-        );
+          ]);
 
         if (!alive) return;
 
@@ -194,14 +195,14 @@ const ExtraExpenseListing: React.FC = () => {
   const handleDelete = async (id?: number) => {
     if (!id) return;
 
-    const deletedBy = parseInt(localStorage.getItem("userId") ?? "0", 10);
-    if (!deletedBy) return;
+    const currentUserId = Number(userId);
+    if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) return;
 
     const confirmed = await showDeleteConfirmation(ENTITY_NAME);
     if (!confirmed) return;
 
     try {
-      await deleteEntity(endpoints.delete, id, deletedBy);
+      await deleteEntity(endpoints.delete, id, currentUserId);
       setItems((prev) => prev.filter((x) => x.extraExpenseid !== id));
       setExpandedRowId(null);
       await showDeleteResult(true, ENTITY_NAME);
@@ -232,8 +233,8 @@ const ExtraExpenseListing: React.FC = () => {
         width: "100px",
         renderCell: (r: ExtraExpenseDTO) =>
           r.expenseCategoryId
-            ? categoryNameById.get(r.expenseCategoryId) ??
-              safeValue(r.expenseCategoryId)
+            ? (categoryNameById.get(r.expenseCategoryId) ??
+              safeValue(r.expenseCategoryId))
             : "-",
       },
       {
@@ -273,7 +274,7 @@ const ExtraExpenseListing: React.FC = () => {
         renderCell: (r: ExtraExpenseDTO) => (r.isActive ? "Yes" : "No"),
       },
     ],
-    [apartmentNameById, categoryNameById, flatById]
+    [apartmentNameById, categoryNameById, flatById],
   );
 
   return (

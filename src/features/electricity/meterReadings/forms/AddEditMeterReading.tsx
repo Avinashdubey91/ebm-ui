@@ -25,6 +25,7 @@ import { showAddUpdateResult } from "../../../../utils/alerts/showAddUpdateConfi
 import { normalizeToYmd } from "../../../../utils/format";
 import { toNullableNumber } from "../../../../utils/formValueUtils";
 import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
+import { UseAuth } from "../../../../context/UseAuth";
 
 type SubmitMode = "save" | "saveAndNext";
 
@@ -132,6 +133,7 @@ const AddEditMeterReading = forwardRef<AddEditFormHandle, Props>(
   ({ meterReadingId, onUnsavedChange }, ref) => {
     const navigate = useNavigate();
     const { parentListPath } = useCurrentMenu();
+    const { userId } = UseAuth();
 
     const isEdit = !!meterReadingId;
 
@@ -467,7 +469,12 @@ const AddEditMeterReading = forwardRef<AddEditFormHandle, Props>(
 
       setIsSubmitting(true);
       try {
-        const userId = parseInt(localStorage.getItem("userId") || "0", 10);
+        const currentUserId = Number(userId);
+
+        if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) {
+          throw new Error("Authenticated user id is missing.");
+        }
+
         const payload = buildPayload();
 
         if (isEdit && meterReadingId) {
@@ -475,15 +482,14 @@ const AddEditMeterReading = forwardRef<AddEditFormHandle, Props>(
             ENDPOINTS.update,
             meterReadingId,
             payload,
-            userId,
-            false
+            currentUserId,
           );
           await showAddUpdateResult(true, "update", "meter reading");
           navigate(parentListPath);
           return;
         }
 
-        await createEntity(ENDPOINTS.add, payload, userId, false);
+        await createEntity(ENDPOINTS.add, payload, currentUserId);
         await showAddUpdateResult(true, "add", "meter reading");
 
         const mode = submitModeRef.current;

@@ -26,6 +26,7 @@ import SelectField from "../../../../components/common/SelectField";
 import SharedAddEditForm from "../../../shared/SharedAddEditForm";
 import type { AddEditFormHandle } from "../../../shared/SharedAddEditForm";
 import { useCurrentMenu } from "../../../../hooks/useCurrentMenu";
+import { UseAuth } from "../../../../context/UseAuth";
 
 interface Props {
   flatId?: number;
@@ -165,6 +166,7 @@ const AddEditFlat = forwardRef<AddEditFormHandle, Props>(
     const formRef = useRef<HTMLFormElement>(null);
     const initialRef = useRef<FlatDTO | null>(null);
     const { parentListPath } = useCurrentMenu();
+    const { userId } = UseAuth();
 
     const applyFormState = useCallback((data: FlatDTO) => {
       setFormData(data);
@@ -299,11 +301,15 @@ const AddEditFlat = forwardRef<AddEditFormHandle, Props>(
       }
 
       setIsSubmitting(true);
-      const userId = parseInt(localStorage.getItem("userId") || "0", 10);
+      const currentUserId = Number(userId);
+
+      if (!userId || Number.isNaN(currentUserId) || currentUserId <= 0) {
+        throw new Error("Authenticated user id is missing.");
+      }
 
       try {
         if (flatId) {
-          await updateEntity(endpoints.update, flatId, formData, userId, false);
+          await updateEntity(endpoints.update, flatId, formData, currentUserId);
           await showAddUpdateResult(true, "update", "flat");
 
           if (submitModeRef.current === "saveAndNext") {
@@ -317,7 +323,7 @@ const AddEditFlat = forwardRef<AddEditFormHandle, Props>(
           return;
         }
 
-        await createEntity(endpoints.add, formData, userId, false);
+        await createEntity(endpoints.add, formData, currentUserId);
         await showAddUpdateResult(true, "add", "flat");
 
         if (submitModeRef.current === "saveAndNext") {
