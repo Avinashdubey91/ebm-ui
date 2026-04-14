@@ -1,2 +1,2 @@
-declare const AppRoutes: () => import("react/jsx-runtime").JSX.Element | null;
+declare const AppRoutes: () => import("react").ReactElement<unknown, string | import("react").JSXElementConstructor<any>> | null;
 export default AppRoutes;
