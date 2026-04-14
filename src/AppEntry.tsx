@@ -1,13 +1,15 @@
-// src/AppEntry.tsx
 import { BrowserRouter } from "react-router-dom";
 import AppRoutes from "./routes/AppRoutes";
-import { NotificationProvider } from "./context/NotificationProvider"; // ✅ Move this here
+import { NotificationProvider } from "./context/NotificationProvider";
+import { NavigationGuardProvider } from "./context/NavigationGuardProvider";
 
 const AppEntry = () => (
   <BrowserRouter>
-    <NotificationProvider>
-      <AppRoutes />
-    </NotificationProvider>
+    <NavigationGuardProvider>
+      <NotificationProvider>
+        <AppRoutes />
+      </NotificationProvider>
+    </NavigationGuardProvider>
   </BrowserRouter>
 );
 

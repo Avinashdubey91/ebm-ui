@@ -1,6 +1,5 @@
-import { useEffect, useContext } from "react";
+import { useEffect, useContext, useMemo } from "react";
 import { useLocation } from "react-router-dom";
-import { useMenuData } from "../features/dashboard/hooks/useMenuData";
 import { MenuContext } from "../context/MenuContext";
 import pluralize from "pluralize";
 import type {
@@ -8,99 +7,102 @@ import type {
   SideNavigationSubMenuDTO,
 } from "../types/menuTypes";
 
+const normalizePath = (value?: string | null): string => {
+  if (!value) return "";
+
+  return (
+    "/" +
+    value
+      .replace(/^\//, "")
+      .replace(/^dashboard\/?/i, "")
+      .replace(/\/+/g, "/")
+      .replace(/\/$/, "")
+  );
+};
+
 export const useCurrentMenu = () => {
-  const { pathname } = useLocation(); // e.g., /dashboard/property/society/create
-  const { menus } = useMenuData();
+  const { pathname } = useLocation();
   const context = useContext(MenuContext);
 
   if (!context) {
     throw new Error("useCurrentMenu must be used within a MenuProvider");
   }
 
-  const { currentMenu, setCurrentMenu } = context;
+  const { currentMenu, setCurrentMenu, menus } = context;
 
-  // STEP 1: Normalize route segment
-  const routeSegment = pathname.replace("/dashboard", "").split("?")[0]; // e.g., /users/create
-
-  // Normalize /create, /edit, or /edit/:id → /list for matching
+  const routeSegment = normalizePath(pathname.replace(/^\/dashboard/i, ""));
   const normalizedRouteSegment = routeSegment.replace(
     /\/(create|edit)(\/\d+)?$/i,
     "/list"
   );
 
-  // console.log("🧭 Pathname:", pathname);
-  // console.log("🔁 Normalized Route:", normalizedRouteSegment);
+  const matchResult = useMemo(() => {
+    let matchedMenu: SideNavigationMenuDTO | undefined;
+    let matchedSubMenu: SideNavigationSubMenuDTO | undefined;
 
-  let matchedMenu: SideNavigationMenuDTO | undefined;
-  let matchedSubMenu: SideNavigationSubMenuDTO | undefined;
+    for (const menu of menus) {
+      if (!menu.subMenus) continue;
 
-  for (const menu of menus) {
-    if (!menu.subMenus) continue;
+      const normalizedMenuPath = normalizePath(menu.routePath);
 
-    for (const sub of menu.subMenus) {
-      const fullSubPath = `${menu.routePath ?? ""}/${
-        sub.routePath ?? ""
-      }`.replace(/\/+/g, "/");
+      for (const sub of menu.subMenus) {
+        const normalizedSubPath = normalizePath(sub.routePath);
+        const fullSubPath = `${normalizedMenuPath}${normalizedSubPath}`.replace(
+          /\/+/g,
+          "/"
+        );
 
-      if (normalizedRouteSegment === fullSubPath) {
-        matchedMenu = menu;
-        matchedSubMenu = sub;
-        // console.log("✅ Matched SubMenu:", sub);
-        break;
+        if (normalizedRouteSegment === fullSubPath) {
+          matchedMenu = menu;
+          matchedSubMenu = sub;
+          break;
+        }
       }
+
+      if (matchedSubMenu) break;
     }
 
-    if (matchedSubMenu) break;
-  }
-
-  // STEP 2: fallback to top-level menu match
-  if (!matchedSubMenu) {
-    matchedMenu = menus.find(
-      (m) => `/${m.routePath}` === normalizedRouteSegment
-    );
-    if (matchedMenu) {
-      // console.log("🔁 Fallback: matched top-level menu:", matchedMenu.menuName);
+    if (!matchedSubMenu) {
+      matchedMenu = menus.find(
+        (m) => normalizePath(m.routePath) === normalizedRouteSegment
+      );
     }
-  }
 
-  // STEP 3: Update context when menu changes
+    return { matchedMenu, matchedSubMenu };
+  }, [menus, normalizedRouteSegment]);
+
+  const { matchedMenu, matchedSubMenu } = matchResult;
+
   useEffect(() => {
     if (
       matchedMenu &&
       matchedMenu.sideNavigationMenuId !== currentMenu?.sideNavigationMenuId
     ) {
       setCurrentMenu(matchedMenu);
-      // console.log("📌 Context Updated: Current Menu Set:",matchedMenu.menuName);
     }
   }, [matchedMenu, currentMenu, setCurrentMenu]);
 
-  // STEP 4: Format menu name labels
   const rawSubMenuName =
-    matchedSubMenu?.subMenuName ?? matchedMenu?.menuName ?? (menus.length === 0 ? "" : "Items");
+    matchedSubMenu?.subMenuName ??
+    matchedMenu?.menuName ??
+    (menus.length === 0 ? "" : "Items");
+
   const cleanSubMenuName = rawSubMenuName.replace(/List$/i, "").trim();
   const pluralMenuName = cleanSubMenuName;
   const singularMenuName = pluralize.singular(pluralMenuName);
 
-  // STEP 5: Generate correct fallback path
   const parentListPath =
     matchedSubMenu && matchedMenu
-      ? `/dashboard/${matchedMenu.routePath}/${matchedSubMenu.routePath}`.replace(
+      ? `/dashboard${normalizePath(matchedMenu.routePath)}${normalizePath(
+          matchedSubMenu.routePath
+        )}`.replace(/\/+/g, "/")
+      : matchedMenu?.routePath
+      ? `/dashboard${normalizePath(matchedMenu.routePath)}/list`.replace(
           /\/+/g,
           "/"
         )
-      : matchedMenu?.routePath
-      ? `/dashboard/${matchedMenu.routePath}/list`
-      : "/dashboard"; // 🛑 used only if absolutely no match
+      : "/dashboard";
 
-  // console.log(
-  //   "📣 Final menu names → Singular:",
-  //   singularMenuName,
-  //   "| Plural:",
-  //   pluralMenuName
-  // );
-  // console.log("🔙 Back path resolved →", parentListPath);
-
- // STEP 6 – locate the correct sibling "create" submenu
   const currentBase = (matchedSubMenu?.routePath ?? "")
     .toLowerCase()
     .replace(/\/(list|edit(\/:?\w+)?)$/i, "");
@@ -110,13 +112,11 @@ export const useCurrentMenu = () => {
     return subRoute === `${currentBase}/create` || subRoute === "create";
   });
 
-  // ✅ STEP 7: Build dynamic route
   const createRoutePath =
     siblingCreateSubmenu && matchedMenu
-      ? `/dashboard/${matchedMenu.routePath}/${siblingCreateSubmenu.routePath}`.replace(
-          /\/+/g,
-          "/"
-        )
+      ? `/dashboard${normalizePath(matchedMenu.routePath)}${normalizePath(
+          siblingCreateSubmenu.routePath
+        )}`.replace(/\/+/g, "/")
       : "";
 
   return {

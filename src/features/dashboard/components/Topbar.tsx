@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useDashboardContext } from "../context/useDashboardContext";
 import { FaUser, FaToggleOn, FaToggleOff, FaSignOutAlt } from "react-icons/fa";
 import { useNotificationContext } from "../../../hooks/useNotificationContext";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { useGuardedNavigate } from "../../../hooks/useGuardedNavigate";
 import { getUserProfile } from "../../../api/userProfileService";
 import {
   markNotificationAsRead,
@@ -36,7 +37,7 @@ function formatSystemTime(date: Date): string {
 
 const Topbar: React.FC = () => {
   const user = useDashboardContext();
-  const navigate = useNavigate();
+  const navigate = useGuardedNavigate();
   const { notifications, setNotifications } = useNotificationContext();
   const { userId, clearAuth } = UseAuth();
 
@@ -118,13 +119,18 @@ const Topbar: React.FC = () => {
     setProfileOpen((prev) => !prev);
   };
 
-  const handleGenerateMonthlyBillClick = () => {
-    navigate("/dashboard/billing/maintenance-bill/list");
+  const handleGenerateMonthlyBillClick = async () => {
+    await navigate("/dashboard/billing/maintenance-bill/list");
   };
 
   const waitForNextPaint = () =>
     new Promise<void>((resolve) => {
       requestAnimationFrame(() => resolve());
+    });
+
+  const wait = (ms: number) =>
+    new Promise<void>((resolve) => {
+      window.setTimeout(resolve, ms);
     });
 
   const handleLogout = async (e?: React.MouseEvent<HTMLAnchorElement>) => {
@@ -136,27 +142,38 @@ const Topbar: React.FC = () => {
     setProfileOpen(false);
     setIsLoggingOut(true);
 
-    // Allow React to paint the overlay before async teardown starts.
+    // Let React commit and paint the overlay on the current page first.
     await waitForNextPaint();
 
     try {
-      await stopNotificationConnection();
-      await logoutUser();
-    } catch (error) {
-      console.error("Logout failed.", error);
-    } finally {
-      clearAccessToken();
-      clearAuth();
+      try {
+        await stopNotificationConnection();
+      } catch (error) {
+        console.error("Failed to stop notification connection.", error);
+      }
 
+      try {
+        await logoutUser();
+      } catch (error) {
+        console.error("Logout request failed.", error);
+      }
+
+      // Keep the spinner visible on the CURRENT page long enough.
+      await wait(1000);
+
+      // Only after the visible delay, clear local auth state and leave the page.
       localStorage.removeItem("username");
       localStorage.removeItem("status");
 
       user.setStatus("Offline");
 
-      navigate("/login", {
-        replace: true,
-        state: { logoutCompleted: true },
-      });
+      clearAccessToken();
+      clearAuth();
+
+      navigate("/login", { replace: true });
+    } catch (error) {
+      console.error("Logout flow failed.", error);
+      setIsLoggingOut(false);
     }
   };
 

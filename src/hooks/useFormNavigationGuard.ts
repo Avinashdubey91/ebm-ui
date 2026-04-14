@@ -1,11 +1,30 @@
-// src/hooks/useFormNavigationGuard.ts
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { showUnsavedChangesDialog } from "../utils/showUnsavedChangesDialog";
+import { useNavigationGuardContext } from "./useNavigationGuardContext";
 
-export const useFormNavigationGuard = (hasUnsavedChanges: boolean, suppressPopstate = false) => {
+export const useFormNavigationGuard = (
+  hasUnsavedChanges: boolean,
+  suppressPopstate = false,
+) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { setGuardHandler, confirmIfNeeded } = useNavigationGuardContext();
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) {
+      setGuardHandler(null);
+      return;
+    }
+
+    setGuardHandler(async () => {
+      return showUnsavedChangesDialog();
+    });
+
+    return () => {
+      setGuardHandler(null);
+    };
+  }, [hasUnsavedChanges, setGuardHandler]);
 
   // Native browser refresh / close
   useEffect(() => {
@@ -14,59 +33,69 @@ export const useFormNavigationGuard = (hasUnsavedChanges: boolean, suppressPopst
       e.preventDefault();
       e.returnValue = "";
     };
+
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
-  // In-app anchor navigation (menu/submenu clicks)
+  // In-app navigation via anchor clicks — capture phase so we stop it before router reacts
   useEffect(() => {
-    const handleClick = async (e: MouseEvent) => {
-      const anchor = (e.target as HTMLElement).closest("a");
+    const handleClickCapture = async (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      const anchor = target?.closest("a");
+
       if (!anchor || anchor.dataset.bypassGuard === "true") return;
 
       const href = anchor.getAttribute("href");
-      const isExternal = anchor.host !== window.location.host;
-      const isSame = href === location.pathname;
+      if (!href || href === "#") return;
 
-      if (!href || href === "#" || isExternal || isSame) return;
+      const isExternal =
+        anchor.host && anchor.host !== window.location.host;
 
-      if (!hasUnsavedChanges) return;
+      const isSame =
+        href === location.pathname || href === `${location.pathname}${location.search}`;
+
+      if (isExternal || isSame || !hasUnsavedChanges) return;
 
       e.preventDefault();
-      const shouldLeave = await showUnsavedChangesDialog();
-      if (shouldLeave) navigate(href);
+      e.stopPropagation();
+
+      const shouldLeave = await confirmIfNeeded();
+      if (shouldLeave) {
+        navigate(href);
+      }
     };
 
-    document.addEventListener("click", handleClick);
-    return () => document.removeEventListener("click", handleClick);
-  }, [hasUnsavedChanges, location.pathname, navigate]);
+    document.addEventListener("click", handleClickCapture, true);
+    return () =>
+      document.removeEventListener("click", handleClickCapture, true);
+  }, [hasUnsavedChanges, location.pathname, location.search, navigate, confirmIfNeeded]);
 
-  // Browser back button (popstate)
-    useEffect(() => {
-    if (!hasUnsavedChanges || suppressPopstate) return; // Ignore if suppressed
+  // Browser back / forward
+  useEffect(() => {
+    if (!hasUnsavedChanges || suppressPopstate) return;
 
     history.pushState(null, "", window.location.href);
     let allowBack = false;
 
     const onPopState = async () => {
-      // If we're manually navigating (custom Back button), skip the alert
-      if (window.__suppressNavigationGuard) {
-        window.__suppressNavigationGuard = false; // Reset it
+      if ((window as typeof window & { __suppressNavigationGuard?: boolean }).__suppressNavigationGuard) {
+        (window as typeof window & { __suppressNavigationGuard?: boolean }).__suppressNavigationGuard = false;
         return;
       }
 
       if (allowBack) return;
 
-      const shouldLeave = await showUnsavedChangesDialog();
+      const shouldLeave = await confirmIfNeeded();
       if (shouldLeave) {
         allowBack = true;
         window.history.go(-1);
       } else {
-        history.pushState(null, "", window.location.href); // prevent back
+        history.pushState(null, "", window.location.href);
       }
     };
 
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
-  }, [hasUnsavedChanges, suppressPopstate]);
+  }, [hasUnsavedChanges, suppressPopstate, confirmIfNeeded]);
 };

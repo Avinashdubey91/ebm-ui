@@ -1,18 +1,19 @@
-import React, { useState } from 'react';
-import Sidebar from '../components/Sidebar';
-import Topbar from '../components/Topbar';
-import { DashboardContext } from '../context/DashboardContext';
-import { Outlet } from 'react-router-dom';
-import '../dashboard.css';
+import React, { Suspense, useState } from "react";
+import Sidebar from "../components/Sidebar";
+import Topbar from "../components/Topbar";
+import { DashboardContext } from "../context/DashboardContext";
+import { Outlet } from "react-router-dom";
+import LoaderOverlay from "../../../components/common/LoaderOverlay";
+import "../dashboard.css";
 
 const Dashboard: React.FC = () => {
-  const [status, setStatus] = useState<'Online' | 'Offline'>('Online');
+  const [status, setStatus] = useState<"Online" | "Offline">("Online");
 
   const user = {
-    name: 'A.K. Dubey',
-    role: 'Admin',
+    name: "A.K. Dubey",
+    role: "Admin",
     status,
-    image: '/img/AKDubey.png',
+    image: "/img/AKDubey.png",
     setStatus,
   };
 
@@ -21,12 +22,14 @@ const Dashboard: React.FC = () => {
       <div className="dashboard-ebm-layout-wrapper d-flex flex-column">
         <Topbar />
         <div className="d-flex flex-grow-1">
-          {/* ❌ Remove the hook here – it doesn't belong in layout */}
           <Sidebar />
           <div className="dashboard-ebm-main-area d-flex flex-column">
-            <div className="dashboard-ebm-main-area-inner">
-              <Outlet />
+            <div className="dashboard-ebm-main-area-inner position-relative">
+              <Suspense fallback={<LoaderOverlay />}>
+                <Outlet />
+              </Suspense>
             </div>
+
             <footer className="footer">
               <small>
                 &copy; 2025 EBM Technologies Pvt. Ltd. &nbsp;|&nbsp;

@@ -3,8 +3,50 @@ import { fetchSideMenus, fetchSubMenus } from "../../../api/menuService";
 import type { SideNavigationMenuDTO } from "../../../types/menuTypes";
 import { useAuthContext } from "../../../context/AuthContext";
 
+const MENU_CACHE_STORAGE_KEY = "ebm_menu_cache_v1";
+
 let menuCache: SideNavigationMenuDTO[] | null = null;
 let menuRequest: Promise<SideNavigationMenuDTO[]> | null = null;
+
+const readMenusFromSessionStorage = (): SideNavigationMenuDTO[] | null => {
+  try {
+    const raw = sessionStorage.getItem(MENU_CACHE_STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as SideNavigationMenuDTO[];
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeMenusToSessionStorage = (menus: SideNavigationMenuDTO[]) => {
+  try {
+    sessionStorage.setItem(MENU_CACHE_STORAGE_KEY, JSON.stringify(menus));
+  } catch {
+    // ignore storage errors
+  }
+};
+
+const clearMenusFromSessionStorage = () => {
+  try {
+    sessionStorage.removeItem(MENU_CACHE_STORAGE_KEY);
+  } catch {
+    // ignore storage errors
+  }
+};
+
+const getInitialMenus = (): SideNavigationMenuDTO[] => {
+  if (menuCache) return menuCache;
+
+  const persisted = readMenusFromSessionStorage();
+  if (persisted && persisted.length > 0) {
+    menuCache = persisted;
+    return persisted;
+  }
+
+  return [];
+};
 
 const loadMenusFromApi = async (): Promise<SideNavigationMenuDTO[]> => {
   const [mainMenus, subMenus] = await Promise.all([
@@ -23,13 +65,18 @@ const loadMenusFromApi = async (): Promise<SideNavigationMenuDTO[]> => {
 export const clearMenuCache = () => {
   menuCache = null;
   menuRequest = null;
+  clearMenusFromSessionStorage();
 };
 
 export const useMenuData = () => {
   const { isAuthenticated, isReady } = useAuthContext();
 
-  const [menus, setMenus] = useState<SideNavigationMenuDTO[]>(menuCache ?? []);
-  const [loading, setLoading] = useState<boolean>(!menuCache);
+  const initialMenus = getInitialMenus();
+
+  const [menus, setMenus] = useState<SideNavigationMenuDTO[]>(initialMenus);
+  const [loading, setLoading] = useState<boolean>(
+    !initialMenus.length && isReady && isAuthenticated
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -47,15 +94,17 @@ export const useMenuData = () => {
       return;
     }
 
-    if (menuCache) {
+    // If we already have cached menus, use them immediately and refresh in background.
+    const cachedMenus = menuCache ?? readMenusFromSessionStorage();
+    if (cachedMenus && cachedMenus.length > 0) {
+      menuCache = cachedMenus;
       if (isMounted) {
-        setMenus(menuCache);
+        setMenus(cachedMenus);
         setLoading(false);
       }
-      return;
+    } else if (isMounted) {
+      setLoading(true);
     }
-
-    setLoading(true);
 
     if (!menuRequest) {
       menuRequest = loadMenusFromApi();
@@ -64,17 +113,22 @@ export const useMenuData = () => {
     menuRequest
       .then((data) => {
         menuCache = data;
+        writeMenusToSessionStorage(data);
+
         if (isMounted) {
           setMenus(data);
         }
       })
       .catch((err) => {
         console.error("❌ Menu Load Error:", err);
-        if (isMounted) {
+
+        if (isMounted && !(cachedMenus && cachedMenus.length > 0)) {
           setMenus([]);
         }
       })
       .finally(() => {
+        menuRequest = null;
+
         if (isMounted) {
           setLoading(false);
         }

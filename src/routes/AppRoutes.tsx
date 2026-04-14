@@ -1,5 +1,5 @@
 import { useContext, useMemo } from "react";
-import { Navigate, useLocation, useRoutes } from "react-router-dom";
+import { Navigate, useRoutes } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 
 import Dashboard from "../features/dashboard/pages/Dashboard";
@@ -10,8 +10,6 @@ import LoaderOverlay from "../components/common/LoaderOverlay";
 import { MenuContext } from "../context/MenuContext";
 
 const AppRoutes = () => {
-  const location = useLocation();
-  const isLoginPage = location.pathname === "/login";
   const menuContext = useContext(MenuContext);
 
   if (!menuContext) {
@@ -19,12 +17,66 @@ const AppRoutes = () => {
   }
 
   const { menus, loading, isAuthenticated } = menuContext;
+  const hasMenus = menus.length > 0;
 
   const routes = useMemo<RouteObject[]>(() => {
-    const dynamicRoutes =
-      !isLoginPage && isAuthenticated && menus.length > 0
-        ? generateRoutes(menus)
-        : [];
+    let dashboardChildren: RouteObject[] = [];
+
+    if (isAuthenticated) {
+      if (hasMenus) {
+        const dynamicRoutes = generateRoutes(menus);
+
+        dashboardChildren = [
+          {
+            index: true,
+            element: (
+              <div className="px-4 py-4 text-center fw-bold">
+                Welcome to Dashboard
+              </div>
+            ),
+          },
+          ...dynamicRoutes,
+          {
+            path: "*",
+            element: (
+              <div className="alert alert-danger text-center m-5 fw-bold fs-5">
+                Route not found
+              </div>
+            ),
+          },
+        ];
+      } else if (loading) {
+        dashboardChildren = [
+          {
+            index: true,
+            element: <LoaderOverlay />,
+          },
+          {
+            path: "*",
+            element: <LoaderOverlay />,
+          },
+        ];
+      } else {
+        dashboardChildren = [
+          {
+            index: true,
+            element: (
+              <div className="px-4 py-4 text-center fw-bold">
+                Welcome to Dashboard
+              </div>
+            ),
+          },
+          {
+            path: "*",
+            element: (
+              <div className="alert alert-danger text-center m-5 fw-bold fs-5">
+                Route not found
+              </div>
+            ),
+          },
+        ];
+      }
+    }
 
     return [
       {
@@ -38,7 +90,7 @@ const AppRoutes = () => {
           {
             path: "dashboard/*",
             element: <Dashboard />,
-            children: dynamicRoutes,
+            children: dashboardChildren,
           },
         ],
       },
@@ -47,16 +99,9 @@ const AppRoutes = () => {
         element: <Login />,
       },
     ];
-  }, [isLoginPage, isAuthenticated, menus]);
+  }, [isAuthenticated, loading, hasMenus, menus]);
 
-  const element = useRoutes(routes);
-
-  const shouldBlockRender = !isLoginPage && isAuthenticated && loading;
-  if (shouldBlockRender) {
-    return <LoaderOverlay />;
-  }
-
-  return element;
+  return useRoutes(routes);
 };
 
 export default AppRoutes;
